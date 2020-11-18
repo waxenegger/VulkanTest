@@ -17,6 +17,7 @@ class Graphics final {
     private:
         SDL_Window * sdlWindow = nullptr;
         VkInstance vkInstance = nullptr;
+        VkSurfaceKHR vkSurface = nullptr;
         bool active = false;
 
         std::vector<const char *> vkExtensionNames;

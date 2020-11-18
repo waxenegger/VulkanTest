@@ -25,6 +25,11 @@ void Graphics::init(const std::string & appName, uint32_t version) {
     SDL_SetWindowTitle(this->sdlWindow, appName.c_str());
 
     if (this->initVulkan(appName, version)) {
+        if (!SDL_Vulkan_CreateSurface(this->sdlWindow, this->vkInstance, &this->vkSurface)) {
+            std::cerr << "SDL Vulkan Surface could not be created! Error: " << SDL_GetError() << std::endl;
+            return;
+        }
+
         this->active = true;
     }
 }
@@ -173,6 +178,12 @@ bool Graphics::isActive() {
 }
 
 Graphics::~Graphics() {
+    /*
+    vkDeviceWaitIdle(device) // wait till work is done
+    vkDestroyDevice(device, pAllocator); // logical device
+    */
+
+    if (this->vkSurface != nullptr) vkDestroySurfaceKHR(this->vkInstance, this->vkSurface, nullptr);
     if (this->vkInstance != nullptr) vkDestroyInstance(this->vkInstance, nullptr);
     if (this->sdlWindow != nullptr) SDL_DestroyWindow(this->sdlWindow);
     SDL_Quit();
