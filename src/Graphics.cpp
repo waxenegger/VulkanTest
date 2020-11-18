@@ -35,11 +35,12 @@ void Graphics::init(const std::string & appName, uint32_t version) {
 }
 
 bool Graphics::initVulkan(const std::string & appName, uint32_t version) {
+    this->queryVkExtensions();
+    this->queryVkLayerProperties();
+
     this->createVkInstance(appName, version);
     if (this->vkInstance == nullptr) return false;
 
-    this->queryVkExtensions();
-    this->queryVkLayerProperties();
     this->queryVkPhysicalDevices();
 
     return true;
