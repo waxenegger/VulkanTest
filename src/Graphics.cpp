@@ -33,6 +33,8 @@ bool Graphics::initVulkan(const std::string & appName, uint32_t version) {
     this->createVkInstance(appName, version);
     if (this->vkInstance == nullptr) return false;
 
+    this->queryVkExtensions();
+    this->queryVkLayerProperties();
     this->queryVkPhysicalDevices();
 
     return true;
@@ -49,47 +51,114 @@ void Graphics::queryVkExtensions() {
 }
 
 void Graphics::createVkInstance(const std::string & appName, uint32_t version) {
-    const VkApplicationInfo app = {
-        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-        .pNext = NULL,
-        .pApplicationName = appName.c_str(),
-        .applicationVersion = version,
-        .pEngineName = appName.c_str(),
-        .engineVersion = version,
-        .apiVersion = VK_API_VERSION_1_0,
-    };
+    VkApplicationInfo app;
+    app.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    app.pNext = NULL,
+    app.pApplicationName = appName.c_str();
+    app.applicationVersion = version;
+    app.pEngineName = appName.c_str();
+    app.engineVersion = version;
+    app.apiVersion = VK_API_VERSION_1_0;
 
     this->queryVkExtensions();
 
-    VkInstanceCreateInfo inst_info = {};
+    VkInstanceCreateInfo inst_info;
     inst_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    inst_info.pNext = NULL;
+    inst_info.flags = 0;
     inst_info.pApplicationInfo = &app;
+    inst_info.enabledLayerCount = 0;
+    inst_info.ppEnabledLayerNames = NULL;
     inst_info.enabledExtensionCount = this->vkExtensionNames.size();
-    inst_info.ppEnabledExtensionNames = !this->vkExtensionNames.empty() ? this->vkExtensionNames.data() : nullptr;
+    inst_info.ppEnabledExtensionNames = !this->vkExtensionNames.empty() ? this->vkExtensionNames.data() : NULL;
 
-    vkCreateInstance(&inst_info, nullptr, &this->vkInstance);
+    const VkResult ret = vkCreateInstance(&inst_info, nullptr, &this->vkInstance);
+    ASSERT_VULKAN(ret);
 }
 
 void Graphics::queryVkPhysicalDevices() {
     uint32_t physicalDeviceCount = 0;
+    VkResult ret;
 
-    vkEnumeratePhysicalDevices(this->vkInstance, &physicalDeviceCount, nullptr);
+    ret = vkEnumeratePhysicalDevices(this->vkInstance, &physicalDeviceCount, nullptr);
+    ASSERT_VULKAN(ret);
 
-    this->vkPhysicalDevices.resize(physicalDeviceCount);
-    vkEnumeratePhysicalDevices(this->vkInstance, &physicalDeviceCount, this->vkPhysicalDevices.data());
+    if (ret == VK_SUCCESS) {
+        this->vkPhysicalDevices.resize(physicalDeviceCount);
+        ret = vkEnumeratePhysicalDevices(this->vkInstance, &physicalDeviceCount, this->vkPhysicalDevices.data());
+        ASSERT_VULKAN(ret);
+    }
 }
 
 void Graphics::listVkPhysicalDevices() {
-    VkPhysicalDeviceProperties physicalProperties = {};
+    if (this->vkPhysicalDevices.empty()) return;
+
+    VkPhysicalDeviceProperties physicalProperties;
+
+    std::cout << "Physical Devices:" << std::endl;
     for (auto & device : this->vkPhysicalDevices) {
         vkGetPhysicalDeviceProperties(device, &physicalProperties);
-        std::cout << physicalProperties.deviceName << std::endl;
+        std::cout << "\t" << physicalProperties.deviceName << "\t[Type: " <<
+                physicalProperties.deviceType << "]" << std::endl;
     }
 }
 
 void Graphics::listVkExtensions() {
+    if (this->vkExtensionNames.empty()) return;
+
+    std::cout << "Extensions: " << std::endl;
     for (auto & extension : this->vkExtensionNames) {
-        std::cout << extension << std::endl;
+        std::cout << "\t" << extension << std::endl;
+    }
+}
+
+void Graphics::queryVkLayerProperties() {
+    uint32_t layerCount = 0;
+    VkResult ret;
+
+    ret = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+    ASSERT_VULKAN(ret);
+
+    if (ret == VK_SUCCESS) {
+        this->vkLayerProperties.resize(layerCount);
+        ret = vkEnumerateInstanceLayerProperties(&layerCount, this->vkLayerProperties.data());
+        ASSERT_VULKAN(ret);
+    }
+}
+
+const std::vector<VkQueueFamilyProperties> Graphics::getVkPhysicalDeviceQueueFamilyProperties(const unsigned int index) {
+    if (index > this->vkPhysicalDevices.size()-1) return std::vector<VkQueueFamilyProperties>();
+
+    uint32_t numberOfDeviceQueuerFamilyProperties = 0;
+
+    vkGetPhysicalDeviceQueueFamilyProperties(this->vkPhysicalDevices[index], &numberOfDeviceQueuerFamilyProperties, nullptr);
+
+    std::vector<VkQueueFamilyProperties> vkQueueFamilyProperties(numberOfDeviceQueuerFamilyProperties);
+    vkGetPhysicalDeviceQueueFamilyProperties(this->vkPhysicalDevices[index], &numberOfDeviceQueuerFamilyProperties, vkQueueFamilyProperties.data());
+
+    return vkQueueFamilyProperties;
+}
+
+
+void Graphics::listVkLayerProperties() {
+    if (this->vkLayerProperties.empty()) return;
+
+    std::cout << "Layers: " << std::endl;
+    for (auto & layerProperties : this->vkLayerProperties) {
+        std::cout << "\t" << layerProperties.layerName << std::endl;
+    }
+}
+
+void Graphics::listVkPhysicalDeviceQueueFamilyProperties(std::vector<VkQueueFamilyProperties> & deviceQueueFamilyProperties) {
+    int c = 0;
+    for (auto & queueFamilyProperties : deviceQueueFamilyProperties) {
+        std::cout << "Queue Index: " << c << std::endl;
+        std::cout << "\tQueue Count: " << queueFamilyProperties.queueCount << std::endl;
+        std::cout << "\tVK_QUEUE_GRAPHICS_BIT: " << ((queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) << std::endl;
+        std::cout << "\tVK_QUEUE_TRANSFER_BIT: " << ((queueFamilyProperties.queueFlags & VK_QUEUE_TRANSFER_BIT) != 0) << std::endl;
+        std::cout << "\tVK_QUEUE_COMPUTE_BIT: " << ((queueFamilyProperties.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0) << std::endl;
+        std::cout << "\tVK_QUEUE_SPARSE_BINDING_BIT: " << ((queueFamilyProperties.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT) != 0) << std::endl;
+        c++;
     }
 }
 

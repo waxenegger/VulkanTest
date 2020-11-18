@@ -12,6 +12,9 @@ public:
         this->GRAPHICS.init(this->APP_NAME, VK_MAKE_VERSION(1,0,0));
         this->GRAPHICS.listVkPhysicalDevices();
         this->GRAPHICS.listVkExtensions();
+        this->GRAPHICS.listVkLayerProperties();
+        auto ret = this->GRAPHICS.getVkPhysicalDeviceQueueFamilyProperties(1);
+        this->GRAPHICS.listVkPhysicalDeviceQueueFamilyProperties(ret);
     }
 };
 
