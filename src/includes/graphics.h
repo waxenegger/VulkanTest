@@ -22,7 +22,12 @@ class Graphics final {
 
         std::vector<const char *> vkExtensionNames;
         std::vector<VkPhysicalDevice> vkPhysicalDevices;
-        std::vector<VkLayerProperties> vkLayerProperties;
+        std::vector<const char *> vkLayerNames;
+
+        VkDevice * device = nullptr;
+        VkQueue * graphicsQueue = nullptr;
+        VkQueue * presentQueue = nullptr;
+        VkSwapchainKHR * swapChain = nullptr;
 
         Graphics();
         void initSDL();
@@ -31,7 +36,12 @@ class Graphics final {
         void queryVkExtensions();
         void createVkInstance(const std::string & appName, uint32_t version);
         void queryVkPhysicalDevices();
-        void queryVkLayerProperties();
+        void queryVkLayerNames();
+        std::tuple<int,int> ratePhysicalDevice(const VkPhysicalDevice & device);
+        const std::vector<VkQueueFamilyProperties> getVkPhysicalDeviceQueueFamilyProperties(const VkPhysicalDevice & device);
+        bool createLogicalDeviceAndQueues();
+        std::tuple<VkPhysicalDevice, int> pickBestPhysicalDeviceAndQueueIndex();
+        bool createSwapChain();
     public:
         Graphics(const Graphics&) = delete;
         Graphics& operator=(const Graphics &) = delete;
@@ -43,9 +53,8 @@ class Graphics final {
         void init(const std::string & appName, uint32_t version);
         void listVkPhysicalDevices();
         void listVkExtensions();
-        void listVkLayerProperties();
-        const std::vector<VkQueueFamilyProperties> getVkPhysicalDeviceQueueFamilyProperties(const unsigned int index = 0);
-        void listVkPhysicalDeviceQueueFamilyProperties(std::vector<VkQueueFamilyProperties> & deviceQueueFamilyProperties);
+        void listVkLayerNames();
+        void listVkPhysicalDeviceQueueFamilyProperties(const VkPhysicalDevice & device);
 
         ~Graphics();
 };

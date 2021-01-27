@@ -3,5 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <tuple>
+#include <string.h>
 
 #endif
