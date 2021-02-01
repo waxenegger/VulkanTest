@@ -30,6 +30,8 @@ void Graphics::init(const std::string & appName, uint32_t version) {
 }
 
 bool Graphics::initVulkan(const std::string & appName, uint32_t version) {
+    this->queryVkExtensions();
+
     this->createVkInstance(appName, version);
     if (this->vkInstance == nullptr) return false;
 
@@ -71,24 +73,18 @@ bool Graphics::createLogicalDeviceAndQueues() {
 
     const int bestPhysicalQueueIndex = std::get<1>(bestPhysicalDeviceAndQueue);
 
-    // create 2 queue infos for graphics and presentation (surface)
-    const int nrOfQueues = 2;
-    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos(nrOfQueues);
+    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 
-    int x=0;
-    while(x<nrOfQueues) {
-        VkDeviceQueueCreateInfo queueCreateInfo;
-        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfo.flags = 0;
-        queueCreateInfo.pNext = nullptr;
-        queueCreateInfo.queueFamilyIndex = bestPhysicalQueueIndex;
-        queueCreateInfo.queueCount = 1; // we use only one for now
-        const float priority = 1.0f;
-        queueCreateInfo.pQueuePriorities = &priority;
+    VkDeviceQueueCreateInfo queueCreateInfo;
+    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo.flags = 0;
+    queueCreateInfo.pNext = nullptr;
+    queueCreateInfo.queueFamilyIndex = bestPhysicalQueueIndex;
+    queueCreateInfo.queueCount = 1;
+    const float priority = 1.0f;
+    queueCreateInfo.pQueuePriorities = &priority;
 
-        queueCreateInfos.push_back(queueCreateInfo);
-        x++;
-    }
+    queueCreateInfos.push_back(queueCreateInfo);
 
     VkPhysicalDeviceFeatures deviceFeatures {};
     VkDeviceCreateInfo createInfo {};
@@ -98,18 +94,14 @@ bool Graphics::createLogicalDeviceAndQueues() {
     createInfo.pEnabledFeatures = &deviceFeatures;
     createInfo.enabledExtensionCount = 0;
 
-    const VkResult ret = vkCreateDevice(bestPhysicalDevice, &createInfo, nullptr, this->device);
+    const VkResult ret = vkCreateDevice(bestPhysicalDevice, &createInfo, nullptr, &this->device);
     ASSERT_VULKAN(ret);
     if (ret != VK_SUCCESS) {
         std::cerr << "Failed to create Logical Device!" << std::endl;
         return false;
     }
 
-    int y=0;
-    while(y<nrOfQueues) {
-        vkGetDeviceQueue(*this->device, queueCreateInfos[y].queueFamilyIndex , 0, this->presentQueue);
-        y++;
-    }
+    vkGetDeviceQueue(this->device, queueCreateInfos[0].queueFamilyIndex , 0, &this->graphicsQueue);
 
     return true;
 }
@@ -216,11 +208,9 @@ void Graphics::createVkInstance(const std::string & appName, uint32_t version) {
     app.engineVersion = version;
     app.apiVersion = VK_API_VERSION_1_0;
 
-    this->queryVkExtensions();
     this->listVkExtensions();
 
-    //this->queryVkLayerNames();
-    //this->listVkLayerNames();
+    this->listVkLayerNames();
 
     VkInstanceCreateInfo inst_info;
     inst_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -272,7 +262,7 @@ void Graphics::listVkExtensions() {
     }
 }
 
-void Graphics::queryVkLayerNames() {
+void Graphics::listVkLayerNames() {
     uint32_t layerCount = 0;
     VkResult ret;
 
@@ -287,8 +277,9 @@ void Graphics::queryVkLayerNames() {
 
         if (availableLayers.empty()) return;
 
-        for (auto layer : availableLayers) {
-            this->vkLayerNames.push_back(std::string(layer.layerName).c_str());
+        std::cout << "Layers: " << std::endl;
+        for (auto & layer : availableLayers) {
+           std::cout << "\t" << layer.layerName << std::endl;
         }
     }
 }
@@ -302,16 +293,6 @@ const std::vector<VkQueueFamilyProperties> Graphics::getVkPhysicalDeviceQueueFam
     vkGetPhysicalDeviceQueueFamilyProperties(device, &numberOfDeviceQueuerFamilyProperties, vkQueueFamilyProperties.data());
 
     return vkQueueFamilyProperties;
-}
-
-
-void Graphics::listVkLayerNames() {
-    if (this->vkLayerNames.empty()) return;
-
-    std::cout << "Layers: " << std::endl;
-    for (auto & layerName : this->vkLayerNames) {
-        std::cout << "\t" << layerName << std::endl;
-    }
 }
 
 void Graphics::listVkPhysicalDeviceQueueFamilyProperties(const VkPhysicalDevice & device) {
@@ -339,13 +320,15 @@ bool Graphics::isActive() {
 }
 
 Graphics::~Graphics() {
-    if (this->device != nullptr) {
-        if (this->swapChain != nullptr) vkDestroySwapchainKHR(*this->device, *this->swapChain, nullptr);
+    vkDeviceWaitIdle(this->device);
 
-        vkDestroyDevice(*this->device, nullptr); // logical device
+    if (this->device != nullptr) {
+        if (this->swapChain != nullptr) vkDestroySwapchainKHR(this->device, *this->swapChain, nullptr);
+
+        vkDestroyDevice(this->device, nullptr); // logical device
     }
 
-    if (this->vkSurface != nullptr) vkDestroySurfaceKHR(this->vkInstance, this->vkSurface, nullptr);
+    //if (this->vkSurface != nullptr) vkDestroySurfaceKHR(this->vkInstance, this->vkSurface, nullptr);
     if (this->vkInstance != nullptr) vkDestroyInstance(this->vkInstance, nullptr);
 
     if (this->sdlWindow != nullptr) SDL_DestroyWindow(this->sdlWindow);

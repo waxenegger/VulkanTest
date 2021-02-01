@@ -22,11 +22,13 @@ class Graphics final {
 
         std::vector<const char *> vkExtensionNames;
         std::vector<VkPhysicalDevice> vkPhysicalDevices;
-        std::vector<const char *> vkLayerNames;
+        std::vector<const char *> vkLayerNames = {
+                "VK_LAYER_KHRONOS_validation"
+        };
 
-        VkDevice * device = nullptr;
-        VkQueue * graphicsQueue = nullptr;
-        VkQueue * presentQueue = nullptr;
+        VkDevice device = nullptr;
+        VkQueue graphicsQueue = nullptr;
+        VkQueue presentQueue = nullptr;
         VkSwapchainKHR * swapChain = nullptr;
 
         Graphics();
@@ -36,7 +38,7 @@ class Graphics final {
         void queryVkExtensions();
         void createVkInstance(const std::string & appName, uint32_t version);
         void queryVkPhysicalDevices();
-        void queryVkLayerNames();
+        void listVkLayerNames();
         std::tuple<int,int> ratePhysicalDevice(const VkPhysicalDevice & device);
         const std::vector<VkQueueFamilyProperties> getVkPhysicalDeviceQueueFamilyProperties(const VkPhysicalDevice & device);
         bool createLogicalDeviceAndQueues();
@@ -53,7 +55,6 @@ class Graphics final {
         void init(const std::string & appName, uint32_t version);
         void listVkPhysicalDevices();
         void listVkExtensions();
-        void listVkLayerNames();
         void listVkPhysicalDeviceQueueFamilyProperties(const VkPhysicalDevice & device);
 
         ~Graphics();
