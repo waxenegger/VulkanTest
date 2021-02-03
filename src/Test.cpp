@@ -27,6 +27,11 @@ public:
             while(!quit) {
                 while (SDL_PollEvent(&e) != 0) {
                     switch(e.type) {
+                        case SDL_WINDOWEVENT:
+                            if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
+                                this->graphics.updateSwapChain();
+                            }
+                            break;
                         case SDL_QUIT:
                             quit = true;
                             break;
