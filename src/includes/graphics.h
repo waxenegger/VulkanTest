@@ -1,17 +1,8 @@
 #ifndef SRC_INCLUDES_GRAPHICS_H_
 #define SRC_INCLUDES_GRAPHICS_H_
 
-#include "shared.h"
+#include "models.h"
 #include "Utils.hpp"
-
-#include <SDL.h>
-#include <SDL_vulkan.h>
-#include <vulkan/vulkan.h>
-
-#define ASSERT_VULKAN(val) \
-    if (val != VK_SUCCESS) { \
-        std::cerr << "Error: " << val << std::endl; \
-    };
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -25,7 +16,7 @@ class Graphics final {
         std::vector<const char *> vkExtensionNames;
         std::vector<VkPhysicalDevice> vkPhysicalDevices;
         std::vector<const char *> vkLayerNames = {
-                "VK_LAYER_KHRONOS_validation"
+  //              "VK_LAYER_KHRONOS_validation"
         };
 
         VkPhysicalDevice physicalDevice = nullptr;
@@ -62,6 +53,14 @@ class Graphics final {
 
         size_t currentFrame = 0;
         bool framebufferResized = false;
+
+        VkBuffer vertexBuffer = nullptr;
+        VkDeviceMemory vertexBufferMemory = nullptr;
+
+        VkBuffer indexBuffer = nullptr;
+        VkDeviceMemory indexBufferMemory = nullptr;
+        // TODO: has to change
+        uint32_t indexCount = 0;
 
         Graphics();
         void initSDL();
@@ -107,6 +106,14 @@ class Graphics final {
         bool createSyncObjects();
 
         void cleanupSwapChain();
+
+        bool createVertexBuffer(const std::vector<Vertex> & vertices);
+        bool createIndexBuffer(const std::vector<uint32_t> & indexes);
+
+        bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+        bool findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, uint32_t & memoryType);
+        void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+        bool createMeshBuffer(const Mesh & mesh);
 
     public:
         Graphics(const Graphics&) = delete;

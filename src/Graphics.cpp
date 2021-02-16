@@ -604,8 +604,8 @@ bool Graphics::createGraphicsPipeline() {
     // TODO: modify, to optimize
     std::vector<char> vertShaderCode;
     std::vector<char> fragShaderCode;
-    if (!Utils::readFile("shaders/vert.spv", vertShaderCode) ||
-            !Utils::readFile("shaders/frag.spv", fragShaderCode)) {
+    if (!Utils::readFile("/opt/projects/VulkanTest/src/shaders/vert.spv", vertShaderCode) ||
+            !Utils::readFile("/opt/projects/VulkanTest/src/shaders/frag.spv", fragShaderCode)) {
         std::cerr << "Failed to read shader files" << std::endl;
         return false;
     }
@@ -629,8 +629,31 @@ bool Graphics::createGraphicsPipeline() {
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 0;
-    vertexInputInfo.vertexAttributeDescriptionCount = 0;
+
+
+    const std::vector<Vertex> vertices = {
+        Vertex(glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
+        Vertex(glm::vec3(0.5f, -0.5f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)),
+        Vertex(glm::vec3(0.5f, 0.5f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
+        Vertex(glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f))
+    };
+    const std::vector<uint32_t> indices = {
+        0, 1, 2, 2, 3, 0
+    };
+
+    if (this->createMeshBuffer(Mesh(vertices, indices))) {
+        const VkVertexInputBindingDescription & bindingDescription = Vertex::getBindingDescription();
+        const std::array<VkVertexInputAttributeDescription, 2> & attributeDescriptions = Vertex::getAttributeDescriptions();
+
+        vertexInputInfo.vertexBindingDescriptionCount = 1;
+        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+        vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+        vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+    } else {
+        vertexInputInfo.vertexBindingDescriptionCount = 0;
+        vertexInputInfo.vertexAttributeDescriptionCount = 0;
+    }
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -845,7 +868,16 @@ bool Graphics::createCommandBuffers() {
 
            vkCmdBindPipeline(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphicsPipeline);
 
-           vkCmdDraw(this->commandBuffers[i], 3, 1, 0, 0);
+           if (this->vertexBuffer != nullptr) {
+               VkBuffer vertexBuffers[] = {vertexBuffer};
+               VkDeviceSize offsets[] = {0};
+               vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, vertexBuffers, offsets);
+           }
+
+           if (this->indexBuffer != nullptr) {
+               vkCmdBindIndexBuffer(this->commandBuffers[i], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+               vkCmdDrawIndexed(this->commandBuffers[i], this->indexCount, 1, 0, 0, 0);
+           } else vkCmdDraw(this->commandBuffers[i], 3, 1, 0, 0);
 
            vkCmdEndRenderPass(this->commandBuffers[i]);
 
@@ -1015,10 +1047,185 @@ void Graphics::drawFrame() {
     this->currentFrame = (this->currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-Graphics::~Graphics() {
-    //this->cleanupSwapChain();
+bool Graphics::createMeshBuffer(const Mesh & mesh) {
+    if (!this->createVertexBuffer(mesh.getVertices())) return false;
 
-    /*
+    auto potentialIndices = mesh.getIndices();
+    if (!potentialIndices.empty()) {
+        this->indexCount = static_cast<uint32_t>(potentialIndices.size());
+        if (!this->createIndexBuffer(potentialIndices)) {
+            this->indexCount = 0;
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool Graphics::createIndexBuffer(const std::vector<uint32_t> & indices) {
+    VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    if (!this->createBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            stagingBuffer, stagingBufferMemory)) {
+        std::cerr << "Failed to get Create Staging Buffer" << std::endl;
+        return false;
+    }
+
+    void* data = nullptr;
+    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, indices.data(), (size_t) bufferSize);
+    vkUnmapMemory(this->device, stagingBufferMemory);
+
+    if (!this->createBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            this->indexBuffer, this->indexBufferMemory)) {
+        std::cerr << "Failed to get Create Vertex Buffer" << std::endl;
+        return false;
+    }
+
+    this->copyBuffer(stagingBuffer,this->indexBuffer, bufferSize);
+
+    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+
+    return true;
+}
+
+bool Graphics::createVertexBuffer(const std::vector<Vertex> & vertices) {
+    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    if (!this->createBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            stagingBuffer, stagingBufferMemory)) {
+        std::cerr << "Failed to get Create Staging Buffer" << std::endl;
+        return false;
+    }
+
+    void* data = nullptr;
+    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        memcpy(data, vertices.data(), (size_t) bufferSize);
+    vkUnmapMemory(this->device, stagingBufferMemory);
+
+    if (!this->createBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            this->vertexBuffer, this->vertexBufferMemory)) {
+        std::cerr << "Failed to get Create Vertex Buffer" << std::endl;
+        return false;
+    }
+
+    this->copyBuffer(stagingBuffer,this->vertexBuffer, bufferSize);
+
+    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+
+    return true;
+}
+
+void Graphics::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = commandPool;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(this->device, &allocInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+    VkBufferCopy copyRegion{};
+    copyRegion.size = size;
+    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+    vkEndCommandBuffer(commandBuffer);
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+
+    vkQueueSubmit(this->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(this->graphicsQueue);
+
+    vkFreeCommandBuffers(this->device, this->commandPool, 1, &commandBuffer);
+}
+
+bool Graphics::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
+    VkBufferCreateInfo bufferInfo{};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = size;
+    bufferInfo.usage = usage;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VkResult ret = vkCreateBuffer(this->device, &bufferInfo, nullptr, &buffer);
+    ASSERT_VULKAN(ret);
+    if (ret != VK_SUCCESS) {
+        std::cerr << "Failed to get Create Buffer" << std::endl;
+        return false;
+    }
+
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(this->device, buffer, &memRequirements);
+
+    uint32_t memoryTypeIndex;
+    if (!this->findMemoryType(memRequirements.memoryTypeBits, properties,memoryTypeIndex)) {
+        std::cerr << "Failed to get Memory Type Requested" << std::endl;
+        return false;
+    }
+
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = memoryTypeIndex;
+
+
+    ret = vkAllocateMemory(this->device, &allocInfo, nullptr, &bufferMemory);
+    if (ret != VK_SUCCESS) {
+        std::cerr << "Failed to get Allocate Memory for Vertex Buffer" << std::endl;
+        return false;
+    }
+
+    vkBindBufferMemory(this->device, buffer, bufferMemory, 0);
+
+    return true;
+}
+
+bool Graphics::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, uint32_t & memoryType) {
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(this->physicalDevice, &memProperties);
+
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+        if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+            memoryType = i;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+Graphics::~Graphics() {
+    this->cleanupSwapChain();
+
+    if (this->vertexBuffer != nullptr) vkDestroyBuffer(this->device, this->vertexBuffer, nullptr);
+    if (this->vertexBufferMemory != nullptr) vkFreeMemory(this->device, this->vertexBufferMemory, nullptr);
+
+    if (this->indexBuffer != nullptr) vkDestroyBuffer(this->device, this->indexBuffer, nullptr);
+    if (this->indexBufferMemory != nullptr) vkFreeMemory(this->device, this->indexBufferMemory, nullptr);
+
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(this->device, this->renderFinishedSemaphores[i], nullptr);
         vkDestroySemaphore(this->device, this->imageAvailableSemaphores[i], nullptr);
@@ -1034,7 +1241,6 @@ Graphics::~Graphics() {
     if (this->vkSurface != nullptr) vkDestroySurfaceKHR(this->vkInstance, this->vkSurface, nullptr);
 
     if (this->vkInstance != nullptr) vkDestroyInstance(this->vkInstance, nullptr);
-    */
 
     if (this->sdlWindow != nullptr) SDL_DestroyWindow(this->sdlWindow);
 
