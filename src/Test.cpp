@@ -7,6 +7,31 @@ private:
     const std::string APP_NAME = "Vulkan Test";
     Graphics & graphics = Graphics::instance();
 
+    bool loadModels() {
+        if (!this->graphics.isActive()) return false;
+
+        const std::vector<Vertex> vertices = {
+            Vertex(glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
+            Vertex(glm::vec3(0.5f, -0.5f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)),
+            Vertex(glm::vec3(0.5f, 0.5f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
+            Vertex(glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f))
+        };
+        const std::vector<uint32_t> indices = {
+            0, 1, 2, 2, 3, 0
+        };
+        std::vector<Mesh> meshes;
+        meshes.push_back(Mesh(vertices, indices));
+
+        Model couch1("/opt/projects/VulkanTest/res/models/", "cyborg.obj");
+        this->graphics.addModel(couch1);
+
+        Model rectangle(meshes);
+        this->graphics.addModel(rectangle);
+
+
+        return true;
+    }
+
 public:
     void run() {
         this->graphics.init(this->APP_NAME, VK_MAKE_VERSION(1,0,0));
@@ -20,9 +45,14 @@ public:
 
             bool quit = false;
 
+            if (!this->loadModels()) {
+                std::cerr << "Failed to Load Models" << std::endl;
+            }
+
             if (!this->graphics.updateSwapChain()) {
                 return;
             }
+
 
             while(!quit) {
                 while (SDL_PollEvent(&e) != 0) {

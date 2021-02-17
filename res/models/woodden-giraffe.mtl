@@ -1,0 +1,16 @@
+# Blender MTL File: 'woodden-giraffe.blend'
+# Material Count: 1
+
+newmtl woodden-giraffe_material
+Ns 26.851244
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd woodden-giraffe_albedo_8192px.jpg
+map_Bump woodden-giraffe_normal_8192px.jpg
+map_Ks woodden-giraffe_specular_8192px.jpg
+map_Ns woodden-giraffe_roughness_8192px.jpg

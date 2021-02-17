@@ -1,0 +1,22 @@
+# 
+# Wavefront material file
+# Converted by the DEEP Exploration  2.00.1211
+# Right Hemisphere, LTD
+# http://www.righthemisphere.com/
+# 
+
+newmtl ____Default
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.494118 0.494118 0.494118
+illum 2
+Ns 4.92458
+map_Kd DOUKA2.bmp
+
+newmtl yliko3
+Ka 0.380392 0.380392 0.380392
+Kd 1 1 1
+Ks 0 0 0
+illum 2
+Ns 2.14355
+map_Kd FABRIC3.bmp

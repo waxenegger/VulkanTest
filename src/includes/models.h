@@ -7,6 +7,10 @@ class Vertex final {
     private:
         glm::vec3 position;
         glm::vec3 color;
+        glm::vec3 normal;
+        glm::vec2 uv;
+        glm::vec3 tangent;
+        glm::vec3 bitangent;
 
     public:
         Vertex(const glm::vec3 & position);
@@ -14,6 +18,11 @@ class Vertex final {
 
         static VkVertexInputBindingDescription getBindingDescription();
         static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions();
+
+        void setUV(const glm::vec2 & uv);
+        void setNormal(const glm::vec3 & normal);
+        void setTangent(const glm::vec3 & tangent);
+        void setBitangent(const glm::vec3 & bitangent);
 };
 
 class Mesh final {
@@ -27,7 +36,40 @@ class Mesh final {
         const std::vector<uint32_t> & getIndices() const;
 };
 
+class Model final {
+    private:
+        std::string file;
+        std::string dir;
+        std::vector<Mesh> meshes;
+        bool loaded = false;
+
+        void processNode(const aiNode * node, const aiScene *scene);
+        Mesh processMesh(const aiMesh *mesh, const aiScene *scene);
+    public:
+        ~Model() {}
+        Model() {};
+        Model(const std::string & dir, const std::string & file);
+        Model(const std::vector<Mesh> meshes);
+        void init();
+        bool hasBeenLoaded() {
+            return this->loaded;
+        };
+        std::string getPath() {
+            return this->file;
+        }
+        std::vector<Mesh> & getMeshes();
+};
+
 class Models final {
+    private:
+        std::vector<Vertex> totalOfVertices;
+        std::vector<uint32_t> totalOfIndices;
+
+    public:
+        void addModel(Model & model);
+        void clear();
+        std::vector<Vertex> & getTotalVertices();
+        std::vector<uint32_t> & getTotalIndices();
 };
 
 #endif

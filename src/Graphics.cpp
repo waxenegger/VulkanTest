@@ -604,8 +604,8 @@ bool Graphics::createGraphicsPipeline() {
     // TODO: modify, to optimize
     std::vector<char> vertShaderCode;
     std::vector<char> fragShaderCode;
-    if (!Utils::readFile("/opt/projects/VulkanTest/src/shaders/vert.spv", vertShaderCode) ||
-            !Utils::readFile("/opt/projects/VulkanTest/src/shaders/frag.spv", fragShaderCode)) {
+    if (!Utils::readFile("/opt/projects/VulkanTest/res/shaders/vert.spv", vertShaderCode) ||
+            !Utils::readFile("/opt/projects/VulkanTest/res/shaders/frag.spv", fragShaderCode)) {
         std::cerr << "Failed to read shader files" << std::endl;
         return false;
     }
@@ -630,18 +630,7 @@ bool Graphics::createGraphicsPipeline() {
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-
-    const std::vector<Vertex> vertices = {
-        Vertex(glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
-        Vertex(glm::vec3(0.5f, -0.5f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)),
-        Vertex(glm::vec3(0.5f, 0.5f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
-        Vertex(glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f))
-    };
-    const std::vector<uint32_t> indices = {
-        0, 1, 2, 2, 3, 0
-    };
-
-    if (this->createMeshBuffer(Mesh(vertices, indices))) {
+    if (this->createBuffersFromModel()) {
         const VkVertexInputBindingDescription & bindingDescription = Vertex::getBindingDescription();
         const std::array<VkVertexInputAttributeDescription, 2> & attributeDescriptions = Vertex::getAttributeDescriptions();
 
@@ -869,14 +858,14 @@ bool Graphics::createCommandBuffers() {
            vkCmdBindPipeline(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphicsPipeline);
 
            if (this->vertexBuffer != nullptr) {
-               VkBuffer vertexBuffers[] = {vertexBuffer};
+               VkBuffer vertexBuffers[] = {this->vertexBuffer};
                VkDeviceSize offsets[] = {0};
                vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, vertexBuffers, offsets);
            }
 
            if (this->indexBuffer != nullptr) {
                vkCmdBindIndexBuffer(this->commandBuffers[i], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-               vkCmdDrawIndexed(this->commandBuffers[i], this->indexCount, 1, 0, 0, 0);
+               vkCmdDrawIndexed(this->commandBuffers[i], this->models.getTotalIndices().size(), 1, 0, 0, 0);
            } else vkCmdDraw(this->commandBuffers[i], 3, 1, 0, 0);
 
            vkCmdEndRenderPass(this->commandBuffers[i]);
@@ -1047,94 +1036,11 @@ void Graphics::drawFrame() {
     this->currentFrame = (this->currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-bool Graphics::createMeshBuffer(const Mesh & mesh) {
-    if (!this->createVertexBuffer(mesh.getVertices())) return false;
-
-    auto potentialIndices = mesh.getIndices();
-    if (!potentialIndices.empty()) {
-        this->indexCount = static_cast<uint32_t>(potentialIndices.size());
-        if (!this->createIndexBuffer(potentialIndices)) {
-            this->indexCount = 0;
-            return false;
-        }
-    }
-
-    return true;
-}
-
-bool Graphics::createIndexBuffer(const std::vector<uint32_t> & indices) {
-    VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    if (!this->createBuffer(
-            bufferSize,
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            stagingBuffer, stagingBufferMemory)) {
-        std::cerr << "Failed to get Create Staging Buffer" << std::endl;
-        return false;
-    }
-
-    void* data = nullptr;
-    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, indices.data(), (size_t) bufferSize);
-    vkUnmapMemory(this->device, stagingBufferMemory);
-
-    if (!this->createBuffer(
-            bufferSize,
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            this->indexBuffer, this->indexBufferMemory)) {
-        std::cerr << "Failed to get Create Vertex Buffer" << std::endl;
-        return false;
-    }
-
-    this->copyBuffer(stagingBuffer,this->indexBuffer, bufferSize);
-
-    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
-    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
-
-    return true;
-}
-
-bool Graphics::createVertexBuffer(const std::vector<Vertex> & vertices) {
-    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    if (!this->createBuffer(
-            bufferSize,
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            stagingBuffer, stagingBufferMemory)) {
-        std::cerr << "Failed to get Create Staging Buffer" << std::endl;
-        return false;
-    }
-
-    void* data = nullptr;
-    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-        memcpy(data, vertices.data(), (size_t) bufferSize);
-    vkUnmapMemory(this->device, stagingBufferMemory);
-
-    if (!this->createBuffer(
-            bufferSize,
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            this->vertexBuffer, this->vertexBufferMemory)) {
-        std::cerr << "Failed to get Create Vertex Buffer" << std::endl;
-        return false;
-    }
-
-    this->copyBuffer(stagingBuffer,this->vertexBuffer, bufferSize);
-
-    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
-    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
-
-    return true;
-}
-
 void Graphics::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandPool = commandPool;
+    allocInfo.commandPool = this->commandPool;
     allocInfo.commandBufferCount = 1;
 
     VkCommandBuffer commandBuffer;
@@ -1217,6 +1123,77 @@ bool Graphics::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags propert
     return false;
 }
 
+bool Graphics::createBuffersFromModel() {
+    if (this->models.getTotalVertices().empty()) return true;
+
+    VkDeviceSize bufferSize = sizeof(struct Vertex) * this->models.getTotalVertices().size();
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    if (!this->createBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            stagingBuffer, stagingBufferMemory)) {
+        std::cerr << "Failed to get Create Staging Buffer" << std::endl;
+        return false;
+    }
+
+    void* data = nullptr;
+    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, this->models.getTotalVertices().data(), (size_t) bufferSize);
+    vkUnmapMemory(this->device, stagingBufferMemory);
+
+    if (!this->createBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            this->vertexBuffer, this->vertexBufferMemory)) {
+        std::cerr << "Failed to get Create Vertex Buffer" << std::endl;
+        return false;
+    }
+
+    this->copyBuffer(stagingBuffer,this->vertexBuffer, bufferSize);
+
+    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+
+    // indices
+    if (this->models.getTotalIndices().empty()) return true;
+
+    bufferSize = sizeof(uint32_t) * this->models.getTotalIndices().size();
+
+    if (!this->createBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            stagingBuffer, stagingBufferMemory)) {
+        std::cerr << "Failed to get Create Staging Buffer" << std::endl;
+        return false;
+    }
+
+    data = nullptr;
+    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, this->models.getTotalIndices().data(), (size_t) bufferSize);
+    vkUnmapMemory(this->device, stagingBufferMemory);
+
+    if (!this->createBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            this->indexBuffer, this->indexBufferMemory)) {
+        std::cerr << "Failed to get Create Vertex Buffer" << std::endl;
+        return false;
+    }
+
+    this->copyBuffer(stagingBuffer,this->indexBuffer, bufferSize);
+
+    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+
+    return true;
+}
+
+void Graphics::addModel(Model & model) {
+    if (model.hasBeenLoaded()) this->models.addModel(model);
+}
+
 Graphics::~Graphics() {
     this->cleanupSwapChain();
 
@@ -1245,5 +1222,7 @@ Graphics::~Graphics() {
     if (this->sdlWindow != nullptr) SDL_DestroyWindow(this->sdlWindow);
 
     SDL_Quit();
+
+    this->models.clear();
 }
 

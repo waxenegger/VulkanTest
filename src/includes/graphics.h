@@ -59,8 +59,8 @@ class Graphics final {
 
         VkBuffer indexBuffer = nullptr;
         VkDeviceMemory indexBufferMemory = nullptr;
-        // TODO: has to change
-        uint32_t indexCount = 0;
+
+        Models models;
 
         Graphics();
         void initSDL();
@@ -107,13 +107,11 @@ class Graphics final {
 
         void cleanupSwapChain();
 
-        bool createVertexBuffer(const std::vector<Vertex> & vertices);
-        bool createIndexBuffer(const std::vector<uint32_t> & indexes);
-
         bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
         bool findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, uint32_t & memoryType);
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-        bool createMeshBuffer(const Mesh & mesh);
+
+        bool createBuffersFromModel();
 
     public:
         Graphics(const Graphics&) = delete;
@@ -131,6 +129,7 @@ class Graphics final {
 
         bool updateSwapChain();
         void drawFrame();
+        void addModel(Model & model);
 
         ~Graphics();
 };
