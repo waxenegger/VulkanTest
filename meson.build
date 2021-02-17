@@ -9,13 +9,14 @@ includeDir = []
 dependencies = []
 
 threadDep = dependency('threads', required: true)
-glmDep = dependency('glm', required: true)
-assimpDep = dependency('assimp')
 
 sdlDep = dependency('SDL2', required: false)
-vulkanDep = dependency('vulkan')
 
 if sdlDep.found()
+   vulkanDep = dependency('vulkan')
+   glmDep = dependency('glm', required: true)
+   assimpDep = dependency('assimp', required: true)
+
    dependencies = [threadDep, glmDep, assimpDep, sdlDep, vulkanDep]
 else
    add_project_arguments('-std:c++latest', language:'cpp')
@@ -28,8 +29,9 @@ else
    vulkanIncDir = join_paths(WINDOWS_LUNAR_G_PATH, 'Include')
    vulkanLibDir = join_paths(WINDOWS_LUNAR_G_PATH, 'Lib')
    vulkanDepWin = meson.get_compiler('cpp').find_library('vulkan-1', dirs: [vulkanLibDir])
+   assimpDepWin = meson.get_compiler('cpp').find_library('assimp-vc141-mtd', dirs: [assimpLibDir])
 
-   dependencies = [threadDep, glmDep, assimpLibDir, sdlDepWin, sdlDep2Win, vulkanDepWin]
+   dependencies = [threadDep, assimpDepWin, sdlDepWin, sdlDep2Win, vulkanDepWin]
    includeDir = [sdlIncDir, assimpIncDir, vulkanIncDir]
 
 endif

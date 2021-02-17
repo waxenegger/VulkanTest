@@ -1126,7 +1126,7 @@ bool Graphics::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags propert
 bool Graphics::createBuffersFromModel() {
     if (this->models.getTotalVertices().empty()) return true;
 
-    VkDeviceSize bufferSize = sizeof(struct Vertex) * this->models.getTotalVertices().size();
+    VkDeviceSize bufferSize = sizeof(class Vertex) * this->models.getTotalVertices().size();
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
