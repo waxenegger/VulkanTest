@@ -22,7 +22,7 @@ private:
         std::vector<Mesh> meshes;
         meshes.push_back(Mesh(vertices, indices));
 
-        Model couch1("/opt/projects/VulkanTest/res/models/", "cyborg.obj");
+        Model couch1("/opt/projects/VulkanTest/res/models/", "teapot.obj");
         this->graphics.addModel(couch1);
 
         Model rectangle(meshes);

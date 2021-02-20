@@ -2,7 +2,7 @@
 #define SRC_INCLUDES_GRAPHICS_H_
 
 #include "models.h"
-#include "Utils.hpp"
+#include "utils.h"
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -16,7 +16,7 @@ class Graphics final {
         std::vector<const char *> vkExtensionNames;
         std::vector<VkPhysicalDevice> vkPhysicalDevices;
         std::vector<const char *> vkLayerNames = {
-  //              "VK_LAYER_KHRONOS_validation"
+               // "VK_LAYER_KHRONOS_validation"
         };
 
         VkPhysicalDevice physicalDevice = nullptr;

@@ -63,13 +63,17 @@ class Model final {
 class Models final {
     private:
         std::vector<Vertex> totalOfVertices;
+        std::vector<VkDeviceSize> vertexOffsets;
         std::vector<uint32_t> totalOfIndices;
+        std::vector<VkDeviceSize> indexOffsets;
 
     public:
         void addModel(Model & model);
         void clear();
         std::vector<Vertex> & getTotalVertices();
+        std::vector<VkDeviceSize> & getVertexOffsets();
         std::vector<uint32_t> & getTotalIndices();
+        std::vector<VkDeviceSize> & getIndexOffsets();
 };
 
 #endif

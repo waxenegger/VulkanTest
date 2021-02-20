@@ -865,7 +865,19 @@ bool Graphics::createCommandBuffers() {
 
            if (this->indexBuffer != nullptr) {
                vkCmdBindIndexBuffer(this->commandBuffers[i], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-               vkCmdDrawIndexed(this->commandBuffers[i], this->models.getTotalIndices().size(), 1, 0, 0, 0);
+               //vkCmdDrawIndexed(this->commandBuffers[i], this->models.getTotalIndices().size() , 1, 0, 0, 0);
+               auto vertexOffsets = this->models.getIndexOffsets();
+               auto indexOffsets = this->models.getIndexOffsets();
+               VkDeviceSize lastVertexOffset = 0;
+               VkDeviceSize lastIndexOffset = 0;
+
+               for (uint32_t j=0;j<indexOffsets.size(); j++) {
+                   VkDeviceSize modelOffset = indexOffsets[j];
+                   VkDeviceSize vertexOffset = vertexOffsets[j];
+                   vkCmdDrawIndexed(this->commandBuffers[i], modelOffset , 1, lastIndexOffset, lastVertexOffset, 0);
+                   lastIndexOffset += modelOffset;
+                   lastVertexOffset += vertexOffset;
+               }
            } else vkCmdDraw(this->commandBuffers[i], 3, 1, 0, 0);
 
            vkCmdEndRenderPass(this->commandBuffers[i]);

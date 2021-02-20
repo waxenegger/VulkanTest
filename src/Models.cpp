@@ -147,21 +147,43 @@ Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
 }
 
 void Models::addModel(Model & model) {
-    auto totalVerticesSoFar = this->totalOfVertices.size();
+    VkDeviceSize vertexOffsetPerModel = 0;
+    VkDeviceSize indexOffsetPerModel = 0;
+
     for (auto & mesh : model.getMeshes()) {
-        //this->totalOfVertices.insert(this->totalOfVertices.end(),mesh.getVertices().begin(), mesh.getVertices().end());
-        for (auto & vertex : mesh.getVertices()) {
+        auto meshVertices = mesh.getVertices();
+        for (auto & vertex : meshVertices) {
             this->totalOfVertices.push_back(vertex);
         }
-        for (auto & index : mesh.getIndices()) {
-            this->totalOfIndices.push_back(index+totalVerticesSoFar);
+        if (!meshVertices.empty()) {
+            vertexOffsetPerModel += meshVertices.size();
+            this->vertexOffsets.push_back(vertexOffsetPerModel);
+        }
+
+        auto meshIndices = mesh.getIndices();
+        for (auto & index : meshIndices) {
+            this->totalOfIndices.push_back(index);
+        }
+        if (!meshIndices.empty()) {
+            indexOffsetPerModel += meshIndices.size();
+            this->indexOffsets.push_back(indexOffsetPerModel);
         }
     }
+}
+
+std::vector<VkDeviceSize> & Models::getIndexOffsets() {
+    return this->indexOffsets;
+}
+
+std::vector<VkDeviceSize> & Models::getVertexOffsets() {
+    return this->vertexOffsets;
 }
 
 void Models::clear() {
     this->totalOfIndices.clear();
     this->totalOfVertices.clear();
+    this->indexOffsets.clear();
+    this->vertexOffsets.clear();
 }
 
 std::vector<Vertex> &  Models::getTotalVertices() {
