@@ -83,7 +83,9 @@ bool Graphics::getSwapChainExtent(VkSurfaceCapabilitiesKHR & surfaceCapabilities
 
         return true;
     } else {
-        int width, height;
+        auto windowSize = this->getWindowSize();
+        int width = std::get<0>(windowSize);
+        int height = std::get<1>(windowSize);
         SDL_Vulkan_GetDrawableSize(this->sdlWindow, &width, &height);
 
         this->swapChainExtent.width = std::max(
@@ -98,6 +100,15 @@ bool Graphics::getSwapChainExtent(VkSurfaceCapabilitiesKHR & surfaceCapabilities
         return true;
     }
 }
+
+std::tuple< int, int > Graphics::getWindowSize()
+{
+    if (!this->isActive()) return std::make_tuple(0,0);
+    
+    int width, height;
+    SDL_Vulkan_GetDrawableSize(this->sdlWindow, &width, &height);
+    return std::make_tuple(width, height);
+};
 
 bool Graphics::createSwapChain() {
     if (this->device == nullptr) return false;
@@ -698,12 +709,18 @@ bool Graphics::createGraphicsPipeline() {
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
 
+    VkPushConstantRange pushConstantRange{};
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    pushConstantRange.offset = 0;
+    pushConstantRange.size = sizeof(class ModelViewProjection);
+
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 0;
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
-    VkResult ret = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->pipelineLayout);
+    VkResult ret = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->graphicsPipelineLayout);
     ASSERT_VULKAN(ret);
 
     if (ret != VK_SUCCESS) {
@@ -721,7 +738,7 @@ bool Graphics::createGraphicsPipeline() {
     pipelineInfo.pRasterizationState = &rasterizer;
     pipelineInfo.pMultisampleState = &multisampling;
     pipelineInfo.pColorBlendState = &colorBlending;
-    pipelineInfo.layout = this->pipelineLayout;
+    pipelineInfo.layout = this->graphicsPipelineLayout;
     pipelineInfo.renderPass = renderPass;
     pipelineInfo.subpass = 0;
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -833,14 +850,14 @@ bool Graphics::createCommandBuffers() {
        }
 
        for (size_t i = 0; i < this->commandBuffers.size(); i++) {
-           VkCommandBufferBeginInfo beginInfo{};
-           beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            VkCommandBufferBeginInfo beginInfo{};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-           ret = vkBeginCommandBuffer(this->commandBuffers[i], &beginInfo);
-           if (ret != VK_SUCCESS) {
-               std::cerr << "Failed to begin Recording Command Buffer!" << std::endl;
-               return false;
-           }
+            ret = vkBeginCommandBuffer(this->commandBuffers[i], &beginInfo);
+            if (ret != VK_SUCCESS) {
+                std::cerr << "Failed to begin Recording Command Buffer!" << std::endl;
+                return false;
+            }
 
            VkRenderPassBeginInfo renderPassInfo{};
            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -849,14 +866,26 @@ bool Graphics::createCommandBuffers() {
            renderPassInfo.renderArea.offset = {0, 0};
            renderPassInfo.renderArea.extent = this->swapChainExtent;
 
-           VkClearValue clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+           VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
            renderPassInfo.clearValueCount = 1;
            renderPassInfo.pClearValues = &clearColor;
 
-           vkCmdBeginRenderPass(this->commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+            vkCmdBeginRenderPass(this->commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+            std::vector<ModelViewProjection> mvp;
+            auto mvp1 = Camera::instance()->getModelViewProjection();
+            //mvp1.model = glm::rotate(mvp1.model, glm::radians(45.0f),glm::vec3(1));
+            mvp1.model = glm::scale(mvp1.model, glm::vec3(5));
+            //mvp1.model = glm::rotate(mvp1.model, glm::radians(0.4f), glm::vec3(0, 1, 0));
+            mvp.push_back( mvp1);
+            auto mvp2 = Camera::instance()->getModelViewProjection();
+            mvp2.model = glm::scale(mvp2.model, glm::vec3(1));
+            //mvp2.model = glm::rotate(mvp2.model, glm::radians(-45.0f),glm::vec3(0,1,0));
+            mvp.push_back(mvp2);
+            mvp.resize(2);
+           
            vkCmdBindPipeline(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphicsPipeline);
-
+           
            if (this->vertexBuffer != nullptr) {
                VkBuffer vertexBuffers[] = {this->vertexBuffer};
                VkDeviceSize offsets[] = {0};
@@ -865,20 +894,29 @@ bool Graphics::createCommandBuffers() {
 
            if (this->indexBuffer != nullptr) {
                vkCmdBindIndexBuffer(this->commandBuffers[i], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+               
+
                //vkCmdDrawIndexed(this->commandBuffers[i], this->models.getTotalIndices().size() , 1, 0, 0, 0);
-               auto vertexOffsets = this->models.getIndexOffsets();
+
+               auto vertexOffsets = this->models.getVertexOffsets();
                auto indexOffsets = this->models.getIndexOffsets();
                VkDeviceSize lastVertexOffset = 0;
                VkDeviceSize lastIndexOffset = 0;
-
+               
                for (uint32_t j=0;j<indexOffsets.size(); j++) {
                    VkDeviceSize modelOffset = indexOffsets[j];
                    VkDeviceSize vertexOffset = vertexOffsets[j];
+
+                    vkCmdPushConstants(
+                        this->commandBuffers[i], this->graphicsPipelineLayout,
+                        VK_SHADER_STAGE_VERTEX_BIT, 0,
+                        sizeof(class ModelViewProjection), &mvp.data()[j]);
+
                    vkCmdDrawIndexed(this->commandBuffers[i], modelOffset , 1, lastIndexOffset, lastVertexOffset, 0);
                    lastIndexOffset += modelOffset;
                    lastVertexOffset += vertexOffset;
                }
-           } else vkCmdDraw(this->commandBuffers[i], 3, 1, 0, 0);
+           } else vkCmdDraw(this->commandBuffers[i], this->models.getTotalVertices().size(), 1, 0, 0);
 
            vkCmdEndRenderPass(this->commandBuffers[i]);
 
@@ -947,7 +985,7 @@ void Graphics::cleanupSwapChain() {
     }
 
     if (this->graphicsPipeline != nullptr) vkDestroyPipeline(this->device, this->graphicsPipeline, nullptr);
-    if (this->pipelineLayout != nullptr) vkDestroyPipelineLayout(this->device, this->pipelineLayout, nullptr);
+    if (this->graphicsPipelineLayout != nullptr) vkDestroyPipelineLayout(this->device, this->graphicsPipelineLayout, nullptr);
     if (this->renderPass != nullptr) vkDestroyRenderPass(this->device, this->renderPass, nullptr);
 
     for (auto imageView : this->swapChainImageViews) {
@@ -1237,4 +1275,120 @@ Graphics::~Graphics() {
 
     this->models.clear();
 }
+
+void Camera::updateViewMatrix() {
+    glm::mat4 rotM = glm::mat4(1.0f);
+    glm::mat4 transM;
+
+    rotM = glm::rotate(rotM, glm::radians(rotation.x * (this->flipY ? -1.0f : 1.0f)), glm::vec3(1.0f, 0.0f, 0.0f));
+    rotM = glm::rotate(rotM, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    rotM = glm::rotate(rotM, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
+    glm::vec3 translation = position;
+
+    if (this->flipY) {
+        translation.y *= -1.0f;
+    }
+    transM = glm::translate(glm::mat4(1.0f), translation);
+
+    if (type == CameraType::firstperson) {
+        this->view = rotM * transM;
+    } else {
+        this->view = transM * rotM;
+    }
+
+    viewPos = glm::vec4(position, 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
+
+    updated = true;
+};
+
+bool Camera::moving()
+{
+    return this->keys.left || this->keys.right || this->keys.up || this->keys.down;
+}
+
+void Camera::setPerspective(float degrees, float aspect)
+{
+    this->perspective = glm::perspective(glm::radians(degrees), aspect, 0.1f, 10000.0f);
+    if (this->flipY) {
+        this->perspective[1][1] *= -1.0f;
+    }
+};
+
+void Camera::setPosition(glm::vec3 position) {
+    this->position = position;
+    this->updateViewMatrix();
+}
+
+void Camera::setRotation(glm::vec3 rotation) {
+    this->rotation = rotation;
+    this->updateViewMatrix();
+}
+
+void Camera::rotate(glm::vec3 delta) {
+    this->rotation += delta;
+    this->updateViewMatrix();
+}
+
+void Camera::setTranslation(glm::vec3 translation) {
+    this->position = translation;
+    this->updateViewMatrix();
+};
+
+void Camera::translate(glm::vec3 delta) {
+    this->position += delta;
+    this->updateViewMatrix();
+}
+
+void Camera::setSpeed(float speed) {
+    this->speed = speed;
+}
+
+void Camera::update(float deltaTime) {
+    updated = false;
+    if (type == CameraType::firstperson) {
+        if (moving()) {
+            glm::vec3 camFront;
+            camFront.x = -cos(glm::radians(rotation.x)) * sin(glm::radians(rotation.y));
+            camFront.y = sin(glm::radians(rotation.x));
+            camFront.z = cos(glm::radians(rotation.x)) * cos(glm::radians(rotation.y));
+            camFront = glm::normalize(camFront);
+
+            float moveSpeed = deltaTime * speed;
+
+            if (this->keys.up) position += camFront * moveSpeed;
+            if (this->keys.down) position -= camFront * moveSpeed;
+            if (this->keys.left) position -= glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
+            if (this->keys.right) position += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
+
+            this->updateViewMatrix();
+        }
+    }
+};
+
+ModelViewProjection Camera::getModelViewProjection() {
+    return ModelViewProjection{
+        glm::mat4(1.0f),
+        this->view,
+        this->perspective
+    };
+};
+
+Camera::Camera(glm::vec3 position)
+{
+    setPosition(position);
+}
+
+Camera * Camera::instance(glm::vec3 position) {
+    if (Camera::singleton == nullptr) Camera::singleton = new Camera(position);
+    return Camera::singleton;
+}
+
+Camera * Camera::instance() {
+    if (Camera::singleton == nullptr) return nullptr;
+    return Camera::singleton;
+}
+
+Camera * Camera::singleton = nullptr;
+
 

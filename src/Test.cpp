@@ -22,12 +22,11 @@ private:
         std::vector<Mesh> meshes;
         meshes.push_back(Mesh(vertices, indices));
 
-        Model couch1("/opt/projects/VulkanTest/res/models/", "teapot.obj");
-        this->graphics.addModel(couch1);
-
         Model rectangle(meshes);
         this->graphics.addModel(rectangle);
 
+        Model couch1("/opt/projects/VulkanTest/res/models/", "teapot.obj");
+        this->graphics.addModel(couch1);
 
         return true;
     }
@@ -40,6 +39,12 @@ public:
             this->graphics.listVkLayerNames();
             this->graphics.listVkPhysicalDevices();
 
+            std::unique_ptr<Camera> camera(Camera::instance(glm::vec3(0.0f, 0.0f, -10.0f)));
+            auto windowSize = this->graphics.getWindowSize();
+            float width = std::get<0>(windowSize);
+            float height = std::get<1>(windowSize);
+            Camera::instance()->setPerspective(45.0f, width/height);
+            
             SDL_Event e;
             SDL_StartTextInput();
 

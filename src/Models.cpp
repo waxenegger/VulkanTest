@@ -117,7 +117,7 @@ Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
 
      if (mesh->mNumVertices > 0) vertices.reserve(mesh->mNumVertices);
      for(unsigned int i = 0; i < mesh->mNumVertices; i++) {
-         Vertex vertex(glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z), glm::vec3(1.0f));
+         Vertex vertex(glm::vec3(mesh->mVertices[i].x, -mesh->mVertices[i].y, mesh->mVertices[i].z), glm::vec3(1.0f));
 
          if (mesh->HasNormals())
              vertex.setNormal(glm::normalize(glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z)));
@@ -149,7 +149,9 @@ Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
 void Models::addModel(Model & model) {
     VkDeviceSize vertexOffsetPerModel = 0;
     VkDeviceSize indexOffsetPerModel = 0;
-
+    
+    //uint32_t indexIncrement = this->getTotalVertices().size();
+    //if (indexOffsetPerModel != 0) indexOffsetPerModel-=1;
     for (auto & mesh : model.getMeshes()) {
         auto meshVertices = mesh.getVertices();
         for (auto & vertex : meshVertices) {
@@ -159,11 +161,12 @@ void Models::addModel(Model & model) {
             vertexOffsetPerModel += meshVertices.size();
             this->vertexOffsets.push_back(vertexOffsetPerModel);
         }
-
+        
         auto meshIndices = mesh.getIndices();
         for (auto & index : meshIndices) {
+            //this->totalOfIndices.push_back(index + indexIncrement);
             this->totalOfIndices.push_back(index);
-        }
+        }        
         if (!meshIndices.empty()) {
             indexOffsetPerModel += meshIndices.size();
             this->indexOffsets.push_back(indexOffsetPerModel);

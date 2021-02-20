@@ -4,6 +4,64 @@
 #include "models.h"
 #include "utils.h"
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+
+class ModelViewProjection final {
+    public:
+        glm::mat4 model;
+        glm::mat4 view;
+        glm::mat4 projection;
+};
+
+class Camera
+{
+    public:
+        enum CameraType { lookat, firstperson };
+        
+    private:
+        Camera(glm::vec3 position);
+
+        static Camera * singleton;
+        CameraType type = CameraType::lookat;
+
+        glm::vec3 rotation = glm::vec3();
+        glm::vec3 position = glm::vec3();
+        glm::vec4 viewPos = glm::vec4();
+
+        float speed = 1.0f;
+
+        bool updated = false;
+        bool flipY = false;
+
+        glm::mat4 perspective;
+        glm::mat4 view;
+
+        struct
+        {
+            bool left = false;
+            bool right = false;
+            bool up = false;
+            bool down = false;
+        } keys;
+
+        void updateViewMatrix();
+        bool moving();
+
+        public:
+            void setPerspective(float degrees, float aspect);
+            void setPosition(glm::vec3 position);
+            void setRotation(glm::vec3 rotation);
+            void rotate(glm::vec3 delta);
+            void setTranslation(glm::vec3 translation);
+            void translate(glm::vec3 delta);
+            void setSpeed(float movementSpeed);
+            void update(float deltaTime);
+            ModelViewProjection getModelViewProjection();
+            static Camera * instance(glm::vec3 pos);
+            static Camera * instance();
+};
+
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
 class Graphics final {
@@ -16,7 +74,7 @@ class Graphics final {
         std::vector<const char *> vkExtensionNames;
         std::vector<VkPhysicalDevice> vkPhysicalDevices;
         std::vector<const char *> vkLayerNames = {
-               // "VK_LAYER_KHRONOS_validation"
+           //     "VK_LAYER_KHRONOS_validation"
         };
 
         VkPhysicalDevice physicalDevice = nullptr;
@@ -41,7 +99,7 @@ class Graphics final {
         std::vector<VkCommandBuffer> commandBuffers;
 
         VkRenderPass renderPass = nullptr;
-        VkPipelineLayout pipelineLayout = nullptr;
+        VkPipelineLayout graphicsPipelineLayout = nullptr;
         VkPipeline graphicsPipeline = nullptr;
 
         std::vector<VkFramebuffer> swapChainFramebuffers;
@@ -130,6 +188,8 @@ class Graphics final {
         bool updateSwapChain();
         void drawFrame();
         void addModel(Model & model);
+        
+        std::tuple<int, int> getWindowSize();
 
         ~Graphics();
 };

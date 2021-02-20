@@ -10,6 +10,8 @@
 
 #include <tuple>
 
+#include <memory>
+
 #include <string.h>
 
 #include <SDL.h>
