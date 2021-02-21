@@ -1,7 +1,7 @@
 #ifndef SRC_INCLUDES_MODELS_H_
 #define SRC_INCLUDES_MODELS_H_
 
-#include "shared.h"
+#include "camera.h"
 
 class Vertex final {
     private:
@@ -23,6 +23,7 @@ class Vertex final {
         void setNormal(const glm::vec3 & normal);
         void setTangent(const glm::vec3 & tangent);
         void setBitangent(const glm::vec3 & bitangent);
+        void setColor(const glm::vec3 & color);
 };
 
 class Mesh final {
@@ -34,6 +35,7 @@ class Mesh final {
         Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices);
         const std::vector<Vertex> & getVertices() const;
         const std::vector<uint32_t> & getIndices() const;
+        void setColor(glm::vec3 color);
 };
 
 class Model final {
@@ -42,6 +44,11 @@ class Model final {
         std::string dir;
         std::vector<Mesh> meshes;
         bool loaded = false;
+        bool visible = true;
+
+        glm::vec3 position = glm::vec3(0.0f);
+        glm::vec3 rotation = glm::vec3(0.0f);
+        float scaleFactor = 1.0f;
 
         void processNode(const aiNode * node, const aiScene *scene);
         Mesh processMesh(const aiMesh *mesh, const aiScene *scene);
@@ -51,29 +58,32 @@ class Model final {
         Model(const std::string & dir, const std::string & file);
         Model(const std::vector<Mesh> meshes);
         void init();
-        bool hasBeenLoaded() {
-            return this->loaded;
-        };
-        std::string getPath() {
-            return this->file;
-        }
+        bool hasBeenLoaded();
+        bool isVisible();
+        std::string getPath();
         std::vector<Mesh> & getMeshes();
+        void setColor(glm::vec3 color);
+        void setPosition(float x, float y, float z);
+        void setPosition(glm::vec3 position);
+        void setRotation(int xAxis = 0, int yAxis = 0, int zAxis = 0);
+        void scale(float factor);
+        glm::mat4 getModelMatrix();
+    
 };
 
 class Models final {
     private:
-        std::vector<Vertex> totalOfVertices;
-        std::vector<VkDeviceSize> vertexOffsets;
-        std::vector<uint32_t> totalOfIndices;
-        std::vector<VkDeviceSize> indexOffsets;
+        std::vector<Model> models;
+        VkDeviceSize totalNumberOfVertices = 0;
+        VkDeviceSize totalNumberOfIndices = 0;
 
     public:
         void addModel(Model & model);
         void clear();
-        std::vector<Vertex> & getTotalVertices();
-        std::vector<VkDeviceSize> & getVertexOffsets();
-        std::vector<uint32_t> & getTotalIndices();
-        std::vector<VkDeviceSize> & getIndexOffsets();
+        void draw(RenderContext & context, int commandBufferIndex, bool useIndices);
+        void copyModelsContentIntoBuffer(void* data, bool contentIsIndices, VkDeviceSize maxSize);
+        VkDeviceSize getTotalNumberOfVertices();
+        VkDeviceSize getTotalNumberOfIndices();
 };
 
 #endif

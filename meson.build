@@ -36,6 +36,6 @@ else
 
 endif
 
-src = [ join_paths('src','Test.cpp'), join_paths('src','Graphics.cpp'), join_paths('src','Models.cpp') ]
+src = [ join_paths('src','Test.cpp'), join_paths('src','Camera.cpp'), join_paths('src','Graphics.cpp'), join_paths('src','Models.cpp') ]
 
 executable('VulkanTest',  join_paths('src','Test.cpp'), src, include_directories: includeDir, dependencies: dependencies) 

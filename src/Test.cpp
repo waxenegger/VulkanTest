@@ -23,10 +23,15 @@ private:
         meshes.push_back(Mesh(vertices, indices));
 
         Model rectangle(meshes);
+
         this->graphics.addModel(rectangle);
 
-        Model couch1("/opt/projects/VulkanTest/res/models/", "teapot.obj");
-        this->graphics.addModel(couch1);
+        Model teapot("/opt/projects/VulkanTest/res/models/", "teapot.obj");
+        teapot.setColor(glm::vec3(0,1,0));
+        this->graphics.addModel(teapot);
+
+        Model rock("/opt/projects/VulkanTest/res/models/", "batman.obj");
+        this->graphics.addModel(rock);
 
         return true;
     }
@@ -40,6 +45,7 @@ public:
             this->graphics.listVkPhysicalDevices();
 
             std::unique_ptr<Camera> camera(Camera::instance(glm::vec3(0.0f, 0.0f, -10.0f)));
+            this->graphics.getRenderContext().camera = camera.get();
             auto windowSize = this->graphics.getWindowSize();
             float width = std::get<0>(windowSize);
             float height = std::get<1>(windowSize);

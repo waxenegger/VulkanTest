@@ -50,6 +50,9 @@ void Vertex::setBitangent(const glm::vec3 & bitangent) {
     this->bitangent = bitangent;
 }
 
+void Vertex::setColor(const glm::vec3 & color) {
+    this->color = color;
+}
 
 Mesh::Mesh(const std::vector<Vertex> & vertices) {
     this->vertices = vertices;
@@ -65,6 +68,12 @@ const std::vector<Vertex> & Mesh::getVertices() const {
 
 const std::vector<uint32_t> & Mesh::getIndices() const {
     return this->indices;
+}
+
+void Mesh::setColor(glm::vec3 color) {
+    for (Vertex & v : this->vertices) {
+        v.setColor(color);
+    }   
 }
 
 Model::Model(const std::vector<Mesh> meshes) {
@@ -108,6 +117,19 @@ std::vector<Mesh> & Model::getMeshes() {
     return this->meshes;
 }
 
+bool Model::hasBeenLoaded() {
+    return this->loaded;
+};
+
+bool Model::isVisible() {
+    return this->visible;
+};
+
+std::string Model::getPath() {
+    return this->file;
+}
+
+
 Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
      std::vector<Vertex> vertices;
      std::vector<unsigned int> indices;
@@ -146,53 +168,138 @@ Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
      return Mesh(vertices, indices);
 }
 
-void Models::addModel(Model & model) {
-    VkDeviceSize vertexOffsetPerModel = 0;
-    VkDeviceSize indexOffsetPerModel = 0;
-    
-    //uint32_t indexIncrement = this->getTotalVertices().size();
-    //if (indexOffsetPerModel != 0) indexOffsetPerModel-=1;
-    for (auto & mesh : model.getMeshes()) {
-        auto meshVertices = mesh.getVertices();
-        for (auto & vertex : meshVertices) {
-            this->totalOfVertices.push_back(vertex);
-        }
-        if (!meshVertices.empty()) {
-            vertexOffsetPerModel += meshVertices.size();
-            this->vertexOffsets.push_back(vertexOffsetPerModel);
-        }
-        
-        auto meshIndices = mesh.getIndices();
-        for (auto & index : meshIndices) {
-            //this->totalOfIndices.push_back(index + indexIncrement);
-            this->totalOfIndices.push_back(index);
-        }        
-        if (!meshIndices.empty()) {
-            indexOffsetPerModel += meshIndices.size();
-            this->indexOffsets.push_back(indexOffsetPerModel);
-        }
+glm::mat4 Model::getModelMatrix() {
+    glm::mat4 transformation = glm::mat4(1.0f);
+
+    transformation = glm::translate(transformation, this->position);
+
+    if (this->rotation.x != 0.0f) transformation = glm::rotate(transformation, this->rotation.x, glm::vec3(1, 0, 0));
+    if (this->rotation.y != 0.0f) transformation = glm::rotate(transformation, this->rotation.y, glm::vec3(0, 1, 0));
+    if (this->rotation.z != 0.0f) transformation = glm::rotate(transformation, this->rotation.z, glm::vec3(0, 0, 1));
+
+    return glm::scale(transformation, glm::vec3(this->scaleFactor));   
+}
+
+void Model::setColor(glm::vec3 color) {
+    for (Mesh & m : this->meshes) {
+        m.setColor(color);
     }
 }
 
-std::vector<VkDeviceSize> & Models::getIndexOffsets() {
-    return this->indexOffsets;
+void Model::setPosition(float x, float y, float z) {
+    this->setPosition(glm::vec3(x,y,z));
 }
 
-std::vector<VkDeviceSize> & Models::getVertexOffsets() {
-    return this->vertexOffsets;
+void Model::setPosition(glm::vec3 position) {
+    this->position = position;
+}
+
+void Model::setRotation(int xAxis, int yAxis, int zAxis) {
+    this->rotation.x = glm::radians(static_cast<float>(xAxis));
+    this->rotation.y = glm::radians(static_cast<float>(yAxis));
+    this->rotation.z = glm::radians(static_cast<float>(zAxis));
+}
+
+void Model::scale(float factor) {
+    if (factor <= 0) return;
+    
+    this->scaleFactor = factor;
+}
+
+void Models::addModel(Model & model) {
+    if (!model.hasBeenLoaded()) return;
+    
+    this->models.push_back(std::move(model));
+    
+    for (Mesh & m : model.getMeshes()) {
+        this->totalNumberOfVertices += m.getVertices().size();
+        this->totalNumberOfIndices += m.getIndices().size();
+    }
+}
+
+void Models::copyModelsContentIntoBuffer(void* data, bool contentIsIndices, VkDeviceSize maxSize) {
+    
+    VkDeviceSize overallSize = 0;
+    for (Model & model : this->models) {
+        for (Mesh & mesh : model.getMeshes()) {
+            VkDeviceSize dataSize = 0;
+            if (contentIsIndices) {
+                dataSize = mesh.getIndices().size() * sizeof(uint32_t);
+                if (overallSize + dataSize <= maxSize) {
+                    memcpy(static_cast<char *>(data) + overallSize, mesh.getIndices().data(), dataSize);
+                }
+            } else {
+                dataSize = mesh.getVertices().size() * sizeof(class Vertex);
+                if (overallSize + dataSize <= maxSize) {
+                    memcpy(static_cast<char *>(data)+overallSize, mesh.getVertices().data(), dataSize);
+                }
+            }
+            overallSize += dataSize;
+        }
+    }
+    
+}
+
+void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndices) {
+    
+    VkDeviceSize lastVertexOffset = 0;
+    VkDeviceSize lastIndexOffset = 0;
+
+    // TODO: change this 
+    std::vector<ModelViewProjection> mvp;
+    auto mvp1 = context.camera->getModelViewProjection();
+    //mvp1.model = glm::rotate(mvp1.model, glm::radians(45.0f),glm::vec3(1));
+    mvp1.model = glm::scale(mvp1.model, glm::vec3(5));
+    //mvp1.model = glm::rotate(mvp1.model, glm::radians(0.4f), glm::vec3(0, 1, 0));
+    mvp.push_back( mvp1);
+    auto mvp2 = context.camera->getModelViewProjection();
+    mvp2.model = glm::scale(mvp2.model, glm::vec3(1));
+    mvp2.model = glm::translate(mvp2.model, glm::vec3(0,2,0));
+    mvp.push_back(mvp2);
+    auto mvp3 = context.camera->getModelViewProjection();
+    mvp3.model = glm::scale(mvp3.model, glm::vec3(1));
+    mvp.push_back(mvp3);
+    
+    
+
+    int c = 0;
+    for (Model & model : this->models) {
+
+
+        vkCmdPushConstants(
+            context.commandBuffers[commandBufferIndex], context.graphicsPipelineLayout,
+            VK_SHADER_STAGE_VERTEX_BIT, 0,
+            sizeof(class ModelViewProjection), &mvp.data()[c]);
+        
+        for (Mesh & mesh : model.getMeshes()) {
+            VkDeviceSize vertexSize = mesh.getVertices().size();
+            VkDeviceSize indexSize = mesh.getIndices().size();
+
+            
+            if (useIndices) {
+                vkCmdDrawIndexed(context.commandBuffers[commandBufferIndex], indexSize , 1, lastIndexOffset, lastVertexOffset, 0);
+            } else {
+                vkCmdDraw(context.commandBuffers[commandBufferIndex], vertexSize, 1, 0, 0);
+            }
+                        
+            lastIndexOffset += indexSize;
+            lastVertexOffset += vertexSize;
+        }
+
+        c++;
+    }
 }
 
 void Models::clear() {
-    this->totalOfIndices.clear();
-    this->totalOfVertices.clear();
-    this->indexOffsets.clear();
-    this->vertexOffsets.clear();
+    this->totalNumberOfVertices = 0;
+    this->totalNumberOfIndices = 0;
+    this->models.clear();
 }
 
-std::vector<Vertex> &  Models::getTotalVertices() {
-    return this->totalOfVertices;
+VkDeviceSize Models::getTotalNumberOfVertices() {
+    return this->totalNumberOfVertices;
 }
 
-std::vector<uint32_t> & Models::getTotalIndices() {
-    return this->totalOfIndices;
+VkDeviceSize Models::getTotalNumberOfIndices() {
+    return this->totalNumberOfIndices;
 }

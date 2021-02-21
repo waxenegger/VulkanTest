@@ -31,5 +31,5 @@
     if (val != VK_SUCCESS) { \
         std::cerr << "Error: " << val << std::endl; \
     };
-
+    
 #endif
