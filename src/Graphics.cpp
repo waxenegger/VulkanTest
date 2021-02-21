@@ -55,7 +55,10 @@ bool Graphics::initVulkan(const std::string & appName, uint32_t version) {
     if (!this->createRenderPass()) return false;
 
     if (!this->createCommandPool()) return false;
-
+    if (!this->createDescriptorPool()) return false;
+    
+    if (!this->createUniformBuffers()) return false;
+    
     if (!this->createSyncObjects()) return false;
 
     return true;
@@ -649,7 +652,6 @@ bool Graphics::createGraphicsPipeline() {
         vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
         vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
         vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-
     } else {
         vertexInputInfo.vertexBindingDescriptionCount = 0;
         vertexInputInfo.vertexAttributeDescriptionCount = 0;
@@ -683,7 +685,7 @@ bool Graphics::createGraphicsPipeline() {
     rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.depthClampEnable = VK_FALSE;
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
-    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizer.polygonMode = this->showWireFrame ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
     rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
     rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
@@ -712,17 +714,17 @@ bool Graphics::createGraphicsPipeline() {
     VkPushConstantRange pushConstantRange{};
     pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     pushConstantRange.offset = 0;
-    pushConstantRange.size = sizeof(class ModelViewProjection);
+    pushConstantRange.size = sizeof(struct ModelProperties);
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 0;
+    pipelineLayoutInfo.pSetLayouts = &this->descriptorSetLayout;
+    pipelineLayoutInfo.setLayoutCount = 1;
     pipelineLayoutInfo.pushConstantRangeCount = 1;
     pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
     VkResult ret = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->context.graphicsPipelineLayout);
     ASSERT_VULKAN(ret);
-
     if (ret != VK_SUCCESS) {
         std::cerr << "Failed to Create Pipeline Layout!" << std::endl;
         return false;
@@ -784,8 +786,29 @@ bool Graphics::createFramebuffers() {
      }
 
      return true;
- }
+}
 
+bool Graphics::createDescriptorPool() {
+    VkDescriptorPoolSize poolSize {};
+    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSize.descriptorCount = static_cast<uint32_t>(this->swapChainImages.size());
+
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes = &poolSize;
+    poolInfo.maxSets = static_cast<uint32_t>(this->swapChainImages.size());
+
+    VkResult ret = vkCreateDescriptorPool(device, &poolInfo, nullptr, &this->descriptorPool);
+    ASSERT_VULKAN(ret);
+    if (ret != VK_SUCCESS) {
+       std::cerr << "Failed to Create Descriptor Pool!" << std::endl;
+       return false;
+    }
+    
+    return true;
+}
+ 
 bool Graphics::createRenderPass() {
     VkAttachmentDescription colorAttachment{};
     colorAttachment.format = this->swapChainImageFormat.format;
@@ -834,8 +857,68 @@ bool Graphics::createRenderPass() {
     return true;
 }
 
+bool Graphics::createDescriptorSetLayout() {
+    VkDescriptorSetLayoutBinding modelUniformLayoutBinding{};
+    modelUniformLayoutBinding.binding = 0;
+    modelUniformLayoutBinding.descriptorCount = 1;
+    modelUniformLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    modelUniformLayoutBinding.pImmutableSamplers = nullptr;
+    modelUniformLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &modelUniformLayoutBinding;
+
+    VkResult ret = vkCreateDescriptorSetLayout(this->device, &layoutInfo, nullptr, &this->descriptorSetLayout);
+    ASSERT_VULKAN(ret);
+    if (ret != VK_SUCCESS) {
+        std::cerr << "Failed to Create Descriptor Set Layout!" << std::endl;
+        return false;
+    }
+    
+    return true;
+}
+
+bool Graphics::createDescriptorSets() {
+    std::vector<VkDescriptorSetLayout> layouts(this->swapChainImages.size(), this->descriptorSetLayout);
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = this->descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(this->swapChainImages.size());
+    allocInfo.pSetLayouts = layouts.data();
+
+    this->descriptorSets.resize(this->swapChainImages.size());
+    VkResult ret = vkAllocateDescriptorSets(this->device, &allocInfo, this->descriptorSets.data());
+    if (ret != VK_SUCCESS) {
+        std::cerr << "Failed to Allocate Descriptor Sets!" << std::endl;
+        return false;
+    }
+    
+    for (size_t i = 0; i < this->descriptorSets.size(); i++) {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = this->uniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(struct ModelUniforms);
+
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = this->descriptorSets[i];
+        descriptorWrite.dstBinding = 0;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+
+        vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+    }
+    
+    return true;
+}
+
 bool Graphics::createCommandBuffers() {
-       this->context.commandBuffers.resize(this->swapChainFramebuffers.size());
+        // TODO reset command buffers ?
+        this->context.commandBuffers.resize(this->swapChainFramebuffers.size());
 
        VkCommandBufferAllocateInfo allocInfo{};
        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -880,6 +963,10 @@ bool Graphics::createCommandBuffers() {
                vkCmdBindVertexBuffers(this->context.commandBuffers[i], 0, 1, vertexBuffers, offsets);
            }
            
+           vkCmdBindDescriptorSets(
+               this->context.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, 
+               this->context.graphicsPipelineLayout, 0, 1, &this->descriptorSets[i], 0, nullptr);
+           
             if (this->indexBuffer != nullptr) {
                 vkCmdBindIndexBuffer(this->context.commandBuffers[i], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
                 this->models.draw(this->context, i, true);
@@ -902,8 +989,6 @@ bool Graphics::createCommandBuffers() {
 
 bool Graphics::updateSwapChain() {
     if (this->device == nullptr) return false;
-
-    vkDeviceWaitIdle(this->device);
 
     this->cleanupSwapChain();
 
@@ -945,6 +1030,8 @@ bool Graphics::createSyncObjects() {
 
 void Graphics::cleanupSwapChain() {
     if (this->device == nullptr) return;
+    
+    vkDeviceWaitIdle(this->device);
 
     for (auto framebuffer : this->swapChainFramebuffers) {
         vkDestroyFramebuffer(this->device, framebuffer, nullptr);
@@ -984,6 +1071,17 @@ bool Graphics::createCommandPool() {
     return true;
 }
 
+void Graphics::updateUniformBuffer(uint32_t currentImage) {
+    ModelUniforms modelUniforms {};
+    modelUniforms.viewMatrix = Camera::instance()->getViewMatrix();
+    modelUniforms.projectionMatrix = Camera::instance()->getProjectionMatrix();
+
+    void* data;
+    vkMapMemory(this->device, this->uniformBuffersMemory[currentImage], 0, sizeof(modelUniforms), 0, &data);
+    memcpy(data, &modelUniforms, sizeof(modelUniforms));
+    vkUnmapMemory(this->device, this->uniformBuffersMemory[currentImage]);
+}
+    
 void Graphics::drawFrame() {
     VkResult ret = vkWaitForFences(device, 1, &this->inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
@@ -1003,7 +1101,11 @@ void Graphics::drawFrame() {
         std::cerr << "Failed to Acquire Swap Chain Image" << std::endl;
         return;
     }
-
+    
+    this->updateUniformBuffer(imageIndex);
+    //TODO: turn this into a render
+    this->createCommandBuffers();
+    
     if (this->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
         vkWaitForFences(device, 1, &this->imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
     }
@@ -1144,8 +1246,29 @@ bool Graphics::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags propert
     return false;
 }
 
+bool Graphics::createUniformBuffers() {
+    if (!this->createDescriptorSetLayout()) return false;
+    
+    VkDeviceSize bufferSize = sizeof(struct ModelUniforms);
+
+    this->uniformBuffers.resize(this->swapChainImages.size());
+    this->uniformBuffersMemory.resize(this->swapChainImages.size());
+
+    for (size_t i = 0; i < this->swapChainImages.size(); i++) {
+        this->createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+                        this->uniformBuffers[i], this->uniformBuffersMemory[i]);
+    }
+    
+    if (!this->createDescriptorSets()) return false;
+    
+    return true;
+}
+
 bool Graphics::createBuffersFromModel() {
     if (this->models.getTotalNumberOfVertices() == 0) return true;
+
+    if (this->vertexBuffer != nullptr) vkDestroyBuffer(this->device, this->vertexBuffer, nullptr);
+    if (this->vertexBufferMemory != nullptr) vkFreeMemory(this->device, this->vertexBufferMemory, nullptr);
 
     VkDeviceSize bufferSize = sizeof(class Vertex) * this->models.getTotalNumberOfVertices();
 
@@ -1176,9 +1299,12 @@ bool Graphics::createBuffersFromModel() {
 
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
-
+    
     // indices
     if (this->models.getTotalNumberOfIndices() == 0) return true;
+
+    if (this->indexBuffer != nullptr) vkDestroyBuffer(this->device, this->indexBuffer, nullptr);
+    if (this->indexBufferMemory != nullptr) vkFreeMemory(this->device, this->indexBufferMemory, nullptr);
 
     bufferSize = sizeof(uint32_t) * this->models.getTotalNumberOfIndices();
 
@@ -1215,8 +1341,22 @@ void Graphics::addModel(Model & model) {
     if (model.hasBeenLoaded()) this->models.addModel(model);
 }
 
+void Graphics::toggleWireFrame() {
+    this->showWireFrame = !this->showWireFrame;
+    
+    this->updateSwapChain();
+}
+
 Graphics::~Graphics() {
     this->cleanupSwapChain();
+
+    if (this->descriptorPool != nullptr) {
+        vkDestroyDescriptorPool(this->device, this->descriptorPool, nullptr);
+    }
+    
+    if (this->descriptorSetLayout != nullptr) {
+        vkDestroyDescriptorSetLayout(this->device, this->descriptorSetLayout, nullptr);
+    }
 
     if (this->vertexBuffer != nullptr) vkDestroyBuffer(this->device, this->vertexBuffer, nullptr);
     if (this->vertexBufferMemory != nullptr) vkFreeMemory(this->device, this->vertexBufferMemory, nullptr);
@@ -1224,6 +1364,13 @@ Graphics::~Graphics() {
     if (this->indexBuffer != nullptr) vkDestroyBuffer(this->device, this->indexBuffer, nullptr);
     if (this->indexBufferMemory != nullptr) vkFreeMemory(this->device, this->indexBufferMemory, nullptr);
 
+    for (size_t i = 0; i < this->uniformBuffers.size(); i++) {
+        vkDestroyBuffer(this->device, this->uniformBuffers[i], nullptr);
+    }
+    for (size_t i = 0; i < this->uniformBuffersMemory.size(); i++) {
+        vkFreeMemory(this->device, this->uniformBuffersMemory[i], nullptr);
+    }
+    
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(this->device, this->renderFinishedSemaphores[i], nullptr);
         vkDestroySemaphore(this->device, this->imageAvailableSemaphores[i], nullptr);
@@ -1249,6 +1396,10 @@ Graphics::~Graphics() {
 
 RenderContext & Graphics::getRenderContext() {
     return this->context;
+}
+
+Models & Graphics::getModels() {
+    return this->models;
 }
 
 

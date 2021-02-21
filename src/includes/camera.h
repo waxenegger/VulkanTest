@@ -6,11 +6,15 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
-class ModelViewProjection final {
+struct ModelUniforms final {
     public:
-        glm::mat4 model;
-        glm::mat4 view;
-        glm::mat4 projection;
+        glm::mat4 viewMatrix;
+        glm::mat4 projectionMatrix;
+};
+
+struct ModelProperties final {
+    public:
+        glm::mat4 matrix;
 };
 
 class Camera
@@ -56,15 +60,16 @@ class Camera
             void translate(glm::vec3 delta);
             void setSpeed(float movementSpeed);
             void update(float deltaTime);
-            ModelViewProjection getModelViewProjection();
+            glm::mat4 getViewMatrix();
+            glm::mat4 getProjectionMatrix();
             static Camera * instance(glm::vec3 pos);
             static Camera * instance();
+            void setType(CameraType type);
 };
 
 struct RenderContext {
     std::vector<VkCommandBuffer> commandBuffers;
     VkPipelineLayout graphicsPipelineLayout = nullptr;
-    Camera * camera = nullptr;
 };
 
 #endif

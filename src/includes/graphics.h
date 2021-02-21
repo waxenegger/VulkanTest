@@ -17,9 +17,11 @@ class Graphics final {
         std::vector<const char *> vkExtensionNames;
         std::vector<VkPhysicalDevice> vkPhysicalDevices;
         std::vector<const char *> vkLayerNames = {
-            //   "VK_LAYER_KHRONOS_validation"
+            // "VK_LAYER_KHRONOS_validation"
         };
 
+        bool showWireFrame = false;
+        
         VkPhysicalDevice physicalDevice = nullptr;
         VkDevice device = nullptr;
 
@@ -39,8 +41,12 @@ class Graphics final {
         std::vector<VkImageView> swapChainImageViews;
 
         VkCommandPool commandPool = nullptr;
+        VkDescriptorPool descriptorPool = nullptr;
 
+        std::vector<VkDescriptorSet> descriptorSets;
+        
         VkRenderPass renderPass = nullptr;
+        VkDescriptorSetLayout descriptorSetLayout;
         VkPipeline graphicsPipeline = nullptr;
 
         std::vector<VkFramebuffer> swapChainFramebuffers;
@@ -59,6 +65,9 @@ class Graphics final {
         VkBuffer indexBuffer = nullptr;
         VkDeviceMemory indexBufferMemory = nullptr;
 
+        std::vector<VkBuffer> uniformBuffers;
+        std::vector<VkDeviceMemory> uniformBuffersMemory;
+        
         Models models;
         
         RenderContext context;
@@ -96,6 +105,12 @@ class Graphics final {
         bool getSurfaceCapabilities(VkSurfaceCapabilitiesKHR & surfaceCapabilities);
         bool getSwapChainExtent(VkSurfaceCapabilitiesKHR & surfaceCapabilities);
         bool createSwapChain();
+        bool createDescriptorPool();
+        bool createDescriptorSetLayout();
+        bool createDescriptorSets();
+        
+        bool createUniformBuffers();
+        void updateUniformBuffer(uint32_t currentImage);
 
         void listVkPhysicalDeviceQueueFamilyProperties(const VkPhysicalDevice & device);
 
@@ -113,7 +128,7 @@ class Graphics final {
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
         bool createBuffersFromModel();
-
+        
     public:
         Graphics(const Graphics&) = delete;
         Graphics& operator=(const Graphics &) = delete;
@@ -132,8 +147,10 @@ class Graphics final {
         void drawFrame();
         void addModel(Model & model);
         RenderContext & getRenderContext();
+        void toggleWireFrame();
         
         std::tuple<int, int> getWindowSize();
+        Models & getModels();
 
         ~Graphics();
 };

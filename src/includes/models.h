@@ -84,6 +84,9 @@ class Models final {
         void copyModelsContentIntoBuffer(void* data, bool contentIsIndices, VkDeviceSize maxSize);
         VkDeviceSize getTotalNumberOfVertices();
         VkDeviceSize getTotalNumberOfIndices();
+        void setColor(glm::vec3 color);
+        void setPosition(float x, float y, float z);
+        // TODO: more translation and rotation methods
 };
 
 #endif

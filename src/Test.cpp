@@ -45,7 +45,7 @@ public:
             this->graphics.listVkPhysicalDevices();
 
             std::unique_ptr<Camera> camera(Camera::instance(glm::vec3(0.0f, 0.0f, -10.0f)));
-            this->graphics.getRenderContext().camera = camera.get();
+
             auto windowSize = this->graphics.getWindowSize();
             float width = std::get<0>(windowSize);
             float height = std::get<1>(windowSize);
@@ -72,6 +72,33 @@ public:
                             if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
                                 this->graphics.updateSwapChain();
                             }
+                            break;
+                        case SDL_KEYDOWN:
+                            switch (e.key.keysym.scancode) {
+                                case SDL_SCANCODE_W:
+                                    Camera::instance()->translate(glm::vec3(0,0,0.1));
+                                    break;
+                                case SDL_SCANCODE_S:
+                                    Camera::instance()->translate(glm::vec3(0,0,-0.1));
+                                    break;
+                                case SDL_SCANCODE_A:
+                                    Camera::instance()->translate(glm::vec3(0.1,0,0));
+                                    break;
+                                case SDL_SCANCODE_D:
+                                    Camera::instance()->translate(glm::vec3(-0.1,0,0));
+                                    break;
+                                case SDL_SCANCODE_M:
+                                    this->graphics.getModels().setPosition(0,5,0);
+                                    break;                                
+                                case SDL_SCANCODE_F:
+                                    this->graphics.toggleWireFrame();
+                                    break;                                
+                                case SDL_SCANCODE_Q:
+                                    quit = true;
+                                    break;
+                                default:
+                                    break;
+                            };
                             break;
                         case SDL_QUIT:
                             quit = true;

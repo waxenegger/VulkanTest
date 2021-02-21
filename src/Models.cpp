@@ -245,36 +245,20 @@ void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndic
     VkDeviceSize lastVertexOffset = 0;
     VkDeviceSize lastIndexOffset = 0;
 
-    // TODO: change this 
-    std::vector<ModelViewProjection> mvp;
-    auto mvp1 = context.camera->getModelViewProjection();
-    //mvp1.model = glm::rotate(mvp1.model, glm::radians(45.0f),glm::vec3(1));
-    mvp1.model = glm::scale(mvp1.model, glm::vec3(5));
-    //mvp1.model = glm::rotate(mvp1.model, glm::radians(0.4f), glm::vec3(0, 1, 0));
-    mvp.push_back( mvp1);
-    auto mvp2 = context.camera->getModelViewProjection();
-    mvp2.model = glm::scale(mvp2.model, glm::vec3(1));
-    mvp2.model = glm::translate(mvp2.model, glm::vec3(0,2,0));
-    mvp.push_back(mvp2);
-    auto mvp3 = context.camera->getModelViewProjection();
-    mvp3.model = glm::scale(mvp3.model, glm::vec3(1));
-    mvp.push_back(mvp3);
-    
-    
-
     int c = 0;
     for (Model & model : this->models) {
 
+        std::vector<ModelProperties> modelProperties;
+        modelProperties.push_back(ModelProperties { model.getModelMatrix() });
 
         vkCmdPushConstants(
             context.commandBuffers[commandBufferIndex], context.graphicsPipelineLayout,
             VK_SHADER_STAGE_VERTEX_BIT, 0,
-            sizeof(class ModelViewProjection), &mvp.data()[c]);
+            sizeof(struct ModelProperties), modelProperties.data());
         
         for (Mesh & mesh : model.getMeshes()) {
             VkDeviceSize vertexSize = mesh.getVertices().size();
             VkDeviceSize indexSize = mesh.getIndices().size();
-
             
             if (useIndices) {
                 vkCmdDrawIndexed(context.commandBuffers[commandBufferIndex], indexSize , 1, lastIndexOffset, lastVertexOffset, 0);
@@ -302,4 +286,16 @@ VkDeviceSize Models::getTotalNumberOfVertices() {
 
 VkDeviceSize Models::getTotalNumberOfIndices() {
     return this->totalNumberOfIndices;
+}
+
+void Models::setColor(glm::vec3 color) {
+    for (Model & model : this->models) {
+        model.setColor(color);
+    }
+}
+
+void Models::setPosition(float x, float y, float z) {
+    for (Model & model : this->models) {
+        model.setPosition(x,y,z);
+    }    
 }

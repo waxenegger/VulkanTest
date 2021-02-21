@@ -90,12 +90,16 @@ void Camera::update(float deltaTime) {
     }
 };
 
-ModelViewProjection Camera::getModelViewProjection() {
-    return ModelViewProjection{
-        glm::mat4(1.0f),
-        this->view,
-        this->perspective
-    };
+void Camera::setType(CameraType type) {
+    this->type = type;
+}
+
+glm::mat4 Camera::getViewMatrix() {
+    return glm::mat4(1.0f) * this->view;
+};
+
+glm::mat4 Camera::getProjectionMatrix() {
+    return glm::mat4(1.0f) * this->perspective;
 };
 
 Camera::Camera(glm::vec3 position)
@@ -109,7 +113,7 @@ Camera * Camera::instance(glm::vec3 position) {
 }
 
 Camera * Camera::instance() {
-    if (Camera::singleton == nullptr) return nullptr;
+    if (Camera::singleton == nullptr) Camera::singleton = new Camera(glm::vec3(0.0f));
     return Camera::singleton;
 }
 
