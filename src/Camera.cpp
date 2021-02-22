@@ -4,9 +4,9 @@ void Camera::updateViewMatrix() {
     glm::mat4 rotM = glm::mat4(1.0f);
     glm::mat4 transM;
 
-    rotM = glm::rotate(rotM, glm::radians(rotation.x * (this->flipY ? -1.0f : 1.0f)), glm::vec3(1.0f, 0.0f, 0.0f));
-    rotM = glm::rotate(rotM, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-    rotM = glm::rotate(rotM, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+    rotM = glm::rotate(rotM, glm::radians(this->rotation.x * (this->flipY ? -1.0f : 1.0f)), glm::vec3(1.0f, 0.0f, 0.0f));
+    rotM = glm::rotate(rotM, glm::radians(this->rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    rotM = glm::rotate(rotM, glm::radians(this->rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
     glm::vec3 translation = position;
 
@@ -20,15 +20,32 @@ void Camera::updateViewMatrix() {
     } else {
         this->view = transM * rotM;
     }
-
-    viewPos = glm::vec4(position, 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
-
-    updated = true;
 };
 
 bool Camera::moving()
 {
     return this->keys.left || this->keys.right || this->keys.up || this->keys.down;
+}
+
+void Camera::move(KeyPress key, bool isPressed, float deltaTime)
+{
+    
+    switch(key) {
+        case LEFT:
+            this->keys.left = isPressed;
+            break;
+        case RIGHT:
+            this->keys.right = isPressed;
+            break;
+        case UP:
+            this->keys.up = isPressed;
+            break;
+        case DOWN:
+            this->keys.down = isPressed;
+            break;            
+    }
+    
+    this->update(deltaTime);
 }
 
 void Camera::setPerspective(float degrees, float aspect)
@@ -37,6 +54,7 @@ void Camera::setPerspective(float degrees, float aspect)
     if (this->flipY) {
         this->perspective[1][1] *= -1.0f;
     }
+    this->updateViewMatrix();
 };
 
 void Camera::setPosition(glm::vec3 position) {
@@ -66,10 +84,10 @@ void Camera::translate(glm::vec3 delta) {
 
 void Camera::setSpeed(float speed) {
     this->speed = speed;
+    this->updateViewMatrix();
 }
 
 void Camera::update(float deltaTime) {
-    updated = false;
     if (type == CameraType::firstperson) {
         if (moving()) {
             glm::vec3 camFront;
@@ -89,6 +107,23 @@ void Camera::update(float deltaTime) {
         }
     }
 };
+
+void Camera::updateDirection(const float deltaX, const float  deltaY, float deltaTime) {
+    float moveSpeed = deltaTime * speed;
+    
+    //const float ninetyDegrees = glm::pi<float>() / 2;
+    
+    float moveY = -deltaY * moveSpeed;
+    float moveX = deltaX * moveSpeed;
+    //if (moveY > ninetyDegrees) moveY = ninetyDegrees;
+    //if (moveY < -ninetyDegrees) moveY = -ninetyDegrees;
+    
+    glm::vec3 rot(0.0f);
+    rot.y = moveX;
+    rot.x = moveY;
+    this->rotate(rot);
+  
+}
 
 void Camera::setType(CameraType type) {
     this->type = type;

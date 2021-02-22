@@ -64,7 +64,7 @@ public:
                 return;
             }
 
-
+            float u = 0.0f;
             while(!quit) {
                 while (SDL_PollEvent(&e) != 0) {
                     switch(e.type) {
@@ -75,20 +75,23 @@ public:
                             break;
                         case SDL_KEYDOWN:
                             switch (e.key.keysym.scancode) {
-                                case SDL_SCANCODE_W:
-                                    Camera::instance()->translate(glm::vec3(0,0,0.1));
+                                case SDL_SCANCODE_W:                                    
+                                    Camera::instance()->move(Camera::KeyPress::UP, true);
                                     break;
                                 case SDL_SCANCODE_S:
-                                    Camera::instance()->translate(glm::vec3(0,0,-0.1));
+                                    Camera::instance()->move(Camera::KeyPress::DOWN, true);
                                     break;
                                 case SDL_SCANCODE_A:
-                                    Camera::instance()->translate(glm::vec3(0.1,0,0));
+                                    Camera::instance()->move(Camera::KeyPress::LEFT, true);
                                     break;
                                 case SDL_SCANCODE_D:
-                                    Camera::instance()->translate(glm::vec3(-0.1,0,0));
+                                    Camera::instance()->move(Camera::KeyPress::RIGHT, true);
                                     break;
                                 case SDL_SCANCODE_M:
-                                    this->graphics.getModels().setPosition(0,5,0);
+                                    if (u > -100)  { u-= 1.0f; } 
+                                    else u =0.0f;
+                                    this->graphics.getModels().setPosition(0,0,u);
+                                    this->graphics.renderScene();
                                     break;                                
                                 case SDL_SCANCODE_F:
                                     this->graphics.toggleWireFrame();
@@ -99,6 +102,30 @@ public:
                                 default:
                                     break;
                             };
+                            break;
+                        case SDL_KEYUP:
+                            switch (e.key.keysym.scancode) {
+                                case SDL_SCANCODE_W:
+                                    Camera::instance()->move(Camera::KeyPress::UP);
+                                    break;
+                                case SDL_SCANCODE_S:
+                                    Camera::instance()->move(Camera::KeyPress::DOWN);
+                                    break;
+                                case SDL_SCANCODE_A:
+                                    Camera::instance()->move(Camera::KeyPress::LEFT);
+                                    break;
+                                case SDL_SCANCODE_D:
+                                    Camera::instance()->move(Camera::KeyPress::RIGHT);
+                                    break;
+                                default:
+                                    break;
+                            };
+                            break;
+                        case SDL_MOUSEMOTION:
+                            //if (SDL_GetRelativeMouseMode() == SDL_TRUE)
+                                Camera::instance()->updateDirection(
+                                        static_cast<float>(e.motion.xrel),
+                                        static_cast<float>(e.motion.yrel), 0.1f);
                             break;
                         case SDL_QUIT:
                             quit = true;

@@ -147,6 +147,7 @@ class Graphics final {
         void drawFrame();
         void addModel(Model & model);
         RenderContext & getRenderContext();
+        void renderScene();
         void toggleWireFrame();
         
         std::tuple<int, int> getWindowSize();

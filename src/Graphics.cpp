@@ -14,6 +14,7 @@ void Graphics::initSDL() {
             SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
     if (this->sdlWindow == nullptr) {
         std::cerr << "SDL Window could not be created! Error: " << SDL_GetError() << std::endl;
+        return;
     }
 }
 
@@ -764,7 +765,7 @@ bool Graphics::createFramebuffers() {
 
      for (size_t i = 0; i < this->swapChainImageViews.size(); i++) {
          VkImageView attachments[] = {
-             swapChainImageViews[i]
+             this->swapChainImageViews[i]
          };
 
          VkFramebufferCreateInfo framebufferInfo{};
@@ -776,7 +777,7 @@ bool Graphics::createFramebuffers() {
          framebufferInfo.height = swapChainExtent.height;
          framebufferInfo.layers = 1;
 
-         VkResult ret = vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]);
+         VkResult ret = vkCreateFramebuffer(this->device, &framebufferInfo, nullptr, &this->swapChainFramebuffers[i]);
          ASSERT_VULKAN(ret);
 
          if (ret != VK_SUCCESS) {
@@ -846,7 +847,7 @@ bool Graphics::createRenderPass() {
     renderPassInfo.dependencyCount = 1;
     renderPassInfo.pDependencies = &dependency;
 
-    VkResult ret = vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass);
+    VkResult ret = vkCreateRenderPass(this->device, &renderPassInfo, nullptr, &this->renderPass);
     ASSERT_VULKAN(ret);
 
     if (ret != VK_SUCCESS) {
@@ -1032,7 +1033,7 @@ void Graphics::cleanupSwapChain() {
     if (this->device == nullptr) return;
     
     vkDeviceWaitIdle(this->device);
-
+    
     for (auto framebuffer : this->swapChainFramebuffers) {
         vkDestroyFramebuffer(this->device, framebuffer, nullptr);
     }
@@ -1055,7 +1056,7 @@ void Graphics::cleanupSwapChain() {
 
 bool Graphics::createCommandPool() {
     if (this->device == nullptr) return false;
-
+    
     VkCommandPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolInfo.queueFamilyIndex = this->graphicsQueueIndex;
@@ -1081,6 +1082,15 @@ void Graphics::updateUniformBuffer(uint32_t currentImage) {
     memcpy(data, &modelUniforms, sizeof(modelUniforms));
     vkUnmapMemory(this->device, this->uniformBuffersMemory[currentImage]);
 }
+
+void Graphics::renderScene() {
+    vkDeviceWaitIdle(this->device);
+    
+    vkFreeCommandBuffers(
+        this->device, this->commandPool, static_cast<uint32_t>(this->context.commandBuffers.size()), this->context.commandBuffers.data());
+
+    this->createCommandBuffers();
+}
     
 void Graphics::drawFrame() {
     VkResult ret = vkWaitForFences(device, 1, &this->inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
@@ -1103,8 +1113,6 @@ void Graphics::drawFrame() {
     }
     
     this->updateUniformBuffer(imageIndex);
-    //TODO: turn this into a render
-    this->createCommandBuffers();
     
     if (this->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
         vkWaitForFences(device, 1, &this->imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
