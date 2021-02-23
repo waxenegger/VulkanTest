@@ -4,9 +4,9 @@ void Camera::updateViewMatrix() {
     glm::mat4 rotM = glm::mat4(1.0f);
     glm::mat4 transM;
 
-    rotM = glm::rotate(rotM, glm::radians(this->rotation.x * (this->flipY ? -1.0f : 1.0f)), glm::vec3(1.0f, 0.0f, 0.0f));
-    rotM = glm::rotate(rotM, glm::radians(this->rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-    rotM = glm::rotate(rotM, glm::radians(this->rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+    rotM = glm::rotate(rotM, this->rotation.x * (this->flipY ? -1.0f : 1.0f), glm::vec3(1.0f, 0.0f, 0.0f));    
+    rotM = glm::rotate(rotM, this->rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+    rotM = glm::rotate(rotM, this->rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
 
     glm::vec3 translation = position;
 
@@ -91,9 +91,9 @@ void Camera::update(float deltaTime) {
     if (type == CameraType::firstperson) {
         if (moving()) {
             glm::vec3 camFront;
-            camFront.x = -cos(glm::radians(rotation.x)) * sin(glm::radians(rotation.y));
-            camFront.y = sin(glm::radians(rotation.x));
-            camFront.z = cos(glm::radians(rotation.x)) * cos(glm::radians(rotation.y));
+            camFront.x = -cos(this->rotation.x) * sin(this->rotation.y);
+            camFront.y = sin(this->rotation.x);
+            camFront.z = cos(this->rotation.x) * cos(rotation.y);
             camFront = glm::normalize(camFront);
 
             float moveSpeed = deltaTime * speed;
@@ -111,16 +111,10 @@ void Camera::update(float deltaTime) {
 void Camera::updateDirection(const float deltaX, const float  deltaY, float deltaTime) {
     float moveSpeed = deltaTime * speed;
     
-    //const float ninetyDegrees = glm::pi<float>() / 2;
-    
-    float moveY = -deltaY * moveSpeed;
-    float moveX = deltaX * moveSpeed;
-    //if (moveY > ninetyDegrees) moveY = ninetyDegrees;
-    //if (moveY < -ninetyDegrees) moveY = -ninetyDegrees;
-    
     glm::vec3 rot(0.0f);
-    rot.y = moveX;
-    rot.x = moveY;
+    rot.y = deltaX * moveSpeed;
+    rot.x = -deltaY * moveSpeed;
+        
     this->rotate(rot);
   
 }
@@ -130,11 +124,11 @@ void Camera::setType(CameraType type) {
 }
 
 glm::mat4 Camera::getViewMatrix() {
-    return glm::mat4(1.0f) * this->view;
+    return this->view;
 };
 
 glm::mat4 Camera::getProjectionMatrix() {
-    return glm::mat4(1.0f) * this->perspective;
+    return this->perspective;
 };
 
 Camera::Camera(glm::vec3 position)

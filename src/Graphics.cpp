@@ -24,6 +24,7 @@ void Graphics::init(const std::string & appName, uint32_t version) {
     }
 
     SDL_SetWindowTitle(this->sdlWindow, appName.c_str());
+    SDL_SetRelativeMouseMode(SDL_TRUE);
 
     if (this->initVulkan(appName, version)) {
         this->active = true;

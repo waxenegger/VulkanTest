@@ -44,7 +44,7 @@ public:
             this->graphics.listVkLayerNames();
             this->graphics.listVkPhysicalDevices();
 
-            std::unique_ptr<Camera> camera(Camera::instance(glm::vec3(0.0f, 0.0f, -10.0f)));
+            std::unique_ptr<Camera> camera(Camera::instance(glm::vec3(0.0f, 4.0f, -10.0f)));
 
             auto windowSize = this->graphics.getWindowSize();
             float width = std::get<0>(windowSize);
@@ -76,16 +76,16 @@ public:
                         case SDL_KEYDOWN:
                             switch (e.key.keysym.scancode) {
                                 case SDL_SCANCODE_W:                                    
-                                    Camera::instance()->move(Camera::KeyPress::UP, true);
+                                    Camera::instance()->move(Camera::KeyPress::UP, true, 0.5f);
                                     break;
                                 case SDL_SCANCODE_S:
-                                    Camera::instance()->move(Camera::KeyPress::DOWN, true);
+                                    Camera::instance()->move(Camera::KeyPress::DOWN, true, 0.5f);
                                     break;
                                 case SDL_SCANCODE_A:
-                                    Camera::instance()->move(Camera::KeyPress::LEFT, true);
+                                    Camera::instance()->move(Camera::KeyPress::LEFT, true, 0.5f);
                                     break;
                                 case SDL_SCANCODE_D:
-                                    Camera::instance()->move(Camera::KeyPress::RIGHT, true);
+                                    Camera::instance()->move(Camera::KeyPress::RIGHT, true, 0.5f);
                                     break;
                                 case SDL_SCANCODE_M:
                                     if (u > -100)  { u-= 1.0f; } 
@@ -122,10 +122,14 @@ public:
                             };
                             break;
                         case SDL_MOUSEMOTION:
-                            //if (SDL_GetRelativeMouseMode() == SDL_TRUE)
+                            if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
                                 Camera::instance()->updateDirection(
                                         static_cast<float>(e.motion.xrel),
-                                        static_cast<float>(e.motion.yrel), 0.1f);
+                                        static_cast<float>(e.motion.yrel), 0.005f);
+                            }
+                            break;
+                        case SDL_MOUSEBUTTONUP:
+                            SDL_SetRelativeMouseMode(SDL_GetRelativeMouseMode() == SDL_TRUE ? SDL_FALSE : SDL_TRUE);
                             break;
                         case SDL_QUIT:
                             quit = true;
