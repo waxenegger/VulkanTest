@@ -68,6 +68,10 @@ class Graphics final {
         std::vector<VkBuffer> uniformBuffers;
         std::vector<VkDeviceMemory> uniformBuffersMemory;
         
+        VkImage depthImage = nullptr;
+        VkDeviceMemory depthImageMemory = nullptr;
+        VkImageView depthImageView = nullptr;
+        
         Models models;
         
         RenderContext context;
@@ -128,6 +132,17 @@ class Graphics final {
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
         bool createBuffersFromModel();
+        
+        VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+        bool createDepthResources();
+        bool findDepthFormat(VkFormat & supportedFormat);
+        bool findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features, VkFormat & supportedFormat);
+        bool createImage(
+                int32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+        
+        VkCommandBuffer beginSingleTimeCommands();
+        void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+        bool transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
         
     public:
         Graphics(const Graphics&) = delete;
