@@ -1460,7 +1460,7 @@ bool Graphics::createDepthResources() {
     };
 
     this->createImage(swapChainExtent.width, swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
-    depthImageView = this->createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+    this->depthImageView = this->createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
     
     return true;
 }
@@ -1589,8 +1589,14 @@ bool Graphics::transitionImageLayout(VkImage image, VkFormat format, VkImageLayo
     return true;
 }
 
-void Graphics::addModel(Model & model) {
-    if (model.hasBeenLoaded()) this->models.addModel(model);
+void Graphics::addModel(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices) {
+     std::unique_ptr<Model> model = std::make_unique<Model>(vertices, indices);
+     if (model->hasBeenLoaded()) this->models.addModel(model.release());
+}
+
+void Graphics::addModel(const std::string & dir, const std::string & file) {
+     std::unique_ptr<Model> model = std::make_unique<Model>(dir, file);
+     if (model->hasBeenLoaded()) this->models.addModel(model.release());
 }
 
 void Graphics::toggleWireFrame() {
@@ -1642,8 +1648,6 @@ Graphics::~Graphics() {
     if (this->sdlWindow != nullptr) SDL_DestroyWindow(this->sdlWindow);
 
     SDL_Quit();
-
-    this->models.clear();
 }
 
 RenderContext & Graphics::getRenderContext() {
@@ -1653,5 +1657,3 @@ RenderContext & Graphics::getRenderContext() {
 Models & Graphics::getModels() {
     return this->models;
 }
-
-

@@ -29,7 +29,7 @@ class Vertex final {
 class Mesh final {
     private:
         std::vector<Vertex> vertices;
-        std::vector<uint32_t> indices;
+        std::vector<uint32_t> indices; 
     public:
         Mesh(const std::vector<Vertex> & vertices);
         Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices);
@@ -38,11 +38,42 @@ class Mesh final {
         void setColor(glm::vec3 color);
 };
 
+class Texture final {
+    private:
+        unsigned int id = 0;
+        std::string type;
+        std::string path;
+        bool loaded = false;
+        bool valid = false;
+        VkFormat imageFormat;
+        SDL_Surface * textureSurface = nullptr;
+        
+    public:
+        unsigned int getId();
+        std::string getType();
+        bool isValid();
+        VkFormat getImageFormat();
+        void setId(const unsigned int & id);
+        void setType(const std::string & type);
+        void setPath(const std::string & path);
+        void load();
+        Texture() {};
+        ~Texture();
+        static bool findImageFormat(SDL_Surface * surface, VkFormat & format);
+};
+
+struct RenderContext {
+    std::vector<VkCommandBuffer> commandBuffers;
+    VkPipelineLayout graphicsPipelineLayout = nullptr;
+};
+
+
 class Model final {
     private:
         std::string file;
         std::string dir;
         std::vector<Mesh> meshes;
+        std::map<std::string, std::unique_ptr<Texture>> textures;
         bool loaded = false;
         bool visible = true;
 
@@ -53,10 +84,10 @@ class Model final {
         void processNode(const aiNode * node, const aiScene *scene);
         Mesh processMesh(const aiMesh *mesh, const aiScene *scene);
     public:
-        ~Model() {}
+        ~Model();
         Model() {};
         Model(const std::string & dir, const std::string & file);
-        Model(const std::vector<Mesh> meshes);
+        Model(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices);
         void init();
         bool hasBeenLoaded();
         bool isVisible();
@@ -68,17 +99,19 @@ class Model final {
         void setRotation(int xAxis = 0, int yAxis = 0, int zAxis = 0);
         void scale(float factor);
         glm::mat4 getModelMatrix();
+        void addTextures(const aiMaterial * mat, const aiTextureType type, const std::string name);
+        void correctTexturePath(char * path);
     
 };
 
 class Models final {
     private:
-        std::vector<Model> models;
+        std::vector<std::unique_ptr<Model>> models;
         VkDeviceSize totalNumberOfVertices = 0;
         VkDeviceSize totalNumberOfIndices = 0;
 
     public:
-        void addModel(Model & model);
+        void addModel(Model * model);
         void clear();
         void draw(RenderContext & context, int commandBufferIndex, bool useIndices);
         void copyModelsContentIntoBuffer(void* data, bool contentIsIndices, VkDeviceSize maxSize);
@@ -87,6 +120,12 @@ class Models final {
         void setColor(glm::vec3 color);
         void setPosition(float x, float y, float z);
         // TODO: more translation and rotation methods
+        const static std::string AMBIENT_TEXTURE;
+        const static std::string DIFFUSE_TEXTURE;
+        const static std::string SPECULAR_TEXTURE;
+        const static std::string TEXTURE_NORMALS;
+        ~Models();
+
 };
 
 #endif

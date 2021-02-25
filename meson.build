@@ -13,11 +13,12 @@ threadDep = dependency('threads', required: true)
 sdlDep = dependency('SDL2', required: false)
 
 if sdlDep.found()
+    sdlImageDep = dependency('SDL2_image')
    vulkanDep = dependency('vulkan')
    glmDep = dependency('glm', required: true)
    assimpDep = dependency('assimp', required: true)
 
-   dependencies = [threadDep, glmDep, assimpDep, sdlDep, vulkanDep]
+   dependencies = [threadDep, glmDep, assimpDep, sdlDep, sdlImageDep, vulkanDep]
 else
    add_project_arguments('-std:c++latest', language:'cpp')
    sdlIncDir = join_paths(WINDOWS_SDL_PATH, 'include')

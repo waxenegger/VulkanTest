@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <array>
+#include <map>
 
 #include <tuple>
 
@@ -15,6 +16,7 @@
 #include <string.h>
 
 #include <SDL.h>
+ #include <SDL_image.h>
 #include <SDL_vulkan.h>
 #include <vulkan/vulkan.h>
 
@@ -31,5 +33,5 @@
     if (val != VK_SUCCESS) { \
         std::cerr << "Error: " << val << std::endl; \
     };
-    
+        
 #endif

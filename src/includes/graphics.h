@@ -4,7 +4,6 @@
 #include "models.h"
 #include "utils.h"
 
-
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
 class Graphics final {
@@ -160,7 +159,8 @@ class Graphics final {
 
         bool updateSwapChain();
         void drawFrame();
-        void addModel(Model & model);
+        void addModel(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices);
+        void addModel(const std::string & dir, const std::string & file);
         RenderContext & getRenderContext();
         void renderScene();
         void toggleWireFrame();
@@ -169,6 +169,7 @@ class Graphics final {
         Models & getModels();
 
         ~Graphics();
+
 };
 
 #endif

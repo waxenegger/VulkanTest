@@ -19,20 +19,11 @@ private:
         const std::vector<uint32_t> indices = {
             0, 1, 2, 2, 3, 0
         };
-        std::vector<Mesh> meshes;
-        meshes.push_back(Mesh(vertices, indices));
+        this->graphics.addModel(vertices, indices);
 
-        Model rectangle(meshes);
-
-        this->graphics.addModel(rectangle);
-
-        Model teapot("/opt/projects/VulkanTest/res/models/", "teapot.obj");
-        teapot.setColor(glm::vec3(0,1,0));
-        this->graphics.addModel(teapot);
-
-        Model rock("/opt/projects/VulkanTest/res/models/", "batman.obj");
-        this->graphics.addModel(rock);
-
+        this->graphics.addModel("/opt/projects/VulkanTest/res/models/", "teapot.obj");
+        this->graphics.addModel("/opt/projects/VulkanTest/res/models/", "batman.obj");
+        
         return true;
     }
 

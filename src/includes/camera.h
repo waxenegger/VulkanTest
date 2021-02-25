@@ -69,9 +69,4 @@ class Camera
             void updateDirection(const float deltaX, const float  deltaY, float deltaTime = 1.0f);
 };
 
-struct RenderContext {
-    std::vector<VkCommandBuffer> commandBuffers;
-    VkPipelineLayout graphicsPipelineLayout = nullptr;
-};
-
 #endif

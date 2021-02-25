@@ -76,10 +76,11 @@ void Mesh::setColor(glm::vec3 color) {
     }   
 }
 
-Model::Model(const std::vector<Mesh> meshes) {
+Model::Model(const std::vector< Vertex >& vertices, const std::vector< uint32_t > indices)
+{
     this->file = "";
     this->dir = "";
-    this->meshes = meshes;
+    this->meshes = { Mesh(vertices, indices) };
     this->loaded = true;
 }
 
@@ -133,9 +134,17 @@ std::string Model::getPath() {
 Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
      std::vector<Vertex> vertices;
      std::vector<unsigned int> indices;
+     std::vector<std::tuple<int, std::string>> textures;
 
-     // TODO
-     if (scene->HasMaterials()) {}
+     if (scene->HasMaterials()) {
+         const aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+
+         this->addTextures(material, aiTextureType_AMBIENT, Models::AMBIENT_TEXTURE);
+         this->addTextures(material, aiTextureType_DIFFUSE, Models::DIFFUSE_TEXTURE);
+         this->addTextures(material, aiTextureType_SPECULAR, Models::SPECULAR_TEXTURE);
+         this->addTextures(material, aiTextureType_HEIGHT, Models::TEXTURE_NORMALS);
+
+    }
 
      if (mesh->mNumVertices > 0) vertices.reserve(mesh->mNumVertices);
      for(unsigned int i = 0; i < mesh->mNumVertices; i++) {
@@ -206,22 +215,22 @@ void Model::scale(float factor) {
     this->scaleFactor = factor;
 }
 
-void Models::addModel(Model & model) {
-    if (!model.hasBeenLoaded()) return;
-    
-    this->models.push_back(std::move(model));
-    
-    for (Mesh & m : model.getMeshes()) {
+void Models::addModel(Model * model) {
+    if (!model->hasBeenLoaded()) return;
+
+    for (Mesh & m : model->getMeshes()) {
         this->totalNumberOfVertices += m.getVertices().size();
         this->totalNumberOfIndices += m.getIndices().size();
     }
+    
+    this->models.push_back(std::unique_ptr<Model>(model));    
 }
 
 void Models::copyModelsContentIntoBuffer(void* data, bool contentIsIndices, VkDeviceSize maxSize) {
     
     VkDeviceSize overallSize = 0;
-    for (Model & model : this->models) {
-        for (Mesh & mesh : model.getMeshes()) {
+    for (auto & model : this->models) {
+        for (Mesh & mesh : model->getMeshes()) {
             VkDeviceSize dataSize = 0;
             if (contentIsIndices) {
                 dataSize = mesh.getIndices().size() * sizeof(uint32_t);
@@ -246,17 +255,17 @@ void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndic
     VkDeviceSize lastIndexOffset = 0;
 
     int c = 0;
-    for (Model & model : this->models) {
+    for (auto & model : this->models) {
 
         std::vector<ModelProperties> modelProperties;
-        modelProperties.push_back(ModelProperties { model.getModelMatrix() });
+        modelProperties.push_back(ModelProperties { model->getModelMatrix() });
 
         vkCmdPushConstants(
             context.commandBuffers[commandBufferIndex], context.graphicsPipelineLayout,
             VK_SHADER_STAGE_VERTEX_BIT, 0,
             sizeof(struct ModelProperties), modelProperties.data());
         
-        for (Mesh & mesh : model.getMeshes()) {
+        for (Mesh & mesh : model->getMeshes()) {
             VkDeviceSize vertexSize = mesh.getVertices().size();
             VkDeviceSize indexSize = mesh.getIndices().size();
             
@@ -274,6 +283,46 @@ void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndic
     }
 }
 
+void Model::addTextures(const aiMaterial * mat, const aiTextureType type, const std::string name) {
+    for(unsigned int i = 0; i < mat->GetTextureCount(type); i++) {
+        aiString str;
+        mat->GetTexture(type, i, &str);
+
+        if (str.length > 0) this->correctTexturePath(str.data);
+
+        const std::string fullyQualifiedName(this->dir + std::string(str.C_Str(), str.length));
+
+        std::cout << fullyQualifiedName << std::endl;
+        std::unique_ptr texture = std::make_unique<Texture>();
+        texture->setType(name);
+        texture->setPath(fullyQualifiedName);
+        texture->load();
+
+        if (texture->isValid()) {
+            this->textures[str.C_Str()] = std::move(texture);
+        }
+    }
+}
+
+void Model::correctTexturePath(char * path) {
+    int index = 0;
+
+    while(path[index] == '\0') index++;
+
+    if(index != 0) {
+        int i = 0;
+        while(path[i + index] != '\0') {
+            path[i] = path[i + index];
+            i++;
+        }
+        path[i] = '\0';
+    }
+}
+
+Model::~Model() {
+    textures.clear();
+}
+
 void Models::clear() {
     this->totalNumberOfVertices = 0;
     this->totalNumberOfIndices = 0;
@@ -289,13 +338,85 @@ VkDeviceSize Models::getTotalNumberOfIndices() {
 }
 
 void Models::setColor(glm::vec3 color) {
-    for (Model & model : this->models) {
-        model.setColor(color);
+    for (auto & model : this->models) {
+        model->setColor(color);
     }
 }
 
 void Models::setPosition(float x, float y, float z) {
-    for (Model & model : this->models) {
-        model.setPosition(x,y,z);
+    for (auto & model : this->models) {
+        model->setPosition(x,y,z);
     }    
 }
+
+Models::~Models() {
+    this->clear();
+}
+
+unsigned int Texture::getId() {
+    return  this->id;
+}
+
+std::string Texture::getType() {
+    return this->type;
+}
+
+bool Texture::isValid() {
+    return this->valid;
+}
+
+VkFormat Texture::getImageFormat() {
+    return this->imageFormat;
+}
+
+void Texture::setId(const unsigned int & id) {
+    this->id = id;
+}
+
+void Texture::setType(const std::string & type) {
+    this->type = type;
+}
+
+void Texture::setPath(const std::string & path) {
+    this->path = path;
+}
+
+void Texture::load() {
+    if (!this->loaded) {
+        this->textureSurface = IMG_Load(this->path.c_str());
+        if (this->textureSurface != nullptr) {
+            if (!Texture::findImageFormat(this->textureSurface, this->imageFormat)) {
+                std::cerr << "Unsupported Texture Format: " << this->path << std::endl;
+            } else this->valid = true;
+        } else std::cerr << "Failed to load texture: " << this->path << std::endl;
+        this->loaded = true;
+    }
+}
+
+Texture::~Texture() {
+    if (this->textureSurface != nullptr) {
+        SDL_FreeSurface(this->textureSurface);
+        this->textureSurface = nullptr;
+    }
+}
+
+bool Texture::findImageFormat(SDL_Surface * surface, VkFormat & format) {
+    if (surface == nullptr) return false;
+
+    const int nOfColors = surface->format->BytesPerPixel;
+
+    if (nOfColors == 4) {
+        if (surface->format->Rmask == 0x000000ff) format = VK_FORMAT_R8G8B8A8_UINT;
+        else format = VK_FORMAT_B8G8R8A8_UINT;
+    } else if (nOfColors == 3) {
+        if (surface->format->Rmask == 0x000000ff) format = VK_FORMAT_R8G8B8_UINT;
+        else format = VK_FORMAT_B8G8R8_UINT;
+    } else return false;
+
+    return true;
+}
+
+const std::string Models::AMBIENT_TEXTURE = "ambient";
+const std::string Models::DIFFUSE_TEXTURE = "diffuse";
+const std::string Models::SPECULAR_TEXTURE = "specular";
+const std::string Models::TEXTURE_NORMALS = "normals";
