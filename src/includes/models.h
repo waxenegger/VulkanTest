@@ -17,7 +17,7 @@ class Vertex final {
         Vertex(const glm::vec3 & position, const glm::vec3 & color);
 
         static VkVertexInputBindingDescription getBindingDescription();
-        static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions();
+        static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions();
 
         void setUV(const glm::vec2 & uv);
         void setNormal(const glm::vec3 & normal);
@@ -26,16 +26,32 @@ class Vertex final {
         void setColor(const glm::vec3 & color);
 };
 
+struct TextureInformation final {
+    public:
+        int16_t ambientTexture = -1;
+        std::string ambientTextureLocation;
+        int16_t diffuseTexture = -1;
+        std::string diffuseTextureLocation;
+        int16_t specularTexture = -1;
+        std::string specularTextureLocation;
+        int16_t normalTexture = -1;
+        std::string normalTextureLocation;
+};
+
 class Mesh final {
     private:
         std::vector<Vertex> vertices;
-        std::vector<uint32_t> indices; 
+        std::vector<uint32_t> indices;
+        TextureInformation textures;
     public:
         Mesh(const std::vector<Vertex> & vertices);
         Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices);
+        Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, const TextureInformation & textures);
         const std::vector<Vertex> & getVertices() const;
         const std::vector<uint32_t> & getIndices() const;
         void setColor(glm::vec3 color);
+        TextureInformation getTextureInformation();
+        void setTextureInformation(TextureInformation & TextureInformation);
 };
 
 class Texture final {
@@ -73,7 +89,6 @@ class Model final {
         std::string file;
         std::string dir;
         std::vector<Mesh> meshes;
-        std::map<std::string, std::unique_ptr<Texture>> textures;
         bool loaded = false;
         bool visible = true;
 
@@ -99,13 +114,14 @@ class Model final {
         void setRotation(int xAxis = 0, int yAxis = 0, int zAxis = 0);
         void scale(float factor);
         glm::mat4 getModelMatrix();
-        void addTextures(const aiMaterial * mat, const aiTextureType type, const std::string name);
+        TextureInformation addTextures(const aiMaterial * mat);
         void correctTexturePath(char * path);
     
 };
 
 class Models final {
     private:
+        std::map<std::string, std::unique_ptr<Texture>> textures;
         std::vector<std::unique_ptr<Model>> models;
         VkDeviceSize totalNumberOfVertices = 0;
         VkDeviceSize totalNumberOfIndices = 0;
@@ -124,6 +140,7 @@ class Models final {
         const static std::string DIFFUSE_TEXTURE;
         const static std::string SPECULAR_TEXTURE;
         const static std::string TEXTURE_NORMALS;
+        void processTextures(Mesh & mesh);
         ~Models();
 
 };

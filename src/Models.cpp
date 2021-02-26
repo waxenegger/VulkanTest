@@ -17,8 +17,8 @@ VkVertexInputBindingDescription Vertex::getBindingDescription() {
     return bindingDescription;
 }
 
-std::array<VkVertexInputAttributeDescription, 2> Vertex::getAttributeDescriptions() {
-    std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+std::array<VkVertexInputAttributeDescription, 4> Vertex::getAttributeDescriptions() {
+    std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
 
     attributeDescriptions[0].binding = 0;
     attributeDescriptions[0].location = 0;
@@ -29,6 +29,16 @@ std::array<VkVertexInputAttributeDescription, 2> Vertex::getAttributeDescription
     attributeDescriptions[1].location = 1;
     attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
     attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+    attributeDescriptions[2].binding = 0;
+    attributeDescriptions[2].location = 2;
+    attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescriptions[2].offset = offsetof(Vertex, normal);
+
+    attributeDescriptions[3].binding = 0;
+    attributeDescriptions[3].location = 3;
+    attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
+    attributeDescriptions[3].offset = offsetof(Vertex, uv);
 
     return attributeDescriptions;
 }
@@ -62,6 +72,10 @@ Mesh::Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> ind
     this->indices = indices;
 }
 
+Mesh::Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, const TextureInformation & textures) : Mesh(vertices, indices) {
+    this->textures = textures;
+}
+
 const std::vector<Vertex> & Mesh::getVertices() const {
     return this->vertices;
 }
@@ -74,6 +88,14 @@ void Mesh::setColor(glm::vec3 color) {
     for (Vertex & v : this->vertices) {
         v.setColor(color);
     }   
+}
+
+TextureInformation Mesh::getTextureInformation() {
+    return this->textures;
+}
+
+void Mesh::setTextureInformation(TextureInformation & textures) {
+    this->textures = textures;
 }
 
 Model::Model(const std::vector< Vertex >& vertices, const std::vector< uint32_t > indices)
@@ -134,16 +156,12 @@ std::string Model::getPath() {
 Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
      std::vector<Vertex> vertices;
      std::vector<unsigned int> indices;
-     std::vector<std::tuple<int, std::string>> textures;
+     TextureInformation textures;
 
      if (scene->HasMaterials()) {
          const aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
-         this->addTextures(material, aiTextureType_AMBIENT, Models::AMBIENT_TEXTURE);
-         this->addTextures(material, aiTextureType_DIFFUSE, Models::DIFFUSE_TEXTURE);
-         this->addTextures(material, aiTextureType_SPECULAR, Models::SPECULAR_TEXTURE);
-         this->addTextures(material, aiTextureType_HEIGHT, Models::TEXTURE_NORMALS);
-
+         textures = this->addTextures(material);
     }
 
      if (mesh->mNumVertices > 0) vertices.reserve(mesh->mNumVertices);
@@ -174,7 +192,7 @@ Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
          for(unsigned int j = 0; j < face.mNumIndices; j++) indices.push_back(face.mIndices[j]);
      }
 
-     return Mesh(vertices, indices);
+     return Mesh(vertices, indices, textures);
 }
 
 glm::mat4 Model::getModelMatrix() {
@@ -221,16 +239,81 @@ void Models::addModel(Model * model) {
     for (Mesh & m : model->getMeshes()) {
         this->totalNumberOfVertices += m.getVertices().size();
         this->totalNumberOfIndices += m.getIndices().size();
+        this->processTextures(m);
     }
     
     this->models.push_back(std::unique_ptr<Model>(model));    
+}
+
+void Models::processTextures(Mesh & mesh) {
+    TextureInformation textureInfo = mesh.getTextureInformation();
+    
+    std::map<std::string, std::unique_ptr<Texture>>::iterator val;
+    
+    if (!textureInfo.ambientTextureLocation.empty()) {
+        val = this->textures.find(textureInfo.ambientTextureLocation);
+        if (val == this->textures.end()) {
+            std::unique_ptr<Texture> texture = std::make_unique<Texture>();
+            texture->setPath(textureInfo.ambientTextureLocation);
+            texture->load();
+            if (texture->isValid()) {
+                textureInfo.ambientTexture = this->textures.size() + 1;
+                texture->setId(textureInfo.ambientTexture);
+                this->textures[textureInfo.ambientTextureLocation] = std::move(texture);
+            }
+        }
+    }
+
+    if (!textureInfo.diffuseTextureLocation.empty()) {
+        val = this->textures.find(textureInfo.diffuseTextureLocation);
+        if (val == this->textures.end()) {
+            std::unique_ptr<Texture> texture = std::make_unique<Texture>();
+            texture->setPath(textureInfo.diffuseTextureLocation);
+            texture->load();
+            if (texture->isValid()) {
+                textureInfo.diffuseTexture = this->textures.size() + 1;
+                texture->setId(textureInfo.diffuseTexture);
+                this->textures[textureInfo.diffuseTextureLocation] = std::move(texture);
+            }
+        }
+    }
+
+    if (!textureInfo.specularTextureLocation.empty()) {
+        val = this->textures.find(textureInfo.specularTextureLocation);
+        if (val == this->textures.end()) {
+            std::unique_ptr<Texture> texture = std::make_unique<Texture>();
+            texture->setPath(textureInfo.specularTextureLocation);
+            texture->load();
+            if (texture->isValid()) {
+                textureInfo.specularTexture = this->textures.size() + 1;
+                texture->setId(textureInfo.specularTexture);
+                this->textures[textureInfo.specularTextureLocation] = std::move(texture);
+            }
+        }
+    }
+
+    if (!textureInfo.specularTextureLocation.empty()) {
+        val = this->textures.find(textureInfo.normalTextureLocation);
+        if (val == this->textures.end()) {
+            std::unique_ptr<Texture> texture = std::make_unique<Texture>();
+            texture->setPath(textureInfo.normalTextureLocation);
+            texture->load();
+            if (texture->isValid()) {
+                textureInfo.normalTexture = this->textures.size() + 1;
+                texture->setId(textureInfo.normalTexture);
+                this->textures[textureInfo.normalTextureLocation] = std::move(texture);
+            }
+        }
+    }
+    
+    mesh.setTextureInformation(textureInfo);
 }
 
 void Models::copyModelsContentIntoBuffer(void* data, bool contentIsIndices, VkDeviceSize maxSize) {
     
     VkDeviceSize overallSize = 0;
     for (auto & model : this->models) {
-        for (Mesh & mesh : model->getMeshes()) {
+        for (Mesh & mesh : model->getMeshes()) {            
             VkDeviceSize dataSize = 0;
             if (contentIsIndices) {
                 dataSize = mesh.getIndices().size() * sizeof(uint32_t);
@@ -283,25 +366,38 @@ void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndic
     }
 }
 
-void Model::addTextures(const aiMaterial * mat, const aiTextureType type, const std::string name) {
-    for(unsigned int i = 0; i < mat->GetTextureCount(type); i++) {
+TextureInformation Model::addTextures(const aiMaterial * mat) {
+    TextureInformation textureInfo;
+    
+    if (mat->GetTextureCount(aiTextureType_AMBIENT) > 0) {
         aiString str;
-        mat->GetTexture(type, i, &str);
-
+        mat->GetTexture(aiTextureType_AMBIENT, 0, &str);
         if (str.length > 0) this->correctTexturePath(str.data);
-
-        const std::string fullyQualifiedName(this->dir + std::string(str.C_Str(), str.length));
-
-        std::cout << fullyQualifiedName << std::endl;
-        std::unique_ptr texture = std::make_unique<Texture>();
-        texture->setType(name);
-        texture->setPath(fullyQualifiedName);
-        texture->load();
-
-        if (texture->isValid()) {
-            this->textures[str.C_Str()] = std::move(texture);
-        }
+        textureInfo.ambientTextureLocation = std::string(this->dir + std::string(str.C_Str(), str.length));
     }
+
+    if (mat->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
+        aiString str;
+        mat->GetTexture(aiTextureType_DIFFUSE, 0, &str);
+        if (str.length > 0) this->correctTexturePath(str.data);
+        textureInfo.diffuseTextureLocation = std::string(this->dir + std::string(str.C_Str(), str.length));
+    }
+
+    if (mat->GetTextureCount(aiTextureType_SPECULAR) > 0) {
+        aiString str;
+        mat->GetTexture(aiTextureType_SPECULAR, 0, &str);
+        if (str.length > 0) this->correctTexturePath(str.data);
+        textureInfo.specularTextureLocation = std::string(this->dir + std::string(str.C_Str(), str.length));
+    }
+
+    if (mat->GetTextureCount(aiTextureType_NORMALS) > 0) {
+        aiString str;
+        mat->GetTexture(aiTextureType_NORMALS, 0, &str);
+        if (str.length > 0) this->correctTexturePath(str.data);
+        textureInfo.normalTextureLocation = std::string(this->dir + std::string(str.C_Str(), str.length));
+    }
+
+    return textureInfo;
 }
 
 void Model::correctTexturePath(char * path) {
@@ -319,14 +415,13 @@ void Model::correctTexturePath(char * path) {
     }
 }
 
-Model::~Model() {
-    textures.clear();
-}
+Model::~Model() {}
 
 void Models::clear() {
     this->totalNumberOfVertices = 0;
     this->totalNumberOfIndices = 0;
     this->models.clear();
+    this->textures.clear();
 }
 
 VkDeviceSize Models::getTotalNumberOfVertices() {
