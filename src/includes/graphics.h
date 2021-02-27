@@ -5,6 +5,7 @@
 #include "utils.h"
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
+const int MAX_TEXTURES = 25;
 
 class Graphics final {
     private:
@@ -16,7 +17,7 @@ class Graphics final {
         std::vector<const char *> vkExtensionNames;
         std::vector<VkPhysicalDevice> vkPhysicalDevices;
         std::vector<const char *> vkLayerNames = {
-          //  "VK_LAYER_KHRONOS_validation"
+          // "VK_LAYER_KHRONOS_validation"
         };
 
         bool showWireFrame = false;
@@ -164,6 +165,7 @@ class Graphics final {
 
         bool updateSwapChain();
         void drawFrame();
+        void addModel(Model * model);
         void addModel(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices);
         void addModel(const std::string & dir, const std::string & file);
         bool prepareModels();

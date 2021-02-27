@@ -15,6 +15,10 @@ struct ModelUniforms final {
 struct ModelProperties final {
     public:
         glm::mat4 matrix;
+        int ambientTexture = -1;
+        int diffuseTexture = -1;
+        int specularTexture = -1;
+        int normalTexture = -1;
 };
 
 class Camera

@@ -28,14 +28,18 @@ class Vertex final {
 
 struct TextureInformation final {
     public:
-        int16_t ambientTexture = -1;
+        int ambientTexture = -1;
         std::string ambientTextureLocation;
-        int16_t diffuseTexture = -1;
+        int diffuseTexture = -1;
         std::string diffuseTextureLocation;
-        int16_t specularTexture = -1;
+        int specularTexture = -1;
         std::string specularTextureLocation;
-        int16_t normalTexture = -1;
+        int normalTexture = -1;
         std::string normalTextureLocation;
+        bool hasTextures() {
+          return this->ambientTexture != -1 || this->diffuseTexture != -1 ||
+                this->specularTexture != -1 || this->normalTexture != -1;   
+        }
 };
 
 class Mesh final {
@@ -88,6 +92,7 @@ class Texture final {
         void setTextureImage(VkImage & image);
         void setTextureImageMemory(VkDeviceMemory & imageMemory);
         void setTextureImageView(VkImageView & imageView);
+        VkImageView & getTextureImageView();
 };
 
 struct RenderContext {
@@ -123,6 +128,7 @@ class Model final {
         void setColor(glm::vec3 color);
         void setPosition(float x, float y, float z);
         void setPosition(glm::vec3 position);
+        glm::vec3 getPosition();
         void setRotation(int xAxis = 0, int yAxis = 0, int zAxis = 0);
         void scale(float factor);
         glm::mat4 getModelMatrix();
@@ -154,6 +160,7 @@ class Models final {
         const static std::string TEXTURE_NORMALS;
         void processTextures(Mesh & mesh);
         std::map<std::string, std::unique_ptr<Texture>> &  getTextures();
+        VkImageView findTextureImageViewById(unsigned int id); 
         void cleanUpTextures(const VkDevice & device);
         ~Models();
 

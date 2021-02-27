@@ -162,8 +162,8 @@ Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
          const aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
          textures = this->addTextures(material);
-    }
-
+     }
+     
      if (mesh->mNumVertices > 0) vertices.reserve(mesh->mNumVertices);
      for(unsigned int i = 0; i < mesh->mNumVertices; i++) {
          Vertex vertex(glm::vec3(mesh->mVertices[i].x, -mesh->mVertices[i].y, mesh->mVertices[i].z), glm::vec3(1.0f));
@@ -221,6 +221,10 @@ void Model::setPosition(glm::vec3 position) {
     this->position = position;
 }
 
+glm::vec3 Model::getPosition() {
+    return this->position;
+}
+
 void Model::setRotation(int xAxis, int yAxis, int zAxis) {
     this->rotation.x = glm::radians(static_cast<float>(xAxis));
     this->rotation.y = glm::radians(static_cast<float>(yAxis));
@@ -245,6 +249,14 @@ void Models::addModel(Model * model) {
     this->models.push_back(std::unique_ptr<Model>(model));    
 }
 
+VkImageView Models::findTextureImageViewById(unsigned int id) {
+    for (auto & t : this->textures) {
+        if (t.second->getId() == id) return t.second->getTextureImageView();
+    }
+    
+    return nullptr;
+}
+
 void Models::processTextures(Mesh & mesh) {
     TextureInformation textureInfo = mesh.getTextureInformation();
     
@@ -257,7 +269,7 @@ void Models::processTextures(Mesh & mesh) {
             texture->setPath(textureInfo.ambientTextureLocation);
             texture->load();
             if (texture->isValid()) {
-                textureInfo.ambientTexture = this->textures.size() + 1;
+                textureInfo.ambientTexture = static_cast<int>(this->textures.empty() ? 0 : this->textures.size());
                 texture->setId(textureInfo.ambientTexture);
                 this->textures[textureInfo.ambientTextureLocation] = std::move(texture);
             }
@@ -271,7 +283,7 @@ void Models::processTextures(Mesh & mesh) {
             texture->setPath(textureInfo.diffuseTextureLocation);
             texture->load();
             if (texture->isValid()) {
-                textureInfo.diffuseTexture = this->textures.size() + 1;
+                textureInfo.diffuseTexture = static_cast<int>(this->textures.empty() ? 0 : this->textures.size());
                 texture->setId(textureInfo.diffuseTexture);
                 this->textures[textureInfo.diffuseTextureLocation] = std::move(texture);
             }
@@ -285,7 +297,7 @@ void Models::processTextures(Mesh & mesh) {
             texture->setPath(textureInfo.specularTextureLocation);
             texture->load();
             if (texture->isValid()) {
-                textureInfo.specularTexture = this->textures.size() + 1;
+                textureInfo.specularTexture = static_cast<int>(this->textures.empty() ? 0 : this->textures.size());
                 texture->setId(textureInfo.specularTexture);
                 this->textures[textureInfo.specularTextureLocation] = std::move(texture);
             }
@@ -299,7 +311,7 @@ void Models::processTextures(Mesh & mesh) {
             texture->setPath(textureInfo.normalTextureLocation);
             texture->load();
             if (texture->isValid()) {
-                textureInfo.normalTexture = this->textures.size() + 1;
+                textureInfo.normalTexture = static_cast<int>(this->textures.empty() ? 0 : this->textures.size());
                 texture->setId(textureInfo.normalTexture);
                 this->textures[textureInfo.normalTextureLocation] = std::move(texture);
             }
@@ -339,18 +351,23 @@ void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndic
 
     int c = 0;
     for (auto & model : this->models) {
-
-        std::vector<ModelProperties> modelProperties;
-        modelProperties.push_back(ModelProperties { model->getModelMatrix() });
-
-        vkCmdPushConstants(
-            context.commandBuffers[commandBufferIndex], context.graphicsPipelineLayout,
-            VK_SHADER_STAGE_VERTEX_BIT, 0,
-            sizeof(struct ModelProperties), modelProperties.data());
-        
         for (Mesh & mesh : model->getMeshes()) {
             VkDeviceSize vertexSize = mesh.getVertices().size();
             VkDeviceSize indexSize = mesh.getIndices().size();
+
+            TextureInformation textureInfo = mesh.getTextureInformation();
+            ModelProperties modelProps = { 
+                model->getModelMatrix(),
+                 textureInfo.ambientTexture,
+                 textureInfo.diffuseTexture,
+                 textureInfo.specularTexture,
+                 textureInfo.normalTexture
+            };
+
+            vkCmdPushConstants(
+                context.commandBuffers[commandBufferIndex], context.graphicsPipelineLayout,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                sizeof(struct ModelProperties), &modelProps);
             
             if (useIndices) {
                 vkCmdDrawIndexed(context.commandBuffers[commandBufferIndex], indexSize , 1, lastIndexOffset, lastVertexOffset, 0);
@@ -415,7 +432,9 @@ void Model::correctTexturePath(char * path) {
     }
 }
 
-Model::~Model() {}
+Model::~Model() {
+    
+}
 
 void Models::clear() {
     this->totalNumberOfVertices = 0;
@@ -424,7 +443,8 @@ void Models::clear() {
     this->textures.clear();
 }
 
-std::map<std::string, std::unique_ptr<Texture>> & Models::getTextures() {
+std::map< std::string, std::unique_ptr< Texture >>& Models::getTextures()
+{
     return this->textures;
 }
 
@@ -472,6 +492,10 @@ bool Texture::isValid() {
 
 VkFormat Texture::getImageFormat() {
     return this->imageFormat;
+}
+
+VkImageView & Texture::getTextureImageView() {
+    return this->textureImageView;
 }
 
 void Texture::setId(const unsigned int & id) {

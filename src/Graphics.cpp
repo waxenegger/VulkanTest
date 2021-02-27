@@ -740,7 +740,7 @@ bool Graphics::createGraphicsPipeline() {
     colorBlending.blendConstants[3] = 0.0f;
 
     VkPushConstantRange pushConstantRange{};
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pushConstantRange.offset = 0;
     pushConstantRange.size = sizeof(struct ModelProperties);
 
@@ -818,15 +818,18 @@ bool Graphics::createFramebuffers() {
 }
 
 bool Graphics::createDescriptorPool() {
-    VkDescriptorPoolSize poolSize {};
-    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSize.descriptorCount = static_cast<uint32_t>(this->swapChainImages.size());
+    std::array<VkDescriptorPoolSize, 2> poolSizes{};
+
+    poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSizes[0].descriptorCount = static_cast<uint32_t>(this->swapChainImages.size());
+    poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_TEXTURES * 2);
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.poolSizeCount = 1;
-    poolInfo.pPoolSizes = &poolSize;
-    poolInfo.maxSets = static_cast<uint32_t>(this->swapChainImages.size());
+    poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+    poolInfo.pPoolSizes = poolSizes.data();
+    poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
 
     VkResult ret = vkCreateDescriptorPool(device, &poolInfo, nullptr, &this->descriptorPool);
     ASSERT_VULKAN(ret);
@@ -917,10 +920,19 @@ bool Graphics::createDescriptorSetLayout() {
     modelUniformLayoutBinding.pImmutableSamplers = nullptr;
     modelUniformLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
+    VkDescriptorSetLayoutBinding samplersLayoutBinding{};
+    samplersLayoutBinding.binding = 1;
+    samplersLayoutBinding.descriptorCount = this->models.getTextures().size();
+    samplersLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    samplersLayoutBinding.pImmutableSamplers = nullptr;
+    samplersLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    std::array<VkDescriptorSetLayoutBinding, 2> layoutBindings = { modelUniformLayoutBinding, samplersLayoutBinding };
+
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = 1;
-    layoutInfo.pBindings = &modelUniformLayoutBinding;
+    layoutInfo.bindingCount = layoutBindings.size();
+    layoutInfo.pBindings = layoutBindings.data();
 
     VkResult ret = vkCreateDescriptorSetLayout(this->device, &layoutInfo, nullptr, &this->descriptorSetLayout);
     ASSERT_VULKAN(ret);
@@ -946,23 +958,25 @@ bool Graphics::createDescriptorSets() {
         std::cerr << "Failed to Allocate Descriptor Sets!" << std::endl;
         return false;
     }
-    
+
+    std::map<std::string, std::unique_ptr<Texture>> & textures = this->models.getTextures();
+    uint32_t numberOfTextures = textures.size();        
+
+    VkDescriptorImageInfo descriptorImageInfos[numberOfTextures];
+    for (uint32_t i = 0; i < numberOfTextures; ++i) {
+        descriptorImageInfos[i].sampler = this->textureSampler;
+        descriptorImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        auto t = this->models.findTextureImageViewById(i);
+        descriptorImageInfos[i].imageView = t;
+    }
+
     for (size_t i = 0; i < this->descriptorSets.size(); i++) {
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = this->uniformBuffers[i];
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(struct ModelUniforms);
-        
-        /*
-        uint32_t numberOfTextures = this->models.getTextures().size();
-        VkDescriptorImageInfo descriptorImageInfos[numberOfTextures];
-        for (uint32_t i = 0; i < numberOfTextures; ++i) {
-            descriptorImageInfos[i].sampler = this->textureSampler;
-            descriptorImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            descriptorImageInfos[i].imageView = nullptr; // TODO: set
-        }*/
 
-        std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = descriptorSets[i];
@@ -972,7 +986,6 @@ bool Graphics::createDescriptorSets() {
         descriptorWrites[0].descriptorCount = 1;
         descriptorWrites[0].pBufferInfo = &bufferInfo;
 
-        /*
         descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[1].dstSet = descriptorSets[i];
         descriptorWrites[1].dstBinding = 1;
@@ -980,8 +993,8 @@ bool Graphics::createDescriptorSets() {
         descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrites[1].descriptorCount = numberOfTextures;
         descriptorWrites[1].pImageInfo = descriptorImageInfos;
-        */
-        
+        descriptorWrites[1].dstSet = this->descriptorSets[i];
+
         vkUpdateDescriptorSets(this->device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
     
@@ -1626,6 +1639,11 @@ bool Graphics::transitionImageLayout(VkImage image, VkFormat format, VkImageLayo
     this->endSingleTimeCommands(commandBuffer);
     
     return true;
+}
+
+void Graphics::addModel(Model * model) {
+     std::unique_ptr<Model> modelPtr(model);
+     if (model->hasBeenLoaded()) this->models.addModel(modelPtr.release());
 }
 
 void Graphics::addModel(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices) {

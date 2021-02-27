@@ -21,8 +21,24 @@ private:
         };
         this->graphics.addModel(vertices, indices);
 
-        this->graphics.addModel("/opt/projects/VulkanTest/res/models/", "teapot.obj");
-        this->graphics.addModel("/opt/projects/VulkanTest/res/models/", "batman.obj");
+        Model * batman = new Model("/opt/projects/VulkanTest/res/models/", "batman.obj");
+        this->graphics.addModel(batman);
+
+        for (int i=0;i<10;i++) {
+            for (int j=0;j<10;j++) {
+                Model * teapot = new Model("/opt/projects/VulkanTest/res/models/", "teapot.obj");
+                teapot->setColor(glm::vec3(1.0f, 0.0f, 0.0f));
+
+                glm::vec3 pos = teapot->getPosition();
+                pos.z -= i * 10;
+                pos.x -= j * 10;
+                teapot->setPosition(pos);
+                this->graphics.addModel(teapot);
+            }
+        }
+
+        Model * nanosuit = new Model("/opt/projects/VulkanTest/res/models/", "nanosuit.obj");
+        this->graphics.addModel(nanosuit);
         
         return true;
     }

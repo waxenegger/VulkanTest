@@ -8,6 +8,8 @@
 #include <vector>
 #include <array>
 #include <map>
+#include <functional>
+#include <algorithm>
 
 #include <tuple>
 
