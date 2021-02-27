@@ -8,6 +8,8 @@ private:
     Graphics & graphics = Graphics::instance();
 
     bool addModels() {
+        std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+
         if (!this->graphics.isActive()) return false;
 
         const std::vector<Vertex> vertices = {
@@ -21,8 +23,13 @@ private:
         };
         this->graphics.addModel(vertices, indices);
 
+        std::chrono::high_resolution_clock::time_point batmanStart = std::chrono::high_resolution_clock::now();
+
         Model * batman = new Model("/opt/projects/VulkanTest/res/models/", "batman.obj");
         this->graphics.addModel(batman);
+
+        std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - batmanStart;
+        std::cout << "load batman: " << time_span.count() <<  std::endl;
 
         for (int i=0;i<10;i++) {
             for (int j=0;j<10;j++) {
@@ -37,14 +44,24 @@ private:
             }
         }
 
+        std::chrono::high_resolution_clock::time_point nanosuitStart = std::chrono::high_resolution_clock::now();
+
         Model * nanosuit = new Model("/opt/projects/VulkanTest/res/models/", "nanosuit.obj");
         this->graphics.addModel(nanosuit);
+
+        time_span = std::chrono::high_resolution_clock::now() - nanosuitStart;
+        std::cout << "load nanosuit: " << time_span.count() <<  std::endl;
+
+        time_span = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "load models: " << time_span.count() <<  std::endl;
         
         return true;
     }
 
 public:
     void run() {
+        std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+
         this->graphics.init(this->APP_NAME, VK_MAKE_VERSION(1,0,0));
         if (this->graphics.isActive()) {
             this->graphics.listVkExtensions();
@@ -74,6 +91,9 @@ public:
             if (!this->graphics.updateSwapChain()) {
                 return;
             }
+
+            std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
+            std::cout << "initial wait till draw loop: " << time_span.count() <<  std::endl;
 
             float u = 0.0f;
             while(!quit) {

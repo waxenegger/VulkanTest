@@ -111,8 +111,13 @@ Model::Model(const std::string & dir, const std::string & file) {
     this->dir = dir;
     Assimp::Importer importer;
 
+    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+
     const aiScene *scene = importer.ReadFile(this->file.c_str(),
             aiProcess_Triangulate | aiProcess_CalcTangentSpace | aiProcess_FlipUVs | aiProcess_GenSmoothNormals);
+
+    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
+    std::cout << "assimp file read: " << time_span.count() <<  std::endl;
 
     if (scene == nullptr) {
         std::cerr << importer.GetErrorString() << std::endl;
@@ -120,8 +125,13 @@ Model::Model(const std::string & dir, const std::string & file) {
     }
 
     if (scene->HasMeshes()) {
+        start = std::chrono::high_resolution_clock::now();
+
         this->processNode(scene->mRootNode, scene);
         this->loaded = true;
+
+        std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
+        std::cout << "assimp mesh process: " << time_span.count() <<  std::endl;
     } else std::cerr << "Model does not contain meshes" << std::endl;
 }
 
@@ -304,7 +314,7 @@ void Models::processTextures(Mesh & mesh) {
         }
     }
 
-    if (!textureInfo.specularTextureLocation.empty()) {
+    if (!textureInfo.normalTextureLocation.empty()) {
         val = this->textures.find(textureInfo.normalTextureLocation);
         if (val == this->textures.end()) {
             std::unique_ptr<Texture> texture = std::make_unique<Texture>();
@@ -389,29 +399,33 @@ TextureInformation Model::addTextures(const aiMaterial * mat) {
     if (mat->GetTextureCount(aiTextureType_AMBIENT) > 0) {
         aiString str;
         mat->GetTexture(aiTextureType_AMBIENT, 0, &str);
+        
         if (str.length > 0) this->correctTexturePath(str.data);
-        textureInfo.ambientTextureLocation = std::string(this->dir + std::string(str.C_Str(), str.length));
+        textureInfo.ambientTextureLocation = std::string(this->dir + std::string(str.C_Str()));
     }
 
     if (mat->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
         aiString str;
         mat->GetTexture(aiTextureType_DIFFUSE, 0, &str);
+
         if (str.length > 0) this->correctTexturePath(str.data);
-        textureInfo.diffuseTextureLocation = std::string(this->dir + std::string(str.C_Str(), str.length));
+        textureInfo.diffuseTextureLocation = std::string(this->dir + std::string(str.C_Str()));
     }
 
     if (mat->GetTextureCount(aiTextureType_SPECULAR) > 0) {
         aiString str;
         mat->GetTexture(aiTextureType_SPECULAR, 0, &str);
+
         if (str.length > 0) this->correctTexturePath(str.data);
-        textureInfo.specularTextureLocation = std::string(this->dir + std::string(str.C_Str(), str.length));
+        textureInfo.specularTextureLocation = std::string(this->dir + std::string(str.C_Str()));
     }
 
     if (mat->GetTextureCount(aiTextureType_NORMALS) > 0) {
         aiString str;
         mat->GetTexture(aiTextureType_NORMALS, 0, &str);
+
         if (str.length > 0) this->correctTexturePath(str.data);
-        textureInfo.normalTextureLocation = std::string(this->dir + std::string(str.C_Str(), str.length));
+        textureInfo.normalTextureLocation = std::string(this->dir + std::string(str.C_Str()));
     }
 
     return textureInfo;
@@ -524,6 +538,7 @@ void Texture::setTextureImageView(VkImageView & imageView) {
 
 void Texture::load() {
     if (!this->loaded) {
+        std::cerr << "Loading texture: " << this->path << std::endl;
         this->textureSurface = IMG_Load(this->path.c_str());
         if (this->textureSurface != nullptr) {
             if (!this->readImageFormat()) {
@@ -598,19 +613,37 @@ bool Texture::readImageFormat() {
             this->imageFormat = VK_FORMAT_B8G8R8A8_SRGB;
             aMask = 0xff000000;
         }
-        
+                
         // convert to 32 bit
         SDL_Surface * tmpSurface = SDL_CreateRGBSurface(
             0, this->textureSurface->w, this->textureSurface->h, 32, 
             this->textureSurface->format->Rmask, this->textureSurface->format->Gmask, this->textureSurface->format->Bmask, aMask);
+
+        // attempt twice with different pixel format
+        if (tmpSurface == nullptr) {
+            std::cerr << "Conversion Failed. Try something else for: " << this->path << std::endl;
+
+            tmpSurface = SDL_CreateRGBSurface(
+                0, this->textureSurface->w, this->textureSurface->h, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);                
+
+            if (tmpSurface == nullptr) {
+                tmpSurface = SDL_CreateRGBSurface(
+                    0, this->textureSurface->w, this->textureSurface->h, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0x000000ff);                
+            }
+        }
         
-        if (tmpSurface != nullptr) {
+        // either conversion has worked or not
+        if (tmpSurface != nullptr) {            
             SDL_SetSurfaceAlphaMod(tmpSurface, 0);
             if (SDL_BlitSurface(this->textureSurface, nullptr, tmpSurface , nullptr) == 0) {
                 SDL_FreeSurface(this->textureSurface);
                 this->textureSurface = tmpSurface;
-            } else return false;
+            } else {
+                std::cerr << "SDL_BlitSurface Failed (on conversion): " << SDL_GetError() << std::endl;
+                return false;
+            }
         } else {
+            std::cerr << "SDL_CreateRGBSurface Failed (on conversion): " << SDL_GetError() << std::endl;
             return false;
         }
     } else return false;

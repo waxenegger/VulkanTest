@@ -32,6 +32,8 @@ void Graphics::init(const std::string & appName, uint32_t version) {
 }
 
 bool Graphics::initVulkan(const std::string & appName, uint32_t version) {
+    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+    
     this->queryVkInstanceExtensions();
 
     this->createVkInstance(appName, version);
@@ -61,12 +63,21 @@ bool Graphics::initVulkan(const std::string & appName, uint32_t version) {
     
     if (!this->createSyncObjects()) return false;
 
+    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
+    std::cout << "initVulkan: " << time_span.count() <<  std::endl;
+    
     return true;
 }
 
 bool Graphics::prepareModels() {
+    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+
     this->prepareModelTextures();
     if (!this->createUniformBuffers()) return false;
+    
+    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
+    std::cout << "prepareModels: " << time_span.count() <<  std::endl;
+
     return true;
 }
 
@@ -120,6 +131,8 @@ std::tuple< int, int > Graphics::getWindowSize()
 };
 
 bool Graphics::createSwapChain() {
+    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+
     if (this->device == nullptr) return false;
 
     const std::vector<VkPresentModeKHR> presentModes = this->queryDeviceSwapModes();
@@ -190,6 +203,9 @@ bool Graphics::createSwapChain() {
         std::cerr << "Failed to Create Swap Chain Images!" << std::endl;
         return false;
     }
+
+    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
+    std::cout << "createSwapChain: " << time_span.count() << std::endl;
 
     return true;
 }
@@ -504,6 +520,8 @@ std::vector<VkExtensionProperties> Graphics::queryPhysicalDeviceExtensions(const
 }
 
 void Graphics::createVkInstance(const std::string & appName, uint32_t version) {
+    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+
     VkApplicationInfo app;
     app.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app.pNext = nullptr,
@@ -525,6 +543,9 @@ void Graphics::createVkInstance(const std::string & appName, uint32_t version) {
 
     const VkResult ret = vkCreateInstance(&inst_info, nullptr, &this->vkInstance);
     ASSERT_VULKAN(ret);
+    
+    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
+    std::cout << "createVkInstance: " << time_span.count() <<  std::endl;
 }
 
 void Graphics::queryPhysicalDevices() {
@@ -635,6 +656,8 @@ VkShaderModule Graphics::createShaderModule(const std::vector<char> & code) {
 }
 
 bool Graphics::createGraphicsPipeline() {
+    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+
     // TODO: modify, to optimize
     std::vector<char> vertShaderCode;
     std::vector<char> fragShaderCode;
@@ -784,6 +807,9 @@ bool Graphics::createGraphicsPipeline() {
 
     vkDestroyShaderModule(this->device, fragShaderModule, nullptr);
     vkDestroyShaderModule(this->device, vertShaderModule, nullptr);
+
+    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
+    std::cout << "createGraphicsPipeline: " << time_span.count() <<  std::endl;
 
     return true;
  }
@@ -1104,6 +1130,8 @@ bool Graphics::createCommandBuffers() {
    }
 
 bool Graphics::updateSwapChain() {
+    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+    
     if (this->device == nullptr) return false;
 
     this->cleanupSwapChain();
@@ -1115,6 +1143,9 @@ bool Graphics::updateSwapChain() {
     if (!this->createDepthResources()) return false;
     if (!this->createFramebuffers()) return false;
     if (!this->createCommandBuffers()) return false;
+
+    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
+    std::cout << "updateSwapChain: " << time_span.count() <<  std::endl;
 
     return true;
 }
@@ -1213,6 +1244,8 @@ void Graphics::renderScene() {
 }
     
 void Graphics::drawFrame() {
+    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+
     VkResult ret = vkWaitForFences(device, 1, &this->inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
     if (ret != VK_SUCCESS) {
@@ -1285,6 +1318,9 @@ void Graphics::drawFrame() {
     }
 
     this->currentFrame = (this->currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+    
+    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
+    std::cout << "drawFrame: " << time_span.count() <<  std::endl;
 }
 
 void Graphics::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
@@ -1362,8 +1398,10 @@ bool Graphics::createUniformBuffers() {
     this->uniformBuffersMemory.resize(this->swapChainImages.size());
 
     for (size_t i = 0; i < this->swapChainImages.size(); i++) {
-        this->createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-                        this->uniformBuffers[i], this->uniformBuffersMemory[i]);
+        this->createBuffer(
+            bufferSize, 
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+            this->uniformBuffers[i], this->uniformBuffersMemory[i]);
     }
     
     if (!this->createDescriptorSets()) return false;
@@ -1372,12 +1410,16 @@ bool Graphics::createUniformBuffers() {
 }
 
 bool Graphics::createBuffersFromModel() {
+    std::chrono::high_resolution_clock::time_point beginning = std::chrono::high_resolution_clock::now();
+     
     if (this->models.getTotalNumberOfVertices() == 0) return true;
 
     if (this->vertexBuffer != nullptr) vkDestroyBuffer(this->device, this->vertexBuffer, nullptr);
     if (this->vertexBufferMemory != nullptr) vkFreeMemory(this->device, this->vertexBufferMemory, nullptr);
 
     VkDeviceSize bufferSize = sizeof(class Vertex) * this->models.getTotalNumberOfVertices();
+
+    std::chrono::high_resolution_clock::time_point stagingVertexBufferCreate = std::chrono::high_resolution_clock::now();
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1388,11 +1430,21 @@ bool Graphics::createBuffersFromModel() {
         std::cerr << "Failed to get Create Staging Buffer" << std::endl;
         return false;
     }
+    
+    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - stagingVertexBufferCreate;
+    std::cout << "stagingVertexBufferCreate: " << time_span.count() <<  std::endl;
+
+    std::chrono::high_resolution_clock::time_point stagingVertexBufferCopy = std::chrono::high_resolution_clock::now();
 
     void* data = nullptr;
     vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
     this->models.copyModelsContentIntoBuffer(data, false, bufferSize);
     vkUnmapMemory(this->device, stagingBufferMemory);
+
+    time_span = std::chrono::high_resolution_clock::now() - stagingVertexBufferCopy;
+    std::cout << "stagingVertexBufferCopy: " << time_span.count() <<  std::endl;
+
+    std::chrono::high_resolution_clock::time_point vertexBufferCreate = std::chrono::high_resolution_clock::now();
 
     if (!this->createBuffer(
             bufferSize,
@@ -1402,7 +1454,15 @@ bool Graphics::createBuffersFromModel() {
         return false;
     }
 
+    time_span = std::chrono::high_resolution_clock::now() - vertexBufferCreate;
+    std::cout << "vertexBufferCreate: " << time_span.count() <<  std::endl;
+
+    std::chrono::high_resolution_clock::time_point vertexBufferCopy = std::chrono::high_resolution_clock::now();
+
     this->copyBuffer(stagingBuffer,this->vertexBuffer, bufferSize);
+
+    time_span = std::chrono::high_resolution_clock::now() - vertexBufferCopy;
+    std::cout << "vertexBufferCopy: " << time_span.count() <<  std::endl;
 
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
@@ -1415,6 +1475,8 @@ bool Graphics::createBuffersFromModel() {
 
     bufferSize = sizeof(uint32_t) * this->models.getTotalNumberOfIndices();
 
+    std::chrono::high_resolution_clock::time_point stagingIndexBufferCreate = std::chrono::high_resolution_clock::now();
+    
     if (!this->createBuffer(
             bufferSize,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -1422,11 +1484,21 @@ bool Graphics::createBuffersFromModel() {
         std::cerr << "Failed to get Create Staging Buffer" << std::endl;
         return false;
     }
+    
+    time_span = std::chrono::high_resolution_clock::now() - stagingIndexBufferCreate;
+    std::cout << "stagingIndexBufferCreate: " << time_span.count() <<  std::endl;
+
+    std::chrono::high_resolution_clock::time_point stagingIndexBufferCopy = std::chrono::high_resolution_clock::now();
 
     data = nullptr;
     vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
     this->models.copyModelsContentIntoBuffer(data, true, bufferSize);
     vkUnmapMemory(this->device, stagingBufferMemory);
+
+    time_span = std::chrono::high_resolution_clock::now() - stagingIndexBufferCopy;
+    std::cout << "stagingIndexBufferCopy: " << time_span.count() <<  std::endl;
+
+    std::chrono::high_resolution_clock::time_point startIndexBufferCreate = std::chrono::high_resolution_clock::now();
 
     if (!this->createBuffer(
             bufferSize,
@@ -1435,11 +1507,22 @@ bool Graphics::createBuffersFromModel() {
         std::cerr << "Failed to get Create Vertex Buffer" << std::endl;
         return false;
     }
+    
+    time_span = std::chrono::high_resolution_clock::now() - startIndexBufferCreate;
+    std::cout << "indexBufferCreate: " << time_span.count() <<  std::endl;
 
+    std::chrono::high_resolution_clock::time_point startIndexBufferCopy = std::chrono::high_resolution_clock::now();
+    
     this->copyBuffer(stagingBuffer,this->indexBuffer, bufferSize);
 
+    time_span = std::chrono::high_resolution_clock::now() - startIndexBufferCopy;
+    std::cout << "indexBufferCopy: " << time_span.count() <<  std::endl;
+    
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+
+    time_span = std::chrono::high_resolution_clock::now() - beginning;
+    std::cout << "createBuffersFromModel: " << time_span.count() <<  std::endl;
 
     return true;
 }
