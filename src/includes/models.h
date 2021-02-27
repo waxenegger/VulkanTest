@@ -61,8 +61,11 @@ class Texture final {
         std::string path;
         bool loaded = false;
         bool valid = false;
-        VkFormat imageFormat;
+        VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
         SDL_Surface * textureSurface = nullptr;
+        VkImage textureImage = nullptr;
+        VkDeviceMemory textureImageMemory = nullptr;
+        VkImageView textureImageView = nullptr;
         
     public:
         unsigned int getId();
@@ -73,9 +76,18 @@ class Texture final {
         void setType(const std::string & type);
         void setPath(const std::string & path);
         void load();
+        uint32_t getWidth();
+        uint32_t getHeight();
+        VkDeviceSize getSize();
+        void * getPixels();
+        void freeSurface();
         Texture() {};
         ~Texture();
-        static bool findImageFormat(SDL_Surface * surface, VkFormat & format);
+        void cleanUpTexture(const VkDevice & device);
+        bool readImageFormat();
+        void setTextureImage(VkImage & image);
+        void setTextureImageMemory(VkDeviceMemory & imageMemory);
+        void setTextureImageView(VkImageView & imageView);
 };
 
 struct RenderContext {
@@ -141,6 +153,8 @@ class Models final {
         const static std::string SPECULAR_TEXTURE;
         const static std::string TEXTURE_NORMALS;
         void processTextures(Mesh & mesh);
+        std::map<std::string, std::unique_ptr<Texture>> &  getTextures();
+        void cleanUpTextures(const VkDevice & device);
         ~Models();
 
 };

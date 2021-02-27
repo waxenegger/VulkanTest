@@ -424,6 +424,10 @@ void Models::clear() {
     this->textures.clear();
 }
 
+std::map<std::string, std::unique_ptr<Texture>> & Models::getTextures() {
+    return this->textures;
+}
+
 VkDeviceSize Models::getTotalNumberOfVertices() {
     return this->totalNumberOfVertices;
 }
@@ -442,6 +446,12 @@ void Models::setPosition(float x, float y, float z) {
     for (auto & model : this->models) {
         model->setPosition(x,y,z);
     }    
+}
+
+void Models::cleanUpTextures(const VkDevice & device) {
+    for (auto & texture : this->textures) {
+        texture.second->cleanUpTexture(device);
+    }
 }
 
 Models::~Models() {
@@ -476,36 +486,109 @@ void Texture::setPath(const std::string & path) {
     this->path = path;
 }
 
+void Texture::setTextureImage(VkImage & image) {
+    this->textureImage = image;
+}
+
+void Texture::setTextureImageMemory(VkDeviceMemory & imageMemory) {
+    this->textureImageMemory = imageMemory;
+}
+
+void Texture::setTextureImageView(VkImageView & imageView) {
+    this->textureImageView = imageView;
+}
+
 void Texture::load() {
     if (!this->loaded) {
         this->textureSurface = IMG_Load(this->path.c_str());
         if (this->textureSurface != nullptr) {
-            if (!Texture::findImageFormat(this->textureSurface, this->imageFormat)) {
+            if (!this->readImageFormat()) {
                 std::cerr << "Unsupported Texture Format: " << this->path << std::endl;
-            } else this->valid = true;
+            } else if (this->getSize() != 0) {
+                this->valid = true;
+            }
         } else std::cerr << "Failed to load texture: " << this->path << std::endl;
         this->loaded = true;
     }
 }
 
-Texture::~Texture() {
-    if (this->textureSurface != nullptr) {
-        SDL_FreeSurface(this->textureSurface);
-        this->textureSurface = nullptr;
+void Texture::cleanUpTexture(const VkDevice & device) {
+    if (device == nullptr) return;
+    
+    if (this->textureImage != nullptr) {
+        vkDestroyImage(device, this->textureImage, nullptr);        
+        this->textureImage = nullptr;
+    }
+
+    if (this->textureImageMemory != nullptr) {
+        vkFreeMemory(device, this->textureImageMemory, nullptr);
+        this->textureImageMemory = nullptr;
+    }
+
+    if (this->textureImageView != nullptr) {
+        vkDestroyImageView(device, this->textureImageView, nullptr);
+        this->textureImageView = nullptr;
     }
 }
 
-bool Texture::findImageFormat(SDL_Surface * surface, VkFormat & format) {
-    if (surface == nullptr) return false;
+uint32_t Texture::getWidth() {
+    return this->textureSurface == nullptr ? 0 : this->textureSurface->w; 
+}
 
-    const int nOfColors = surface->format->BytesPerPixel;
+uint32_t Texture::getHeight() {
+    return this->textureSurface == nullptr ? 0 : this->textureSurface->h;     
+}
+
+VkDeviceSize Texture::getSize() {
+    int channels = this->textureSurface == nullptr ? 0 : textureSurface->format->BytesPerPixel;
+    return this->getWidth() * this->getHeight() * channels;
+}
+
+void * Texture::getPixels() {
+ return this->textureSurface == nullptr ? nullptr : this->textureSurface->pixels;
+}
+
+void Texture::freeSurface() {
+    if (this->textureSurface != nullptr) {
+        SDL_FreeSurface(this->textureSurface);
+        this->textureSurface = nullptr;
+    }    
+}
+
+Texture::~Texture() {
+    this->freeSurface();
+}
+
+bool Texture::readImageFormat() {
+    if (this->textureSurface == nullptr) return false;
+
+    const int nOfColors = this->textureSurface->format->BytesPerPixel;
 
     if (nOfColors == 4) {
-        if (surface->format->Rmask == 0x000000ff) format = VK_FORMAT_R8G8B8A8_UINT;
-        else format = VK_FORMAT_B8G8R8A8_UINT;
+        if (this->textureSurface->format->Rmask == 0x000000ff) this->imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
+        else this->imageFormat = VK_FORMAT_B8G8R8A8_SRGB;
     } else if (nOfColors == 3) {
-        if (surface->format->Rmask == 0x000000ff) format = VK_FORMAT_R8G8B8_UINT;
-        else format = VK_FORMAT_B8G8R8_UINT;
+        Uint32 aMask = 0x000000ff;
+        if (this->textureSurface->format->Rmask == 0x000000ff) this->imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
+        else {
+            this->imageFormat = VK_FORMAT_B8G8R8A8_SRGB;
+            aMask = 0xff000000;
+        }
+        
+        // convert to 32 bit
+        SDL_Surface * tmpSurface = SDL_CreateRGBSurface(
+            0, this->textureSurface->w, this->textureSurface->h, 32, 
+            this->textureSurface->format->Rmask, this->textureSurface->format->Gmask, this->textureSurface->format->Bmask, aMask);
+        
+        if (tmpSurface != nullptr) {
+            SDL_SetSurfaceAlphaMod(tmpSurface, 0);
+            if (SDL_BlitSurface(this->textureSurface, nullptr, tmpSurface , nullptr) == 0) {
+                SDL_FreeSurface(this->textureSurface);
+                this->textureSurface = tmpSurface;
+            } else return false;
+        } else {
+            return false;
+        }
     } else return false;
 
     return true;

@@ -7,7 +7,7 @@ private:
     const std::string APP_NAME = "Vulkan Test";
     Graphics & graphics = Graphics::instance();
 
-    bool loadModels() {
+    bool addModels() {
         if (!this->graphics.isActive()) return false;
 
         const std::vector<Vertex> vertices = {
@@ -47,8 +47,12 @@ public:
 
             bool quit = false;
 
-            if (!this->loadModels()) {
+            if (!this->addModels()) {
                 std::cerr << "Failed to Load Models" << std::endl;
+            }
+            
+            if (!this->graphics.prepareModels()) {
+                return;
             }
 
             if (!this->graphics.updateSwapChain()) {

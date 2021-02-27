@@ -16,7 +16,7 @@ class Graphics final {
         std::vector<const char *> vkExtensionNames;
         std::vector<VkPhysicalDevice> vkPhysicalDevices;
         std::vector<const char *> vkLayerNames = {
-            // "VK_LAYER_KHRONOS_validation"
+          //  "VK_LAYER_KHRONOS_validation"
         };
 
         bool showWireFrame = false;
@@ -70,6 +70,8 @@ class Graphics final {
         VkImage depthImage = nullptr;
         VkDeviceMemory depthImageMemory = nullptr;
         VkImageView depthImageView = nullptr;
+        
+        VkSampler textureSampler = nullptr;
         
         Models models;
         
@@ -142,6 +144,9 @@ class Graphics final {
         VkCommandBuffer beginSingleTimeCommands();
         void endSingleTimeCommands(VkCommandBuffer commandBuffer);
         bool transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+        void prepareModelTextures();
+        void copyBufferToImage(VkBuffer & buffer, VkImage & image, uint32_t width, uint32_t height);
+        bool createTextureSampler();
         
     public:
         Graphics(const Graphics&) = delete;
@@ -161,6 +166,8 @@ class Graphics final {
         void drawFrame();
         void addModel(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices);
         void addModel(const std::string & dir, const std::string & file);
+        bool prepareModels();
+
         RenderContext & getRenderContext();
         void renderScene();
         void toggleWireFrame();
