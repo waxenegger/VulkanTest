@@ -17,7 +17,7 @@ class Graphics final {
         std::vector<const char *> vkExtensionNames;
         std::vector<VkPhysicalDevice> vkPhysicalDevices;
         std::vector<const char *> vkLayerNames = {
-          // "VK_LAYER_KHRONOS_validation"
+          //"VK_LAYER_KHRONOS_validation"
         };
 
         bool showWireFrame = false;
@@ -49,6 +49,8 @@ class Graphics final {
         VkDescriptorSetLayout descriptorSetLayout;
         VkPipeline graphicsPipeline = nullptr;
 
+        std::array<VkPipelineShaderStageCreateInfo, 2> shaderStageInfo;
+        
         std::vector<VkFramebuffer> swapChainFramebuffers;
 
         std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -61,6 +63,9 @@ class Graphics final {
 
         VkBuffer vertexBuffer = nullptr;
         VkDeviceMemory vertexBufferMemory = nullptr;
+        
+        VkShaderModule vertShaderModule = nullptr;
+        VkShaderModule fragShaderModule = nullptr;
 
         VkBuffer indexBuffer = nullptr;
         VkDeviceMemory indexBufferMemory = nullptr;
@@ -95,6 +100,8 @@ class Graphics final {
         std::vector<VkPresentModeKHR> queryDeviceSwapModes();
         VkPresentModeKHR pickBestDeviceSwapMode(const std::vector<VkPresentModeKHR> & availableSwapModes);
 
+        bool createShaderStageInfo();
+        
         bool createImageViews();
 
         void createVkInstance(const std::string & appName, uint32_t version);

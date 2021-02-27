@@ -57,6 +57,8 @@ bool Graphics::initVulkan(const std::string & appName, uint32_t version) {
     if (!this->createSwapChain()) return false;
     if (!this->createImageViews()) return false;
     if (!this->createRenderPass()) return false;
+    
+    if (!this->createShaderStageInfo()) return false;
 
     if (!this->createCommandPool()) return false;
     if (!this->createDescriptorPool()) return false;
@@ -642,23 +644,23 @@ bool Graphics::isActive() {
 }
 
 VkShaderModule Graphics::createShaderModule(const std::vector<char> & code) {
-     VkShaderModuleCreateInfo createInfo {};
-     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-     createInfo.codeSize = code.size();
-     createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+    VkShaderModuleCreateInfo createInfo {};
+    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfo.codeSize = code.size();
+    createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
-     VkShaderModule shaderModule;
-     if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-         throw std::runtime_error("failed to create shader module!");
-     }
+    VkShaderModule shaderModule;
+    VkResult ret = vkCreateShaderModule(this->device, &createInfo, nullptr, &shaderModule);
+    ASSERT_VULKAN(ret);
+    if (ret != VK_SUCCESS) {
+        std::cerr << "Failed to Create Shader Module!" << std::endl;
+        return nullptr;
+    }
 
-     return shaderModule;
+    return shaderModule;
 }
 
-bool Graphics::createGraphicsPipeline() {
-    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-
-    // TODO: modify, to optimize
+bool Graphics::createShaderStageInfo() {
     std::vector<char> vertShaderCode;
     std::vector<char> fragShaderCode;
     if (!Utils::readFile("/opt/projects/VulkanTest/res/shaders/vert.spv", vertShaderCode) ||
@@ -667,9 +669,11 @@ bool Graphics::createGraphicsPipeline() {
         return false;
     }
 
-    VkShaderModule vertShaderModule = this->createShaderModule(vertShaderCode);
-    VkShaderModule fragShaderModule = this->createShaderModule(fragShaderCode);
-
+    this->vertShaderModule = this->createShaderModule(vertShaderCode);
+    if (vertShaderModule == nullptr) return false;
+    this->fragShaderModule = this->createShaderModule(fragShaderCode);
+    if (this->fragShaderModule == nullptr) return false;
+    
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -682,24 +686,31 @@ bool Graphics::createGraphicsPipeline() {
     fragShaderStageInfo.module = fragShaderModule;
     fragShaderStageInfo.pName = "main";
 
-    VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+    this->shaderStageInfo[0] = vertShaderStageInfo;
+    this->shaderStageInfo[1] = fragShaderStageInfo;
+    
+    return true;
+}
 
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+bool Graphics::createGraphicsPipeline() {
+    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+
+    VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {};
+    vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
     if (this->createBuffersFromModel()) {
-        const VkVertexInputBindingDescription & bindingDescription = Vertex::getBindingDescription();
-        const std::array<VkVertexInputAttributeDescription, 4> & attributeDescriptions = Vertex::getAttributeDescriptions();
+        const VkVertexInputBindingDescription bindingDescription = Vertex::getBindingDescription();
+        const std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions = Vertex::getAttributeDescriptions();
 
-        vertexInputInfo.vertexBindingDescriptionCount = 1;
-        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-        vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-        vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+        vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
+        vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+        vertexInputCreateInfo.pVertexBindingDescriptions = &bindingDescription;
+        vertexInputCreateInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
     } else {
-        vertexInputInfo.vertexBindingDescriptionCount = 0;
-        vertexInputInfo.vertexAttributeDescriptionCount = 0;
+        vertexInputCreateInfo.vertexBindingDescriptionCount = 0;
+        vertexInputCreateInfo.vertexAttributeDescriptionCount = 0;
     }
-
+    
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -783,9 +794,9 @@ bool Graphics::createGraphicsPipeline() {
 
     VkGraphicsPipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineInfo.stageCount = 2;
-    pipelineInfo.pStages = shaderStages;
-    pipelineInfo.pVertexInputState = &vertexInputInfo;
+    pipelineInfo.stageCount = static_cast<uint32_t>(this->shaderStageInfo.size());
+    pipelineInfo.pStages = this->shaderStageInfo.data();
+    pipelineInfo.pVertexInputState = &vertexInputCreateInfo;
     pipelineInfo.pInputAssemblyState = &inputAssembly;
     pipelineInfo.pViewportState = &viewportState;
     pipelineInfo.pRasterizationState = &rasterizer;
@@ -804,9 +815,6 @@ bool Graphics::createGraphicsPipeline() {
         std::cerr << "Failed to Create Graphics Pipeline!" << std::endl;
         return false;
     }
-
-    vkDestroyShaderModule(this->device, fragShaderModule, nullptr);
-    vkDestroyShaderModule(this->device, vertShaderModule, nullptr);
 
     std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
     std::cout << "createGraphicsPipeline: " << time_span.count() <<  std::endl;
@@ -992,8 +1000,7 @@ bool Graphics::createDescriptorSets() {
     for (uint32_t i = 0; i < numberOfTextures; ++i) {
         descriptorImageInfos[i].sampler = this->textureSampler;
         descriptorImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        auto t = this->models.findTextureImageViewById(i);
-        descriptorImageInfos[i].imageView = t;
+        descriptorImageInfos[i].imageView = this->models.findTextureImageViewById(i);
     }
 
     for (size_t i = 0; i < this->descriptorSets.size(); i++) {
@@ -1817,6 +1824,9 @@ void Graphics::prepareModelTextures() {
 
 Graphics::~Graphics() {
     this->cleanupSwapChain();
+
+    if (this->fragShaderModule != nullptr) vkDestroyShaderModule(this->device, this->fragShaderModule, nullptr);
+    if (this->vertShaderModule != nullptr) vkDestroyShaderModule(this->device, this->vertShaderModule, nullptr);
 
     if (this->textureSampler != nullptr) {
         vkDestroySampler(this->device, this->textureSampler, nullptr);
