@@ -738,7 +738,7 @@ bool Graphics::createGraphicsPipeline() {
     rasterizer.polygonMode = this->showWireFrame ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
     rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
 
     VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -1228,6 +1228,8 @@ bool Graphics::createCommandPool() {
 
 void Graphics::updateUniformBuffer(uint32_t currentImage) {
     ModelUniforms modelUniforms {};
+    modelUniforms.camera = glm::vec4(Camera::instance()->getPosition(),1);
+    modelUniforms.sun = glm::vec4(0,100, 50, 1);
     modelUniforms.viewMatrix = Camera::instance()->getViewMatrix();
     modelUniforms.projectionMatrix = Camera::instance()->getProjectionMatrix();
 

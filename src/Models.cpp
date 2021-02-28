@@ -176,7 +176,7 @@ Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
      
      if (mesh->mNumVertices > 0) vertices.reserve(mesh->mNumVertices);
      for(unsigned int i = 0; i < mesh->mNumVertices; i++) {
-         Vertex vertex(glm::vec3(mesh->mVertices[i].x, -mesh->mVertices[i].y, mesh->mVertices[i].z), glm::vec3(1.0f));
+         Vertex vertex(glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z), glm::vec3(1.0f));
 
          if (mesh->HasNormals())
              vertex.setNormal(glm::normalize(glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z)));

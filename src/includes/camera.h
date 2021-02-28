@@ -10,6 +10,8 @@ struct ModelUniforms final {
     public:
         glm::mat4 viewMatrix;
         glm::mat4 projectionMatrix;
+        glm::vec4 camera;
+        glm::vec4 sun;
 };
 
 struct ModelProperties final {
@@ -50,7 +52,7 @@ class Camera
             bool down = false;
         } keys;
 
-        bool flipY = false;
+        bool flipY = true;
         
         glm::mat4 perspective;
         glm::mat4 view;
@@ -59,6 +61,7 @@ class Camera
         bool moving();
 
         public:
+            glm::vec3 getPosition();
             void setAspectRatio(float aspect);
             void setFovY(float degrees);
             float getFovY();

@@ -22,6 +22,10 @@ void Camera::updateViewMatrix() {
     }
 };
 
+glm::vec3 Camera::getPosition() {
+    return this->position;
+}
+
 bool Camera::moving()
 {
     return this->keys.left || this->keys.right || this->keys.up || this->keys.down;
@@ -132,7 +136,6 @@ void Camera::updateDirection(const float deltaX, const float  deltaY, float delt
     rot.x = -deltaY * moveSpeed;
         
     this->rotate(rot);
-  
 }
 
 void Camera::setType(CameraType type) {

@@ -26,6 +26,7 @@ private:
         std::chrono::high_resolution_clock::time_point batmanStart = std::chrono::high_resolution_clock::now();
 
         Model * batman = new Model("/opt/projects/VulkanTest/res/models/", "batman.obj");
+        batman->setPosition(0,0,0);
         this->graphics.addModel(batman);
 
         std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - batmanStart;
@@ -40,6 +41,7 @@ private:
                 pos.z -= i * 10;
                 pos.x -= j * 10;
                 teapot->setPosition(pos);
+                teapot->setPosition(glm::vec3(0,0,-15));
                 this->graphics.addModel(teapot);
             }
         }
@@ -122,7 +124,7 @@ public:
                                 case SDL_SCANCODE_M:
                                     if (u > -100)  { u-= 1.0f; } 
                                     else u =0.0f;
-                                    this->graphics.getModels().setPosition(0,0,u);
+                                    this->graphics.getModels().setPosition(0,u,0);
                                     this->graphics.renderScene();
                                     break;                                
                                 case SDL_SCANCODE_F:
