@@ -48,9 +48,25 @@ void Camera::move(KeyPress key, bool isPressed, float deltaTime)
     this->update(deltaTime);
 }
 
-void Camera::setPerspective(float degrees, float aspect)
+void Camera::setAspectRatio(float aspect) {
+    this->aspect = aspect;
+    this->setPerspective();
+};
+
+void Camera::setFovY(float degrees)
 {
-    this->perspective = glm::perspective(glm::radians(degrees), aspect, 0.1f, 10000.0f);
+    this->fovy = degrees;
+    this->setPerspective();
+};
+
+float Camera::getFovY()
+{
+    return this->fovy;
+};
+
+void Camera::setPerspective()
+{
+    this->perspective = glm::perspective(glm::radians(this->fovy), this->aspect, 0.1f, 10000.0f);
     if (this->flipY) {
         this->perspective[1][1] *= -1.0f;
     }

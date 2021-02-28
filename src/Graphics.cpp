@@ -74,6 +74,8 @@ bool Graphics::initVulkan(const std::string & appName, uint32_t version) {
 bool Graphics::prepareModels() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
 
+    if (!this->createBuffersFromModel()) return false;
+    
     this->prepareModelTextures();
     if (!this->createUniformBuffers()) return false;
     
@@ -105,9 +107,8 @@ bool Graphics::getSwapChainExtent(VkSurfaceCapabilitiesKHR & surfaceCapabilities
 
         return true;
     } else {
-        auto windowSize = this->getWindowSize();
-        int width = std::get<0>(windowSize);
-        int height = std::get<1>(windowSize);
+        int width = 0;
+        int height = 0;
         SDL_Vulkan_GetDrawableSize(this->sdlWindow, &width, &height);
 
         this->swapChainExtent.width = std::max(
@@ -123,14 +124,9 @@ bool Graphics::getSwapChainExtent(VkSurfaceCapabilitiesKHR & surfaceCapabilities
     }
 }
 
-std::tuple< int, int > Graphics::getWindowSize()
-{
-    if (!this->isActive()) return std::make_tuple(0,0);
-    
-    int width, height;
-    SDL_Vulkan_GetDrawableSize(this->sdlWindow, &width, &height);
-    return std::make_tuple(width, height);
-};
+VkExtent2D Graphics::getWindowExtent() {
+    return this->swapChainExtent;
+}
 
 bool Graphics::createSwapChain() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
@@ -698,7 +694,7 @@ bool Graphics::createGraphicsPipeline() {
     VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {};
     vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-    if (this->createBuffersFromModel()) {
+    if (this->vertexBuffer != nullptr) {
         const VkVertexInputBindingDescription bindingDescription = Vertex::getBindingDescription();
         const std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions = Vertex::getAttributeDescriptions();
 

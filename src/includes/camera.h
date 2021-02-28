@@ -38,6 +38,9 @@ class Camera
         
         glm::vec3 direction = glm::vec3(0.001f, 0.0f, -0.001f);
 
+        float aspect = 1.0f;
+        float fovy = 45.0f;
+        
         float speed = 1.0f;
         struct
         {
@@ -48,7 +51,7 @@ class Camera
         } keys;
 
         bool flipY = false;
-
+        
         glm::mat4 perspective;
         glm::mat4 view;
 
@@ -56,7 +59,10 @@ class Camera
         bool moving();
 
         public:
-            void setPerspective(float degrees, float aspect);
+            void setAspectRatio(float aspect);
+            void setFovY(float degrees);
+            float getFovY();
+            void setPerspective();
             void setPosition(glm::vec3 position);
             void setRotation(glm::vec3 rotation);
             void rotate(glm::vec3 delta);

@@ -70,10 +70,8 @@ public:
 
             std::unique_ptr<Camera> camera(Camera::instance(glm::vec3(0.0f, 4.0f, -10.0f)));
 
-            auto windowSize = this->graphics.getWindowSize();
-            float width = std::get<0>(windowSize);
-            float height = std::get<1>(windowSize);
-            Camera::instance()->setPerspective(45.0f, width/height);
+            VkExtent2D windowSize = this->graphics.getWindowExtent();
+            Camera::instance()->setAspectRatio(windowSize.width/windowSize.height);
             
             SDL_Event e;
             SDL_StartTextInput();
@@ -102,6 +100,9 @@ public:
                         case SDL_WINDOWEVENT:
                             if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
                                 this->graphics.updateSwapChain();
+                                
+                                const VkExtent2D windowSize = this->graphics.getWindowExtent();
+                                Camera::instance()->setAspectRatio(windowSize.width/windowSize.height);
                             }
                             break;
                         case SDL_KEYDOWN:
@@ -159,6 +160,15 @@ public:
                                         static_cast<float>(e.motion.yrel), 0.005f);
                             }
                             break;
+                        case SDL_MOUSEWHEEL:
+                        {
+                            const Sint32 delta = e.wheel.y * (e.wheel.direction == SDL_MOUSEWHEEL_NORMAL ? 1 : -1);
+                            float newFovy = Camera::instance()->getFovY() - delta * 2;
+                            if (newFovy < 1) newFovy = 1;
+                            else if (newFovy > 45) newFovy = 45;
+                            Camera::instance()->setFovY(newFovy);
+                            break;
+                        }                            
                         case SDL_MOUSEBUTTONUP:
                             SDL_SetRelativeMouseMode(SDL_GetRelativeMouseMode() == SDL_TRUE ? SDL_FALSE : SDL_TRUE);
                             break;

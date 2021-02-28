@@ -177,11 +177,12 @@ class Graphics final {
         void addModel(const std::string & dir, const std::string & file);
         bool prepareModels();
 
+        VkExtent2D getWindowExtent();
+        
         RenderContext & getRenderContext();
         void renderScene();
         void toggleWireFrame();
         
-        std::tuple<int, int> getWindowSize();
         Models & getModels();
 
         ~Graphics();
