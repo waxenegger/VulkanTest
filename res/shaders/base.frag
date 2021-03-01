@@ -57,7 +57,7 @@ void main() {
     vec3 eyeDirection = normalize(vec3(eye) - fragPosition);
     vec3 halfDirection = normalize(lightDirection + vec3(eye));
     float shininess = 1;
-    float specular = pow(max(dot(normals, halfDirection), 0.1), shininess);
+    float specular = pow(clamp(dot(normals, halfDirection), 0,1), shininess);
     
     if (hasTextures) {
         // ambience
@@ -77,10 +77,11 @@ void main() {
             specularContribution *= texture(samplers[modelAttributes.specularTexture], fragTexCoord);
         }        
     } else {
+        // TODO: integrate diffuse and specular without funny artifacts
         vec4 baseColor = vec4(fragColor, 1.0);
         ambientContribution *= baseColor;
-        diffuseContribution *= baseColor * diffuse;
-        specularContribution *= baseColor * specular;
+        diffuseContribution *= baseColor;
+        specularContribution *= baseColor;
     }
     
     outColor = mix(mix(ambientContribution, specularContribution, 0.85), diffuseContribution, 0.95);

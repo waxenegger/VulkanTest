@@ -13,10 +13,10 @@ private:
         if (!this->graphics.isActive()) return false;
 
         const std::vector<Vertex> vertices = {
-            Vertex(glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
-            Vertex(glm::vec3(0.5f, -0.5f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)),
-            Vertex(glm::vec3(0.5f, 0.5f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
-            Vertex(glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f))
+            Vertex(glm::vec3(-0.5f, -0.5f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
+            Vertex(glm::vec3(0.5f, -0.5f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
+            Vertex(glm::vec3(0.5f, 0.5f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
+            Vertex(glm::vec3(-0.5f, 0.5f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f))
         };
         const std::vector<uint32_t> indices = {
             0, 1, 2, 2, 3, 0
@@ -25,7 +25,7 @@ private:
 
         std::chrono::high_resolution_clock::time_point batmanStart = std::chrono::high_resolution_clock::now();
 
-        Model * batman = new Model("/opt/projects/VulkanTest/res/models/", "cyborg.obj");
+        Model * batman = new Model("/opt/projects/VulkanTest/res/models/", "batman.obj");
         batman->setPosition(0,0,0);
         this->graphics.addModel(batman);
 
@@ -41,7 +41,7 @@ private:
                 pos.z -= i * 10;
                 pos.x -= j * 10;
                 teapot->setPosition(pos);
-                teapot->setPosition(glm::vec3(0,0,5));
+                teapot->setPosition(glm::vec3(0,0,-15));
                 this->graphics.addModel(teapot);
             }
         }

@@ -16,7 +16,7 @@ struct ModelUniforms final {
 
 struct ModelProperties final {
     public:
-        glm::mat4 matrix;
+        glm::mat4 matrix = glm::mat4(1);
         int ambientTexture = -1;
         int diffuseTexture = -1;
         int specularTexture = -1;

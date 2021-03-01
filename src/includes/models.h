@@ -17,7 +17,7 @@ class Vertex final {
         Vertex(const glm::vec3 & position, const glm::vec3 & color);
 
         static VkVertexInputBindingDescription getBindingDescription();
-        static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions();
+        static std::array<VkVertexInputAttributeDescription, 6> getAttributeDescriptions();
 
         void setUV(const glm::vec2 & uv);
         void setNormal(const glm::vec3 & normal);

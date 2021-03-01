@@ -690,13 +690,13 @@ bool Graphics::createShaderStageInfo() {
 
 bool Graphics::createGraphicsPipeline() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-
+    
     VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {};
     vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
     if (this->vertexBuffer != nullptr) {
         const VkVertexInputBindingDescription bindingDescription = Vertex::getBindingDescription();
-        const std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions = Vertex::getAttributeDescriptions();
+        const std::array<VkVertexInputAttributeDescription, 6> attributeDescriptions = Vertex::getAttributeDescriptions();
 
         vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
         vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
