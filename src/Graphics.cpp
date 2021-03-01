@@ -110,7 +110,7 @@ bool Graphics::getSwapChainExtent(VkSurfaceCapabilitiesKHR & surfaceCapabilities
         int width = 0;
         int height = 0;
         SDL_Vulkan_GetDrawableSize(this->sdlWindow, &width, &height);
-
+        
         this->swapChainExtent.width = std::max(
             surfaceCapabilities.minImageExtent.width,
             std::min(surfaceCapabilities.maxImageExtent.width,
@@ -123,6 +123,8 @@ bool Graphics::getSwapChainExtent(VkSurfaceCapabilitiesKHR & surfaceCapabilities
         return true;
     }
 }
+
+
 
 VkExtent2D Graphics::getWindowExtent() {
     return this->swapChainExtent;
@@ -1229,7 +1231,7 @@ bool Graphics::createCommandPool() {
 void Graphics::updateUniformBuffer(uint32_t currentImage) {
     ModelUniforms modelUniforms {};
     modelUniforms.camera = glm::vec4(Camera::instance()->getPosition(),1);
-    modelUniforms.sun = glm::vec4(0,100, 50, 1);
+    modelUniforms.sun = glm::vec4(0,100, 0, 1);
     modelUniforms.viewMatrix = Camera::instance()->getViewMatrix();
     modelUniforms.projectionMatrix = Camera::instance()->getProjectionMatrix();
 
@@ -1748,6 +1750,10 @@ void Graphics::toggleWireFrame() {
     this->showWireFrame = !this->showWireFrame;
     
     this->updateSwapChain();
+}
+
+SDL_Window * Graphics::getSdlWindow() {
+    return this->sdlWindow;
 }
 
 void Graphics::copyBufferToImage(VkBuffer & buffer, VkImage & image, uint32_t width, uint32_t height) {

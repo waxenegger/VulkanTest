@@ -1,4 +1,4 @@
-mtllib C:\Users\Animation\Desktop\XNALara\data\dummy\BAC_Batman70s_rocksteady\batman.mtl
+mtllib batman.mtl
 g Model001_23_capeR_0.3_75_75
 usemtl Model001_Material001
 v -0.4980976 0.3989513 -0.3767513
@@ -2750,7 +2750,6 @@ f -535/-535/-535 -536/-536/-536 -140/-140/-140
 f -535/-535/-535 -140/-140/-140 -139/-139/-139
 f -75/-75/-75 -536/-536/-536 -534/-534/-534
 
-mtllib C:\Users\Animation\Desktop\XNALara\data\dummy\BAC_Batman70s_rocksteady\batman.mtl
 g Model001_23_capeL_0.3_75_75
 usemtl Model001_Material002
 v 0.04778625 0.9209849 -0.3970087
@@ -5502,7 +5501,6 @@ f -151/-151/-151 -403/-403/-403 -152/-152/-152
 f -152/-152/-152 -147/-147/-147 -151/-151/-151
 f -147/-147/-147 -152/-152/-152 -155/-155/-155
 
-mtllib C:\Users\Animation\Desktop\XNALara\data\dummy\BAC_Batman70s_rocksteady\batman.mtl
 g Model001_22_head_0.5_75_75_head_head neck upper
 usemtl Model001_Material003
 v 0.01841415 1.792252 0.09704287
@@ -21169,7 +21167,6 @@ f -1749/-1749/-1749 -1750/-1750/-1750 -1735/-1735/-1735
 f -2704/-2704/-2704 -1744/-1744/-1744 -2689/-2689/-2689
 f -1759/-1759/-1759 -1749/-1749/-1749 -1735/-1735/-1735
 
-mtllib C:\Users\Animation\Desktop\XNALara\data\dummy\BAC_Batman70s_rocksteady\batman.mtl
 g Model001_22_legs_0.6_75_75_foot_leg left ankle
 usemtl Model001_Material004
 v -0.1547903 0.07390349 0.06929475
@@ -27444,7 +27441,6 @@ f -2/-2/-2 -362/-362/-362 -363/-363/-363
 f -362/-362/-362 -2/-2/-2 -1/-1/-1
 f -354/-354/-354 -362/-362/-362 -1/-1/-1
 
-mtllib C:\Users\Animation\Desktop\XNALara\data\dummy\BAC_Batman70s_rocksteady\batman.mtl
 g Model001_22_torso_0.6_75_75_body_spine 3
 usemtl Model001_Material005
 v -0.2065324 1.530427 0.08324812

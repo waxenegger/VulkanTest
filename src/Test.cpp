@@ -16,16 +16,23 @@ private:
             Vertex(glm::vec3(-0.5f, -0.5f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
             Vertex(glm::vec3(0.5f, -0.5f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
             Vertex(glm::vec3(0.5f, 0.5f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
-            Vertex(glm::vec3(-0.5f, 0.5f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f))
+            Vertex(glm::vec3(-0.5f, 0.5f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
+            Vertex(glm::vec3(-0.5f, -0.5f, 5.0f), glm::vec3(0.0f, 1.0f, 1.0f)),
+            Vertex(glm::vec3(0.5f, -0.5f, 5.0f), glm::vec3(0.0f, 1.0f, 1.0f)),
+            Vertex(glm::vec3(0.5f, 0.5f, 5.0f), glm::vec3(0.0f, 1.0f, 1.0f)),
+            Vertex(glm::vec3(-0.5f, 0.5f, 5.0f), glm::vec3(0.0f, 1.0f, 1.0f))
+
         };
         const std::vector<uint32_t> indices = {
-            0, 1, 2, 2, 3, 0
+            0, 1, 2, 2, 3, 0,
+            4, 7, 6, 6, 5, 4
         };
-        this->graphics.addModel(vertices, indices);
+        Model * quad = new Model(vertices, indices);
+        this->graphics.addModel(quad);
 
         std::chrono::high_resolution_clock::time_point batmanStart = std::chrono::high_resolution_clock::now();
 
-        Model * batman = new Model("/opt/projects/VulkanTest/res/models/", "batman.obj");
+        Model * batman = new Model("/opt/projects/VulkanTest/res/models/", "cyborg.obj");
         batman->setPosition(0,0,0);
         this->graphics.addModel(batman);
 
@@ -35,7 +42,7 @@ private:
         for (int i=0;i<1;i++) {
             for (int j=0;j<1;j++) {
                 Model * teapot = new Model("/opt/projects/VulkanTest/res/models/", "teapot.obj");
-                teapot->setColor(glm::vec3(1.0f, 0.0f, 0.0f));
+                teapot->setColor(glm::vec3(1.0f, 1.0f, 1.0f));
 
                 glm::vec3 pos = teapot->getPosition();
                 pos.z -= i * 10;
@@ -79,6 +86,8 @@ public:
             SDL_StartTextInput();
 
             bool quit = false;
+            bool isFullScreen = false;
+            bool needsRestoreAfterFullScreen = false;
 
             if (!this->addModels()) {
                 std::cerr << "Failed to Load Models" << std::endl;
@@ -94,17 +103,20 @@ public:
 
             std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
             std::cout << "initial wait till draw loop: " << time_span.count() <<  std::endl;
-
+            
             float u = 0.0f;
             while(!quit) {
                 while (SDL_PollEvent(&e) != 0) {
                     switch(e.type) {
                         case SDL_WINDOWEVENT:
-                            if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
-                                this->graphics.updateSwapChain();
-                                
-                                const VkExtent2D windowSize = this->graphics.getWindowExtent();
-                                Camera::instance()->setAspectRatio(windowSize.width/windowSize.height);
+                            if (e.window.event == SDL_WINDOWEVENT_RESIZED ||
+                                e.window.event == SDL_WINDOWEVENT_MAXIMIZED ||
+                                e.window.event == SDL_WINDOWEVENT_MINIMIZED ||
+                                e.window.event == SDL_WINDOWEVENT_RESTORED) {
+                                    if (isFullScreen) SDL_SetWindowFullscreen(this->graphics.getSdlWindow(), SDL_TRUE);
+                                    this->graphics.updateSwapChain();
+                                    windowSize = this->graphics.getWindowExtent();
+                                    Camera::instance()->setAspectRatio(windowSize.width/windowSize.height);
                             }
                             break;
                         case SDL_KEYDOWN:
@@ -130,6 +142,23 @@ public:
                                 case SDL_SCANCODE_F:
                                     this->graphics.toggleWireFrame();
                                     break;                                
+                                case SDL_SCANCODE_F12:
+                                    isFullScreen = !isFullScreen;
+                                    if (isFullScreen) {
+                                        if (SDL_GetWindowFlags(this->graphics.getSdlWindow()) & SDL_WINDOW_MAXIMIZED) {
+                                            SDL_SetWindowFullscreen(this->graphics.getSdlWindow(), SDL_TRUE);
+                                        } else {
+                                            needsRestoreAfterFullScreen = true;
+                                            SDL_MaximizeWindow(this->graphics.getSdlWindow());
+                                        }
+                                    } else {
+                                        SDL_SetWindowFullscreen(this->graphics.getSdlWindow(), SDL_FALSE);
+                                        if (needsRestoreAfterFullScreen) {
+                                            SDL_RestoreWindow(this->graphics.getSdlWindow());
+                                            needsRestoreAfterFullScreen = false;
+                                        }
+                                    }
+                                    break;
                                 case SDL_SCANCODE_Q:
                                     quit = true;
                                     break;

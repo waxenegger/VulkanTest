@@ -74,6 +74,10 @@ void Vertex::setColor(const glm::vec3 & color) {
     this->color = color;
 }
 
+glm::vec3 Vertex::getPosition() {
+    return this->position;
+}
+
 Mesh::Mesh(const std::vector<Vertex> & vertices) {
     this->vertices = vertices;
 }
@@ -113,6 +117,7 @@ Model::Model(const std::vector< Vertex >& vertices, const std::vector< uint32_t 
     this->file = "";
     this->dir = "";
     this->meshes = { Mesh(vertices, indices) };
+    this->calculateNormals();
     this->loaded = true;
 }
 
@@ -172,6 +177,22 @@ std::string Model::getPath() {
     return this->file;
 }
 
+void Model::calculateNormals() {
+    for (auto & mesh : this->meshes) {
+        auto vertices = mesh.getVertices();
+        auto indices = mesh.getIndices();
+        
+        if (indices.size() < 3 || indices.size() % 3 != 0) continue;
+        for (size_t i=0; i<indices.size(); i+= 3) {
+             const glm::vec3 edgeA = vertices[indices[i+2]].getPosition() - vertices[indices[i+1]].getPosition();
+             const glm::vec3 edgeB = vertices[indices[i+1]].getPosition() - vertices[indices[i]].getPosition();
+             const glm::vec3 crossProduct = glm::cross(edgeB, edgeA);
+             vertices[indices[i]].setNormal(glm::normalize(crossProduct));
+             vertices[indices[i+1]].setNormal(glm::normalize(crossProduct));
+             vertices[indices[i+2]].setNormal(glm::normalize(crossProduct));
+        }
+    }
+}
 
 Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
      std::vector<Vertex> vertices;

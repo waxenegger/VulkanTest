@@ -24,6 +24,7 @@ class Vertex final {
         void setTangent(const glm::vec3 & tangent);
         void setBitangent(const glm::vec3 & bitangent);
         void setColor(const glm::vec3 & color);
+        glm::vec3 getPosition();
 };
 
 struct TextureInformation final {
@@ -115,6 +116,7 @@ class Model final {
 
         void processNode(const aiNode * node, const aiScene *scene);
         Mesh processMesh(const aiMesh *mesh, const aiScene *scene);
+        void calculateNormals();
     public:
         ~Model();
         Model() {};
@@ -134,7 +136,6 @@ class Model final {
         glm::mat4 getModelMatrix();
         TextureInformation addTextures(const aiMaterial * mat);
         void correctTexturePath(char * path);
-    
 };
 
 class Models final {

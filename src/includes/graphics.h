@@ -182,6 +182,7 @@ class Graphics final {
         RenderContext & getRenderContext();
         void renderScene();
         void toggleWireFrame();
+        SDL_Window * getSdlWindow();
         
         Models & getModels();
 
