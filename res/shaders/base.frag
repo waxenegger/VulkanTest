@@ -42,8 +42,16 @@ void main() {
 
     // global light source
     vec3 lightDirection = normalize(vec3(light) - fragPosition);
+
+    // normals adjustment if normal texture is present
+    vec3 normals = fragNormals;
+    if (modelAttributes.normalTexture != -1) {
+        normals = texture(samplers[modelAttributes.normalTexture], fragTexCoord).rgb;
+        normals = normalize(normals * 2.0 - 1.0);
+    }
+    
     // diffuse multiplier based on normals
-    float diffuse = clamp(dot(lightDirection, fragNormals), 0, 1);
+    float diffuse = clamp(dot(lightDirection, normals), 0, 1);
 
     if (hasTextures) {
         // ambience

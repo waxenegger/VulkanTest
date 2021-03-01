@@ -419,7 +419,7 @@ TextureInformation Model::addTextures(const aiMaterial * mat) {
         if (str.length > 0) this->correctTexturePath(str.data);
         textureInfo.specularTextureLocation = std::string(this->dir + std::string(str.C_Str()));
     }
-
+    
     if (mat->GetTextureCount(aiTextureType_NORMALS) > 0) {
         aiString str;
         mat->GetTexture(aiTextureType_NORMALS, 0, &str);

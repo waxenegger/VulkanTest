@@ -25,7 +25,7 @@ private:
 
         std::chrono::high_resolution_clock::time_point batmanStart = std::chrono::high_resolution_clock::now();
 
-        Model * batman = new Model("/opt/projects/VulkanTest/res/models/", "batman.obj");
+        Model * batman = new Model("/opt/projects/VulkanTest/res/models/", "cyborg.obj");
         batman->setPosition(0,0,0);
         this->graphics.addModel(batman);
 
@@ -41,7 +41,7 @@ private:
                 pos.z -= i * 10;
                 pos.x -= j * 10;
                 teapot->setPosition(pos);
-                teapot->setPosition(glm::vec3(0,0,-15));
+                teapot->setPosition(glm::vec3(0,0,5));
                 this->graphics.addModel(teapot);
             }
         }
