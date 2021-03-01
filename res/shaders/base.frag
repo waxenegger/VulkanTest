@@ -53,6 +53,12 @@ void main() {
     // diffuse multiplier based on normals
     float diffuse = clamp(dot(lightDirection, normals), 0, 1);
 
+    // specular multiplier based on normals and eye direction
+    vec3 eyeDirection = normalize(vec3(eye) - fragPosition);
+    vec3 halfDirection = normalize(lightDirection + vec3(eye));
+    float shininess = 1;
+    float specular = pow(max(dot(normals, halfDirection), 0.1), shininess);
+    
     if (hasTextures) {
         // ambience
         if (modelAttributes.ambientTexture != -1) {
@@ -66,6 +72,7 @@ void main() {
         }
         
         // sepcular
+        specularContribution *= specular;
         if (modelAttributes.specularTexture != -1) {
             specularContribution *= texture(samplers[modelAttributes.specularTexture], fragTexCoord);
         }        
@@ -73,8 +80,8 @@ void main() {
         vec4 baseColor = vec4(fragColor, 1.0);
         ambientContribution *= baseColor;
         diffuseContribution *= baseColor * diffuse;
-        specularContribution *= baseColor;
+        specularContribution *= baseColor * specular;
     }
     
-    outColor = mix(mix(ambientContribution, specularContribution, 0.75), diffuseContribution, 0.95);
+    outColor = mix(mix(ambientContribution, specularContribution, 0.85), diffuseContribution, 0.95);
 }
