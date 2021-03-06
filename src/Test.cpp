@@ -32,9 +32,15 @@ private:
 
         std::chrono::high_resolution_clock::time_point batmanStart = std::chrono::high_resolution_clock::now();
 
-        Model * batman = new Model("/opt/projects/VulkanTest/res/models/", "cyborg.obj");
-        batman->setPosition(0,0,0);
+        Model * batman = new Model("/opt/projects/VulkanTest/res/models/", "batman.obj");
+        batman->setPosition(0.0f, 0.0f, 50.0f);
+        batman->scale(5);
         this->graphics.addModel(batman);
+
+        Model * mammoth = new Model("/opt/projects/VulkanTest/res/models/", "woolly-mammoth-150k.obj");
+        mammoth->setPosition(50,0,50);
+        mammoth->scale(2);
+        this->graphics.addModel(mammoth);
 
         std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - batmanStart;
         std::cout << "load batman: " << time_span.count() <<  std::endl;

@@ -184,8 +184,8 @@ void Model::calculateNormals() {
         
         if (indices.size() < 3 || indices.size() % 3 != 0) continue;
         for (size_t i=0; i<indices.size(); i+= 3) {
-             const glm::vec3 edgeA = vertices[indices[i+2]].getPosition() - vertices[indices[i+1]].getPosition();
-             const glm::vec3 edgeB = vertices[indices[i+1]].getPosition() - vertices[indices[i]].getPosition();
+             const glm::vec3 edgeA = vertices[indices[i+1]].getPosition() - vertices[indices[i+0]].getPosition();
+             const glm::vec3 edgeB = vertices[indices[i+2]].getPosition() - vertices[indices[i+0]].getPosition();
              const glm::vec3 crossProduct = glm::cross(edgeB, edgeA);
              vertices[indices[i]].setNormal(glm::normalize(crossProduct));
              vertices[indices[i+1]].setNormal(glm::normalize(crossProduct));

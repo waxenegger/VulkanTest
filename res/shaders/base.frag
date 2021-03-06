@@ -26,7 +26,7 @@ void main() {
         modelAttributes.specularTexture != -1 || modelAttributes.normalTexture != -1;
 
     // ambientContribution
-    vec4 ambientLightColor = vec4(1.0);
+    vec4 ambientLightColor = vec4(0.3);
     float ambientLightStrength = 1;
     vec4 ambientContribution = ambientLightColor * ambientLightStrength;
     
@@ -36,8 +36,8 @@ void main() {
     vec4 diffuseContribution = diffuseLightColor * diffuseLightStrength;    
     
     // specularContribution
-    vec4 specularLightColor = vec4(1.0);
-    float specularLightStrength = 1;
+    vec4 specularLightColor = vec4(1);
+    float specularLightStrength = 0.5;
     vec4 specularContribution = specularLightColor * specularLightStrength;
 
     // global light source
@@ -51,12 +51,12 @@ void main() {
     }
     
     // diffuse multiplier based on normals
-    float diffuse = max(dot(lightDirection, normals), 0.1);
+    float diffuse = max(dot(normals, lightDirection), 0.1);
 
     // specular multiplier based on normals and eye direction
     vec3 eyeDirection = normalize(vec3(eye) - fragPosition);
     vec3 halfDirection = normalize(lightDirection + vec3(eye));
-    float shininess = 1;
+    float shininess = 10;
     float specular = pow(max(dot(normals, halfDirection), 0.1), shininess);
     
     if (hasTextures) {
@@ -66,21 +66,23 @@ void main() {
         }
         
         // diffuse
-        diffuseContribution = normalize(diffuseContribution * diffuse);
+        diffuseContribution = diffuseContribution * diffuse;
         if (modelAttributes.diffuseTexture != -1) {
             diffuseContribution *= texture(samplers[modelAttributes.diffuseTexture], fragTexCoord);
         }
         
         // sepcular
-        specularContribution = normalize(specularContribution * specular);
+        specularContribution = specularContribution * specular;
         if (modelAttributes.specularTexture != -1) {
             specularContribution *= texture(samplers[modelAttributes.specularTexture], fragTexCoord);
-        }        
+        }
+        
+        outColor = mix(mix(ambientContribution, specularContribution, 0.5), diffuseContribution, 0.95);
     } else {
         ambientContribution *= vec4(fragColor, 1.0);
-        diffuseContribution *= vec4(normalize(fragColor * diffuse),1.0);
-        specularContribution *= vec4(normalize(fragColor * specular), 1.0);
+        diffuseContribution *= vec4(fragColor * diffuse,1.0) ;
+        specularContribution *= vec4(fragColor * specular, 1.0);
+
+        outColor = normalize(ambientContribution + diffuseContribution + specularContribution);
     }
-    
-    outColor = mix(mix(ambientContribution, specularContribution, 0.85), diffuseContribution, 0.95);
 }
