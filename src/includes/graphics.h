@@ -19,7 +19,7 @@ class Graphics final {
         std::vector<const char *> vkExtensionNames;
         std::vector<VkPhysicalDevice> vkPhysicalDevices;
         std::vector<const char *> vkLayerNames = {
-          //"VK_LAYER_KHRONOS_validation"
+            "VK_LAYER_KHRONOS_validation"
         };
 
         bool showWireFrame = false;
@@ -72,6 +72,9 @@ class Graphics final {
         VkBuffer indexBuffer = nullptr;
         VkDeviceMemory indexBufferMemory = nullptr;
 
+        VkBuffer ssboBuffer = nullptr;
+        VkDeviceMemory ssboBufferMemory = nullptr;
+
         std::vector<VkBuffer> uniformBuffers;
         std::vector<VkDeviceMemory> uniformBuffersMemory;
         
@@ -92,7 +95,6 @@ class Graphics final {
         void queryVkInstanceExtensions();
 
         std::vector<VkExtensionProperties> queryPhysicalDeviceExtensions(const VkPhysicalDevice & device);
-        void listPhysicalDeviceExtensions(const VkPhysicalDevice & device);
         bool doesPhysicalDeviceSupportExtension(const VkPhysicalDevice & device, const std::string extension);
 
         std::vector<VkSurfaceFormatKHR> queryPhysicalDeviceSurfaceFormats(const VkPhysicalDevice & device);
@@ -169,6 +171,7 @@ class Graphics final {
         void init(const std::string & appName, uint32_t version, const std::string & dir);
 
         void listVkExtensions();
+        void listPhysicalDeviceExtensions();
         void listVkLayerNames();
         void listVkPhysicalDevices();
 

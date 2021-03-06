@@ -138,20 +138,26 @@ class Model final {
         void correctTexturePath(char * path);
 };
 
+enum ModelsContentType {
+    VERTEX, INDEX, SSBO
+};
+
 class Models final {
     private:
         std::map<std::string, std::unique_ptr<Texture>> textures;
         std::vector<std::unique_ptr<Model>> models;
         VkDeviceSize totalNumberOfVertices = 0;
         VkDeviceSize totalNumberOfIndices = 0;
+        VkDeviceSize totalNumberOfMeshes = 0;
 
     public:
         void addModel(Model * model);
         void clear();
         void draw(RenderContext & context, int commandBufferIndex, bool useIndices);
-        void copyModelsContentIntoBuffer(void* data, bool contentIsIndices, VkDeviceSize maxSize);
+        void copyModelsContentIntoBuffer(void* data, ModelsContentType modelsContentType, VkDeviceSize maxSize);
         VkDeviceSize getTotalNumberOfVertices();
         VkDeviceSize getTotalNumberOfIndices();
+        VkDeviceSize getTotalNumberOfMeshes();
         void setColor(glm::vec3 color);
         void setPosition(float x, float y, float z);
         // TODO: more translation and rotation methods

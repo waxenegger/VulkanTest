@@ -279,10 +279,14 @@ bool Graphics::createLogicalDeviceAndQueues() {
 
     queueCreateInfos.push_back(queueCreateInfo);
 
-    const std::vector<const char * > extensionsToEnable = { "VK_KHR_swapchain" };
+    const std::vector<const char * > extensionsToEnable = { 
+        "VK_KHR_swapchain", 
+        "VK_KHR_shader_draw_parameters"
+    };
 
     VkPhysicalDeviceFeatures deviceFeatures {};
     deviceFeatures.samplerAnisotropy = VK_TRUE;
+    deviceFeatures.multiDrawIndirect = VK_TRUE;
 
     VkDeviceCreateInfo createInfo {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -326,8 +330,10 @@ std::tuple<VkPhysicalDevice, int> Graphics::pickBestPhysicalDeviceAndQueueIndex(
     return choice;
 }
 
-void Graphics::listPhysicalDeviceExtensions(const VkPhysicalDevice & device) {
-    std::vector<VkExtensionProperties> availableExtensions = this->queryPhysicalDeviceExtensions(device);
+void Graphics::listPhysicalDeviceExtensions() {
+    if (this->physicalDevice == nullptr) return;
+    
+    std::vector<VkExtensionProperties> availableExtensions = this->queryPhysicalDeviceExtensions(this->physicalDevice);
 
     std::cout << "Device Extensions" << std::endl;
     for (auto & extProp : availableExtensions) {
@@ -425,6 +431,7 @@ VkPresentModeKHR Graphics::pickBestDeviceSwapMode(const std::vector<VkPresentMod
 std::tuple<int,int> Graphics::ratePhysicalDevice(const VkPhysicalDevice & device) {
     // check if physical device supports swap chains and required surface format
     if (!this->doesPhysicalDeviceSupportExtension(device, "VK_KHR_swapchain") ||
+        !this->doesPhysicalDeviceSupportExtension(device, "VK_KHR_shader_draw_parameters") ||
             !this->isPhysicalDeviceSurfaceFormatsSupported(device, this->swapChainImageFormat)) {
         return std::make_tuple(0, -1);
     };
@@ -770,17 +777,19 @@ bool Graphics::createGraphicsPipeline() {
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
 
+    /*
     VkPushConstantRange pushConstantRange{};
     pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pushConstantRange.offset = 0;
     pushConstantRange.size = sizeof(struct ModelProperties);
+    */
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.pSetLayouts = &this->descriptorSetLayout;
     pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pushConstantRangeCount = 1;
-    pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    //pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
     VkResult ret = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->context.graphicsPipelineLayout);
     ASSERT_VULKAN(ret);
@@ -849,12 +858,14 @@ bool Graphics::createFramebuffers() {
 }
 
 bool Graphics::createDescriptorPool() {
-    std::array<VkDescriptorPoolSize, 2> poolSizes{};
+    std::array<VkDescriptorPoolSize, 3> poolSizes{};
 
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(this->swapChainImages.size());
-    poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_TEXTURES * 2);
+    poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    poolSizes[1].descriptorCount = static_cast<uint32_t>(this->swapChainImages.size());
+    poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_TEXTURES * 2);
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -951,14 +962,22 @@ bool Graphics::createDescriptorSetLayout() {
     modelUniformLayoutBinding.pImmutableSamplers = nullptr;
     modelUniformLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
+VkDescriptorSetLayoutBinding ssboLayoutBinding{};
+    ssboLayoutBinding.binding = 1;
+    ssboLayoutBinding.descriptorCount = 1;
+    ssboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    ssboLayoutBinding.pImmutableSamplers = nullptr;
+    ssboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
     VkDescriptorSetLayoutBinding samplersLayoutBinding{};
-    samplersLayoutBinding.binding = 1;
+    samplersLayoutBinding.binding = 2;
     samplersLayoutBinding.descriptorCount = this->models.getTextures().size();
     samplersLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     samplersLayoutBinding.pImmutableSamplers = nullptr;
     samplersLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    std::array<VkDescriptorSetLayoutBinding, 2> layoutBindings = { modelUniformLayoutBinding, samplersLayoutBinding };
+
+    std::array<VkDescriptorSetLayoutBinding, 3> layoutBindings = { modelUniformLayoutBinding, ssboLayoutBinding, samplersLayoutBinding };
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -1001,29 +1020,41 @@ bool Graphics::createDescriptorSets() {
     }
 
     for (size_t i = 0; i < this->descriptorSets.size(); i++) {
-        VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = this->uniformBuffers[i];
-        bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(struct ModelUniforms);
+        VkDescriptorBufferInfo uniformBufferInfo{};
+        uniformBufferInfo.buffer = this->uniformBuffers[i];
+        uniformBufferInfo.offset = 0;
+        uniformBufferInfo.range = sizeof(struct ModelUniforms);
 
-        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+        VkDescriptorBufferInfo ssboBufferInfo{};
+        ssboBufferInfo.buffer = this->ssboBuffer;
+        ssboBufferInfo.offset = 0;
+        ssboBufferInfo.range = sizeof(struct ModelProperties);
+
+        std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
 
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[0].dstSet = descriptorSets[i];
+        descriptorWrites[0].dstSet = this->descriptorSets[i];
         descriptorWrites[0].dstBinding = 0;
         descriptorWrites[0].dstArrayElement = 0;
         descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorWrites[0].descriptorCount = 1;
-        descriptorWrites[0].pBufferInfo = &bufferInfo;
+        descriptorWrites[0].pBufferInfo = &uniformBufferInfo;
 
         descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[1].dstSet = descriptorSets[i];
+        descriptorWrites[1].dstSet = this->descriptorSets[i];
         descriptorWrites[1].dstBinding = 1;
         descriptorWrites[1].dstArrayElement = 0;
-        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[1].descriptorCount = numberOfTextures;
-        descriptorWrites[1].pImageInfo = descriptorImageInfos;
-        descriptorWrites[1].dstSet = this->descriptorSets[i];
+        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].pBufferInfo = &ssboBufferInfo;
+
+        descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[2].dstBinding = 2;
+        descriptorWrites[2].dstArrayElement = 0;
+        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[2].descriptorCount = numberOfTextures;
+        descriptorWrites[2].pImageInfo = descriptorImageInfos;
+        descriptorWrites[2].dstSet = this->descriptorSets[i];
 
         vkUpdateDescriptorSets(this->device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
@@ -1444,7 +1475,7 @@ bool Graphics::createBuffersFromModel() {
 
     void* data = nullptr;
     vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    this->models.copyModelsContentIntoBuffer(data, false, bufferSize);
+    this->models.copyModelsContentIntoBuffer(data, VERTEX, bufferSize);
     vkUnmapMemory(this->device, stagingBufferMemory);
 
     time_span = std::chrono::high_resolution_clock::now() - stagingVertexBufferCopy;
@@ -1473,6 +1504,50 @@ bool Graphics::createBuffersFromModel() {
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
     
+    // meshes (SSBOs)
+    if (this->models.getTotalNumberOfMeshes() != 0) {
+        if (this->ssboBuffer != nullptr) vkDestroyBuffer(this->device, this->ssboBuffer, nullptr);
+        if (this->ssboBufferMemory != nullptr) vkFreeMemory(this->device, this->ssboBufferMemory, nullptr);
+
+        bufferSize = sizeof(struct ModelProperties) * this->models.getTotalNumberOfMeshes();
+
+        std::chrono::high_resolution_clock::time_point stagingSsboBufferCreate = std::chrono::high_resolution_clock::now();
+        
+        if (!this->createBuffer(
+                bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                stagingBuffer, stagingBufferMemory)) {
+            std::cerr << "Failed to get Create Staging Buffer" << std::endl;
+            return false;
+        }
+        
+        time_span = std::chrono::high_resolution_clock::now() - stagingSsboBufferCreate;
+        std::cout << "stagingSsboBufferCreate: " << time_span.count() <<  std::endl;
+
+        std::chrono::high_resolution_clock::time_point stagingSsboBufferCopy = std::chrono::high_resolution_clock::now();
+        
+        data = nullptr;
+        vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        this->models.copyModelsContentIntoBuffer(data, SSBO, bufferSize);
+        vkUnmapMemory(this->device, stagingBufferMemory);
+
+        time_span = std::chrono::high_resolution_clock::now() - stagingSsboBufferCopy;
+        std::cout << "stagingSsboBufferCopy: " << time_span.count() <<  std::endl;
+
+        std::chrono::high_resolution_clock::time_point startSsboBufferCreate = std::chrono::high_resolution_clock::now();
+
+        if (!this->createBuffer(
+                bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                this->ssboBuffer, this->ssboBufferMemory)) {
+            std::cerr << "Failed to get Create Vertex Buffer" << std::endl;
+            return false;
+        }
+        
+        time_span = std::chrono::high_resolution_clock::now() - startSsboBufferCreate;
+        std::cout << "ssboBufferCreate: " << time_span.count() <<  std::endl;
+    }
+        
     // indices
     if (this->models.getTotalNumberOfIndices() == 0) return true;
 
@@ -1498,7 +1573,7 @@ bool Graphics::createBuffersFromModel() {
 
     data = nullptr;
     vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    this->models.copyModelsContentIntoBuffer(data, true, bufferSize);
+    this->models.copyModelsContentIntoBuffer(data, INDEX, bufferSize);
     vkUnmapMemory(this->device, stagingBufferMemory);
 
     time_span = std::chrono::high_resolution_clock::now() - stagingIndexBufferCopy;
@@ -1526,7 +1601,7 @@ bool Graphics::createBuffersFromModel() {
     
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
-
+    
     time_span = std::chrono::high_resolution_clock::now() - beginning;
     std::cout << "createBuffersFromModel: " << time_span.count() <<  std::endl;
 

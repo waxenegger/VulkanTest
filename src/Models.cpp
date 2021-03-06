@@ -281,13 +281,19 @@ void Model::scale(float factor) {
 void Models::addModel(Model * model) {
     if (!model->hasBeenLoaded()) return;
 
-    for (Mesh & m : model->getMeshes()) {
+    auto & meshes = model->getMeshes();
+    for (Mesh & m : meshes) {
         this->totalNumberOfVertices += m.getVertices().size();
         this->totalNumberOfIndices += m.getIndices().size();
+        this->totalNumberOfMeshes += meshes.size();
         this->processTextures(m);
     }
     
     this->models.push_back(std::unique_ptr<Model>(model));    
+}
+
+VkDeviceSize Models::getTotalNumberOfMeshes() {
+    return this->totalNumberOfMeshes;
 }
 
 VkImageView Models::findTextureImageViewById(unsigned int id) {
@@ -362,28 +368,46 @@ void Models::processTextures(Mesh & mesh) {
     mesh.setTextureInformation(textureInfo);
 }
 
-void Models::copyModelsContentIntoBuffer(void* data, bool contentIsIndices, VkDeviceSize maxSize) {
+void Models::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsContentType, VkDeviceSize maxSize) {
     
     VkDeviceSize overallSize = 0;
     for (auto & model : this->models) {
         for (Mesh & mesh : model->getMeshes()) {            
             VkDeviceSize dataSize = 0;
-            if (contentIsIndices) {
-                dataSize = mesh.getIndices().size() * sizeof(uint32_t);
-                if (overallSize + dataSize <= maxSize) {
-                    memcpy(static_cast<char *>(data) + overallSize, mesh.getIndices().data(), dataSize);
-                }
-            } else {
-                dataSize = mesh.getVertices().size() * sizeof(class Vertex);
-                if (overallSize + dataSize <= maxSize) {
-                    memcpy(static_cast<char *>(data)+overallSize, mesh.getVertices().data(), dataSize);
-                }
+            switch(modelsContentType) {
+                case INDEX:
+                    dataSize = mesh.getIndices().size() * sizeof(uint32_t);
+                    if (overallSize + dataSize <= maxSize) {
+                        memcpy(static_cast<char *>(data) + overallSize, mesh.getIndices().data(), dataSize);
+                    }
+                    break;
+                case VERTEX:
+                    dataSize = mesh.getVertices().size() * sizeof(class Vertex);
+                    if (overallSize + dataSize <= maxSize) {
+                        memcpy(static_cast<char *>(data)+overallSize, mesh.getVertices().data(), dataSize);
+                    }
+                    break;
+                case SSBO:
+                    TextureInformation textureInfo = mesh.getTextureInformation();
+                    ModelProperties modelProps = { 
+                        model->getModelMatrix(),
+                        textureInfo.ambientTexture,
+                        textureInfo.diffuseTexture,
+                        textureInfo.specularTexture,
+                        textureInfo.normalTexture
+                    };
+                    dataSize = sizeof(struct ModelProperties);                    
+                    if (overallSize + dataSize <= maxSize) {
+                        memcpy(static_cast<char *>(data)+overallSize, &modelProps, dataSize);
+                    }                    
+                    break;
             }
             overallSize += dataSize;
         }
     }
     
 }
+
 
 void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndices) {
     
@@ -396,6 +420,7 @@ void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndic
             VkDeviceSize vertexSize = mesh.getVertices().size();
             VkDeviceSize indexSize = mesh.getIndices().size();
 
+            /*
             TextureInformation textureInfo = mesh.getTextureInformation();
             ModelProperties modelProps = { 
                 model->getModelMatrix(),
@@ -409,6 +434,7 @@ void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndic
                 context.commandBuffers[commandBufferIndex], context.graphicsPipelineLayout,
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                 sizeof(struct ModelProperties), &modelProps);
+            */
             
             if (useIndices) {
                 vkCmdDrawIndexed(context.commandBuffers[commandBufferIndex], indexSize , 1, lastIndexOffset, lastVertexOffset, 0);

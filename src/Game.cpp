@@ -8,11 +8,12 @@ Game::Game(std::string root) {
 void Game::init() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
     
-    this->graphics.init(this->APP_NAME, VK_MAKE_VERSION(1,0,0), this->root);
+    this->graphics.init(this->APP_NAME, VK_MAKE_VERSION(1,1,0), this->root);
     
     if (!this->graphics.isActive()) return;
     
     this->graphics.listVkExtensions();
+    this->graphics.listPhysicalDeviceExtensions();
     this->graphics.listVkLayerNames();
     this->graphics.listVkPhysicalDevices();
 

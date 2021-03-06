@@ -1,5 +1,6 @@
-#version 450
+#version 460
 #extension GL_ARB_separate_shader_objects : enable
+#extension VK_KHR_shader_draw_parameters: enable
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inColor;
@@ -15,13 +16,17 @@ layout(binding = 0) uniform UniformBufferObject {
     vec4 sun;
 } modelUniforms;
 
-layout(push_constant) uniform PushConstants {
+struct ModelProperties {
     mat4 matrix;
     int ambientTexture;
     int diffuseTexture;
     int specularTexture;
     int normalTexture;
-} modelAttributes;
+};
+
+layout(binding = 1) buffer SSBO {
+    ModelProperties props[];
+} modelPropertiesSSBO;
 
 layout(location = 0) out vec3 fragPosition;
 layout(location = 1) out vec3 fragColor;
@@ -29,20 +34,24 @@ layout(location = 2) out vec2 fragTexCoord;
 layout(location = 3) out vec3 fragNormals;
 layout(location = 4) out vec4 eye;
 layout(location = 5) out vec4 light;
+layout(location = 6) out ModelProperties modelProperties;
 
 void main() {
-    vec4 pos = modelAttributes.matrix * vec4(inPosition, 1.0);
+    ModelProperties modelProps = modelPropertiesSSBO.props[gl_BaseInstance];
+    
+    vec4 pos = modelProps.matrix * vec4(inPosition, 1.0);
     fragPosition = vec3(pos);
     fragColor = inColor;
     fragTexCoord = inUV;
     
-    mat3 invertTransposeModel = mat3(transpose(inverse(modelAttributes.matrix)));
+    mat3 invertTransposeModel = mat3(transpose(inverse(modelProps.matrix)));
     
     fragNormals = normalize(invertTransposeModel * inNormal);
     eye = modelUniforms.camera;
     light = modelUniforms.sun;
+    modelProperties = modelProps;
 
-    if (modelAttributes.normalTexture != -1) {
+    if (modelProps.normalTexture != -1) {
         vec3 T = normalize(invertTransposeModel * inTangent);
         vec3 N = normalize(invertTransposeModel * inNormal);
         vec3 B = normalize(invertTransposeModel * inBitangent);

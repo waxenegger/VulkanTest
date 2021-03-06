@@ -1,4 +1,4 @@
-#version 450
+#version 460
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(location = 0) in vec3 fragPosition;
@@ -8,22 +8,24 @@ layout(location = 3) in vec3 fragNormals;
 layout(location = 4) in vec4 eye;
 layout(location = 5) in vec4 light;
 
-layout(binding = 1) uniform sampler2D samplers[25];
-
-layout(push_constant) uniform PushConstants {
+struct ModelProperties {
     mat4 matrix;
     int ambientTexture;
     int diffuseTexture;
     int specularTexture;
     int normalTexture;
-} modelAttributes;
+};
+
+layout(location = 6) flat in ModelProperties modelProperties;
+
+layout(binding = 2) uniform sampler2D samplers[25];
 
 layout(location = 0) out vec4 outColor;
 
 void main() {
     bool hasTextures =
-        modelAttributes.ambientTexture != -1 || modelAttributes.diffuseTexture != -1 ||
-        modelAttributes.specularTexture != -1 || modelAttributes.normalTexture != -1;
+        modelProperties.ambientTexture != -1 || modelProperties.diffuseTexture != -1 ||
+        modelProperties.specularTexture != -1 || modelProperties.normalTexture != -1;
 
     // ambientContribution
     vec4 ambientLightColor = vec4(0.3);
@@ -45,8 +47,8 @@ void main() {
 
     // normals adjustment if normal texture is present
     vec3 normals = fragNormals;
-    if (modelAttributes.normalTexture != -1) {
-        normals = texture(samplers[modelAttributes.normalTexture], fragTexCoord).rgb;
+    if (modelProperties.normalTexture != -1) {
+        normals = texture(samplers[modelProperties.normalTexture], fragTexCoord).rgb;
         normals = normalize(normals * 2.0 - 1.0);
     }
     
@@ -61,20 +63,20 @@ void main() {
     
     if (hasTextures) {
         // ambience
-        if (modelAttributes.ambientTexture != -1) {
-            ambientContribution *= texture(samplers[modelAttributes.ambientTexture], fragTexCoord);
+        if (modelProperties.ambientTexture != -1) {
+            ambientContribution *= texture(samplers[modelProperties.ambientTexture], fragTexCoord);
         }
         
         // diffuse
         diffuseContribution = diffuseContribution * diffuse;
-        if (modelAttributes.diffuseTexture != -1) {
-            diffuseContribution *= texture(samplers[modelAttributes.diffuseTexture], fragTexCoord);
+        if (modelProperties.diffuseTexture != -1) {
+            diffuseContribution *= texture(samplers[modelProperties.diffuseTexture], fragTexCoord);
         }
         
         // sepcular
         specularContribution = specularContribution * specular;
-        if (modelAttributes.specularTexture != -1) {
-            specularContribution *= texture(samplers[modelAttributes.specularTexture], fragTexCoord);
+        if (modelProperties.specularTexture != -1) {
+            specularContribution *= texture(samplers[modelProperties.specularTexture], fragTexCoord);
         }
         
         outColor = mix(mix(ambientContribution, specularContribution, 0.5), diffuseContribution, 0.95);
