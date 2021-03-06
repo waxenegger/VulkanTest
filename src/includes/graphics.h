@@ -1,7 +1,7 @@
 #ifndef SRC_INCLUDES_GRAPHICS_H_
 #define SRC_INCLUDES_GRAPHICS_H_
 
-#include "models.h"
+#include "components.h"
 #include "utils.h"
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -13,6 +13,8 @@ class Graphics final {
         VkInstance vkInstance = nullptr;
         VkSurfaceKHR vkSurface = nullptr;
         bool active = false;
+        
+        std::string dir = "./";
 
         std::vector<const char *> vkExtensionNames;
         std::vector<VkPhysicalDevice> vkPhysicalDevices;
@@ -84,7 +86,7 @@ class Graphics final {
         RenderContext context;
 
         Graphics();
-        void initSDL();
+        bool initSDL();
         bool initVulkan(const std::string & appName, uint32_t version);
 
         void queryVkInstanceExtensions();
@@ -164,7 +166,7 @@ class Graphics final {
 
         static Graphics & instance();
         bool isActive();
-        void init(const std::string & appName, uint32_t version);
+        void init(const std::string & appName, uint32_t version, const std::string & dir);
 
         void listVkExtensions();
         void listVkLayerNames();

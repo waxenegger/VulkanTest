@@ -1,27 +1,26 @@
 #include "includes/graphics.h"
 
-Graphics::Graphics() {
-    this->initSDL();
-}
+Graphics::Graphics() { }
 
-void Graphics::initSDL() {
+bool Graphics::initSDL() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0) {
         std::cerr << "Could not initialize SDL! Error: " << SDL_GetError() << std::endl;
-        return;
+        return false;
     }
 
     this->sdlWindow =
             SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
     if (this->sdlWindow == nullptr) {
         std::cerr << "SDL Window could not be created! Error: " << SDL_GetError() << std::endl;
-        return;
+        return false;
     }
+    
+    return true;
 }
 
-void Graphics::init(const std::string & appName, uint32_t version) {
-    if (this->sdlWindow == nullptr) {
-        return;
-    }
+void Graphics::init(const std::string & appName, uint32_t version, const std::string & dir) {
+    this->dir = dir;
+    if (!this->initSDL()) return;
 
     SDL_SetWindowTitle(this->sdlWindow, appName.c_str());
     SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -661,9 +660,9 @@ VkShaderModule Graphics::createShaderModule(const std::vector<char> & code) {
 bool Graphics::createShaderStageInfo() {
     std::vector<char> vertShaderCode;
     std::vector<char> fragShaderCode;
-    if (!Utils::readFile("/opt/projects/VulkanTest/res/shaders/vert.spv", vertShaderCode) ||
-            !Utils::readFile("/opt/projects/VulkanTest/res/shaders/frag.spv", fragShaderCode)) {
-        std::cerr << "Failed to read shader files" << std::endl;
+    if (!Utils::readFile(this->dir + "/res/shaders/vert.spv", vertShaderCode) ||
+            !Utils::readFile(this->dir + "/res/shaders/frag.spv", fragShaderCode)) {
+        std::cerr << "Failed to read shader files: " << (this->dir + "/res/shaders/") << std::endl;
         return false;
     }
 
@@ -1853,16 +1852,25 @@ Graphics::~Graphics() {
     if (this->indexBufferMemory != nullptr) vkFreeMemory(this->device, this->indexBufferMemory, nullptr);
 
     for (size_t i = 0; i < this->uniformBuffers.size(); i++) {
-        vkDestroyBuffer(this->device, this->uniformBuffers[i], nullptr);
+        if (this->uniformBuffers[i] != nullptr) vkDestroyBuffer(this->device, this->uniformBuffers[i], nullptr);
     }
     for (size_t i = 0; i < this->uniformBuffersMemory.size(); i++) {
-        vkFreeMemory(this->device, this->uniformBuffersMemory[i], nullptr);
+        if (this->uniformBuffersMemory[i] != nullptr) vkFreeMemory(this->device, this->uniformBuffersMemory[i], nullptr);
     }
     
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vkDestroySemaphore(this->device, this->renderFinishedSemaphores[i], nullptr);
-        vkDestroySemaphore(this->device, this->imageAvailableSemaphores[i], nullptr);
-        vkDestroyFence(this->device, this->inFlightFences[i], nullptr);
+        if (this->renderFinishedSemaphores.size() == MAX_FRAMES_IN_FLIGHT &&
+            this->renderFinishedSemaphores[i] != nullptr) {
+            vkDestroySemaphore(this->device, this->renderFinishedSemaphores[i], nullptr);
+        }
+        if (this->imageAvailableSemaphores.size() == MAX_FRAMES_IN_FLIGHT &&
+            this->imageAvailableSemaphores[i] != nullptr) {
+            vkDestroySemaphore(this->device, this->imageAvailableSemaphores[i], nullptr);
+        }
+        if (this->inFlightFences.size() == MAX_FRAMES_IN_FLIGHT &&
+            this->inFlightFences[i] != nullptr) {
+            vkDestroyFence(this->device, this->inFlightFences[i], nullptr);
+        }
     }
 
     if (this->device != nullptr && this->commandPool != nullptr) {

@@ -80,6 +80,7 @@ class Camera
             void setType(CameraType type);
             void move(KeyPress key, bool isPressed = false, float deltaTime = 1.0f);
             void updateDirection(const float deltaX, const float  deltaY, float deltaTime = 1.0f);
+            void destroy();
 };
 
 #endif

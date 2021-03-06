@@ -165,6 +165,13 @@ Camera * Camera::instance() {
     return Camera::singleton;
 }
 
+void Camera::destroy() {
+    if (Camera::singleton != nullptr) {
+        delete Camera::singleton;
+        Camera::singleton = nullptr;
+    }
+}
+
 Camera * Camera::singleton = nullptr;
 
 
