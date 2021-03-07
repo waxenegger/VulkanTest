@@ -86,7 +86,7 @@ class Texture final {
         VkDeviceSize getSize();
         void * getPixels();
         void freeSurface();
-        Texture() {};
+        Texture(bool empty = false, VkExtent2D extent = {100, 100});
         ~Texture();
         void cleanUpTexture(const VkDevice & device);
         bool readImageFormat();

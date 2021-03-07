@@ -1,6 +1,5 @@
 #version 460
 #extension GL_ARB_separate_shader_objects : enable
-#extension VK_KHR_shader_draw_parameters: enable
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inColor;
@@ -25,7 +24,7 @@ struct ModelProperties {
 };
 
 layout(binding = 1) buffer SSBO {
-    ModelProperties props[];
+    ModelProperties props;
 } modelPropertiesSSBO;
 
 layout(location = 0) out vec3 fragPosition;
@@ -37,8 +36,8 @@ layout(location = 5) out vec4 light;
 layout(location = 6) out ModelProperties modelProperties;
 
 void main() {
-    ModelProperties modelProps = modelPropertiesSSBO.props[gl_BaseInstance];
-    
+    ModelProperties modelProps = modelPropertiesSSBO.props;
+
     vec4 pos = modelProps.matrix * vec4(inPosition, 1.0);
     fragPosition = vec3(pos);
     fragColor = inColor;

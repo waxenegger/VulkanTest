@@ -282,11 +282,15 @@ void Models::addModel(Model * model) {
     if (!model->hasBeenLoaded()) return;
 
     auto & meshes = model->getMeshes();
+    int i=0;
     for (Mesh & m : meshes) {
         this->totalNumberOfVertices += m.getVertices().size();
         this->totalNumberOfIndices += m.getIndices().size();
         this->totalNumberOfMeshes += meshes.size();
         this->processTextures(m);
+        TextureInformation info =  m.getTextureInformation();
+        std::cout << info.diffuseTextureLocation << " => " << i << std::endl;
+        i++;
     }
     
     this->models.push_back(std::unique_ptr<Model>(model));    
@@ -396,7 +400,8 @@ void Models::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsCon
                         textureInfo.specularTexture,
                         textureInfo.normalTexture
                     };
-                    dataSize = sizeof(struct ModelProperties);                    
+                    std::cout << modelProps.diffuseTexture << std::endl;
+                    dataSize = sizeof(textureInfo);             
                     if (overallSize + dataSize <= maxSize) {
                         memcpy(static_cast<char *>(data)+overallSize, &modelProps, dataSize);
                     }                    
@@ -410,7 +415,6 @@ void Models::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsCon
 
 
 void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndices) {
-    
     VkDeviceSize lastVertexOffset = 0;
     VkDeviceSize lastIndexOffset = 0;
 
@@ -420,11 +424,10 @@ void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndic
             VkDeviceSize vertexSize = mesh.getVertices().size();
             VkDeviceSize indexSize = mesh.getIndices().size();
 
-            /*
             TextureInformation textureInfo = mesh.getTextureInformation();
             ModelProperties modelProps = { 
                 model->getModelMatrix(),
-                 textureInfo.ambientTexture,
+                 c,
                  textureInfo.diffuseTexture,
                  textureInfo.specularTexture,
                  textureInfo.normalTexture
@@ -434,7 +437,7 @@ void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndic
                 context.commandBuffers[commandBufferIndex], context.graphicsPipelineLayout,
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                 sizeof(struct ModelProperties), &modelProps);
-            */
+            
             
             if (useIndices) {
                 vkCmdDrawIndexed(context.commandBuffers[commandBufferIndex], indexSize , 1, lastIndexOffset, lastVertexOffset, 0);
@@ -444,9 +447,8 @@ void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndic
                         
             lastIndexOffset += indexSize;
             lastVertexOffset += vertexSize;
+            c++;
         }
-
-        c++;
     }
 }
 
@@ -595,15 +597,15 @@ void Texture::setTextureImageView(VkImageView & imageView) {
 
 void Texture::load() {
     if (!this->loaded) {
-        std::cerr << "Loading texture: " << this->path << std::endl;
+        std::cout << "Loading texture: " << this->path << std::endl;
         this->textureSurface = IMG_Load(this->path.c_str());
         if (this->textureSurface != nullptr) {
             if (!this->readImageFormat()) {
-                std::cerr << "Unsupported Texture Format: " << this->path << std::endl;
+                std::cout << "Unsupported Texture Format: " << this->path << std::endl;
             } else if (this->getSize() != 0) {
                 this->valid = true;
             }
-        } else std::cerr << "Failed to load texture: " << this->path << std::endl;
+        } else std::cout << "Failed to load texture: " << this->path << std::endl;
         this->loaded = true;
     }
 }
@@ -649,6 +651,17 @@ void Texture::freeSurface() {
         SDL_FreeSurface(this->textureSurface);
         this->textureSurface = nullptr;
     }    
+}
+
+Texture::Texture(bool empty,  VkExtent2D extent) {
+    if (empty) {
+        this->textureSurface = SDL_CreateRGBSurface(0,extent.width, extent.height, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
+
+        this->imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
+        
+        this->loaded = true;
+        this->valid = this->textureSurface != nullptr;
+    }
 }
 
 Texture::~Texture() {
