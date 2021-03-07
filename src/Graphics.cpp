@@ -1165,47 +1165,7 @@ bool Graphics::createCommandBuffers() {
            
             if (this->indexBuffer != nullptr) {
                 vkCmdBindIndexBuffer(this->context.commandBuffers[i], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-                std::vector< VkDrawIndexedIndirectCommand > drawCommands = this->models.draw(this->context, i, true);
-                
-                
-                
-                // indirect draw buffers
-                //if (this->context.indirectDrawsBuffer != nullptr) vkDestroyBuffer(this->device, this->context.indirectDrawsBuffer, nullptr);
-                //if (this->context.indirectDrawsBufferMemory != nullptr) vkFreeMemory(this->device, this->context.indirectDrawsBufferMemory, nullptr);
-
-                VkDeviceSize drawCommandSize = sizeof(VkDrawIndexedIndirectCommand);
-                VkDeviceSize bufferSize = drawCommandSize * drawCommands.size();
-
-                VkBuffer stagingBuffer;
-                VkDeviceMemory stagingBufferMemory;
-                if (!this->createBuffer(
-                        bufferSize,
-                        VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                        stagingBuffer, stagingBufferMemory)) {
-                    std::cerr << "Failed to get Create Staging Buffer" << std::endl;
-                    return false;
-                }
-
-                void * data = nullptr;
-                vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-                memcpy(data, drawCommands.data(), bufferSize);
-                vkUnmapMemory(this->device, stagingBufferMemory);
-
-                if (!this->createBuffer(
-                        bufferSize,
-                        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                        this->context.indirectDrawsBuffer, this->context.indirectDrawsBufferMemory)) {
-                    std::cerr << "Failed to get Create Indirect Draws Buffer" << std::endl;
-                    return false;
-                }
-
-                this->copyBuffer(stagingBuffer,this->context.indirectDrawsBuffer, bufferSize);
-
-                vkDestroyBuffer(this->device, stagingBuffer, nullptr);
-                vkFreeMemory(this->device, stagingBufferMemory, nullptr);
-
-                vkCmdDrawIndexedIndirect(
-                    this->context.commandBuffers[i], this->context.indirectDrawsBuffer, 0, drawCommands.size(), drawCommandSize);
+                this->models.draw(this->context, i, true);
             } else {
                 this->models.draw(this->context, i, false);                
             }
@@ -1534,7 +1494,7 @@ bool Graphics::createBuffersFromModel() {
 
     void* data = nullptr;
     vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    this->models.copyModelsContentIntoBuffer(data, VERTEX, bufferSize);
+    this->copyModelsContentIntoBuffer(data, VERTEX, bufferSize);
     vkUnmapMemory(this->device, stagingBufferMemory);
 
     time_span = std::chrono::high_resolution_clock::now() - stagingVertexBufferCopy;
@@ -1587,7 +1547,7 @@ bool Graphics::createBuffersFromModel() {
         
         data = nullptr;
         vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-        this->models.copyModelsContentIntoBuffer(data, SSBO, bufferSize);
+        this->copyModelsContentIntoBuffer(data, SSBO, bufferSize);
         vkUnmapMemory(this->device, stagingBufferMemory);
 
         time_span = std::chrono::high_resolution_clock::now() - stagingSsboBufferCopy;
@@ -1642,7 +1602,7 @@ bool Graphics::createBuffersFromModel() {
 
     data = nullptr;
     vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    this->models.copyModelsContentIntoBuffer(data, INDEX, bufferSize);
+    this->copyModelsContentIntoBuffer(data, INDEX, bufferSize);
     vkUnmapMemory(this->device, stagingBufferMemory);
 
     time_span = std::chrono::high_resolution_clock::now() - stagingIndexBufferCopy;
@@ -1675,6 +1635,59 @@ bool Graphics::createBuffersFromModel() {
     std::cout << "createBuffersFromModel: " << time_span.count() <<  std::endl;
 
     return true;
+}
+
+void Graphics::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsContentType, VkDeviceSize maxSize) {
+    VkDeviceSize overallSize = 0;
+    
+    auto & allModels = this->getModels().getModels();
+    for (auto & model : allModels) {
+        auto componentsWithModel = this->components.getAllPropertiesForModel(model->getPath());
+        if (modelsContentType == SSBO && componentsWithModel.empty()) continue;
+        for (Mesh & mesh : model->getMeshes()) {            
+            VkDeviceSize dataSize = 0;
+            switch(modelsContentType) {
+                case INDEX:
+                    dataSize = mesh.getIndices().size() * sizeof(uint32_t);
+                    if (overallSize + dataSize <= maxSize) {
+                        memcpy(static_cast<char *>(data) + overallSize, mesh.getIndices().data(), dataSize);
+                        overallSize += dataSize;
+                    }
+                    break;
+                case VERTEX:
+                    dataSize = mesh.getVertices().size() * sizeof(class Vertex);
+                    if (overallSize + dataSize <= maxSize) {
+                        memcpy(static_cast<char *>(data)+overallSize, mesh.getVertices().data(), dataSize);
+                        overallSize += dataSize;
+                    }
+                    break;
+                case SSBO:
+                    TextureInformation textureInfo = mesh.getTextureInformation();
+                    for (auto & props : componentsWithModel) {
+                        ModelProperties modelProps = { 
+                            props.matrix,
+                            textureInfo.ambientTexture,
+                            textureInfo.diffuseTexture,
+                            textureInfo.specularTexture,
+                            textureInfo.normalTexture
+                        };
+                        dataSize = sizeof(struct ModelProperties);             
+                        if (overallSize + dataSize <= maxSize) {
+                            memcpy(static_cast<char *>(data)+overallSize, &modelProps, dataSize);
+                            overallSize += dataSize;
+                        }      
+                    }
+                    break;
+            }
+        }
+    }
+}
+
+Component * Graphics::addModelComponent(std::string modelLocation) {
+    Model * model = this->models.findModelByLocation(modelLocation);
+    if (model == nullptr) return nullptr;
+    
+    return this->components.addComponent(new Component(model));
 }
 
 bool Graphics::createImage(
@@ -1879,8 +1892,8 @@ void Graphics::addModel(Model * model) {
      if (model->hasBeenLoaded()) this->models.addModel(modelPtr.release());
 }
 
-void Graphics::addModel(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices) {
-     std::unique_ptr<Model> model = std::make_unique<Model>(vertices, indices);
+void Graphics::addModel(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, std::string name) {
+     std::unique_ptr<Model> model = std::make_unique<Model>(vertices, indices, name);
      if (model->hasBeenLoaded()) this->models.addModel(model.release());
 }
 
@@ -2011,9 +2024,6 @@ Graphics::~Graphics() {
     if (this->ssboBuffer != nullptr) vkDestroyBuffer(this->device, this->ssboBuffer, nullptr);
     if (this->ssboBufferMemory != nullptr) vkFreeMemory(this->device, this->ssboBufferMemory, nullptr);
     
-    if (this->context.indirectDrawsBuffer != nullptr) vkDestroyBuffer(this->device, this->context.indirectDrawsBuffer, nullptr);
-    if (this->context.indirectDrawsBufferMemory != nullptr) vkFreeMemory(this->device, this->context.indirectDrawsBufferMemory, nullptr);
-
     for (size_t i = 0; i < this->uniformBuffers.size(); i++) {
         if (this->uniformBuffers[i] != nullptr) vkDestroyBuffer(this->device, this->uniformBuffers[i], nullptr);
     }
@@ -2057,4 +2067,8 @@ RenderContext & Graphics::getRenderContext() {
 
 Models & Graphics::getModels() {
     return this->models;
+}
+
+void Graphics::prepareComponents() {
+    this->components.initWithModelLocations(this->models.getModelLocations());
 }

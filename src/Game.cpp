@@ -26,11 +26,17 @@ void Game::init() {
          std::cerr << "Failed to Create Models" << std::endl;
          return;
     }
-    
+
+    if (!this->addComponents()) {
+         std::cerr << "Failed to Create Components" << std::endl;
+         return;        
+    }
+
     if (!this->graphics.prepareModels()) {
          std::cerr << "Failed to Prepare Models" << std::endl;
         return;
     }
+    
     
     if (!this->graphics.updateSwapChain()) {
         return;
@@ -67,53 +73,41 @@ bool Game::loadModels() {
         0, 1, 2, 2, 3, 0,
         4, 7, 6, 6, 5, 4
     };
-    Model * quad = new Model(vertices, indices);
-    quad->scale(5);
-    this->graphics.addModel(quad);
+    
+    this->graphics.addModel(new Model(vertices, indices, "quad"));
+    this->graphics.addModel(new Model("/opt/projects/VulkanTest/res/models/", "batman.obj"));
+    //this->graphics.addModel(new Model("/opt/projects/VulkanTest/res/models/", "woolly-mammoth-150k.obj"));
+    //this->graphics.addModel(new Model("/opt/projects/VulkanTest/res/models/", "teapot.obj"));
+    //this->graphics.addModel(new Model("/opt/projects/VulkanTest/res/models/", "nanosuit.obj"));
 
-    std::chrono::high_resolution_clock::time_point batmanStart = std::chrono::high_resolution_clock::now();
-
-    Model * batman = new Model("/opt/projects/VulkanTest/res/models/", "batman.obj");
-    batman->setPosition(5.0f, 0.0f, 5.0f);
-    batman->scale(2);
-    this->graphics.addModel(batman);
-
-    Model * mammoth = new Model("/opt/projects/VulkanTest/res/models/", "woolly-mammoth-150k.obj");
-    mammoth->setPosition(50,0,50);
-    mammoth->scale(2);
-    this->graphics.addModel(mammoth);
-
-    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - batmanStart;
-    std::cout << "load batman: " << time_span.count() <<  std::endl;
-
-    for (int i=0;i<1;i++) {
-        for (int j=0;j<1;j++) {
-            Model * teapot = new Model("/opt/projects/VulkanTest/res/models/", "teapot.obj");
-            teapot->setColor(glm::vec3(1.0f, 1.0f, 1.0f));
-
-            glm::vec3 pos = teapot->getPosition();
-            pos.z -= i * 10;
-            pos.x -= j * 10;
-            teapot->setPosition(pos);
-            teapot->setPosition(glm::vec3(0,0,-15));
-            this->graphics.addModel(teapot);
-        }
-    }
-
-    std::chrono::high_resolution_clock::time_point nanosuitStart = std::chrono::high_resolution_clock::now();
-
-    Model * nanosuit = new Model("/opt/projects/VulkanTest/res/models/", "nanosuit.obj");
-    nanosuit->scale(0.5);
-    this->graphics.addModel(nanosuit);
-
-    time_span = std::chrono::high_resolution_clock::now() - nanosuitStart;
-    std::cout << "load nanosuit: " << time_span.count() <<  std::endl;
-
-    time_span = std::chrono::high_resolution_clock::now() - start;
-    std::cout << "load models: " << time_span.count() <<  std::endl;
+    this->graphics.prepareComponents();
+    
+    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
+    std::cout << "loaded models: " << time_span.count() <<  std::endl;
     
     return true;
 }
+
+bool Game::addComponents() {
+    if (!this->graphics.isActive()) return false;
+    
+    
+    if (this->graphics.addModelComponent("quad") == nullptr) return false;
+    Component * quad = this->graphics.addModelComponent("quad");
+    if (quad == nullptr) return false;
+    quad->setPosition(glm::vec3(5));
+    
+    if (this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/batman.obj") == nullptr) return false;
+    
+    Component * batman = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/batman.obj");
+    if (batman == nullptr) return false;
+
+    batman->setPosition(glm::vec3(-5));
+
+    
+    return true;
+}
+
 
 void Game::loop() {
     if (!this->initialized) return;
@@ -125,7 +119,6 @@ void Game::loop() {
     bool isFullScreen = false;
     bool needsRestoreAfterFullScreen = false;
     
-    float u = 0.0f;
     while(!quit) {
         while (SDL_PollEvent(&e) != 0) {
             switch(e.type) {
@@ -154,12 +147,6 @@ void Game::loop() {
                         case SDL_SCANCODE_D:
                             Camera::instance()->move(Camera::KeyPress::RIGHT, true, 0.5f);
                             break;
-                        case SDL_SCANCODE_M:
-                            if (u > -100)  { u-= 1.0f; } 
-                            else u =0.0f;
-                            this->graphics.getModels().setPosition(0,u,0);
-                            this->graphics.renderScene();
-                            break;                                
                         case SDL_SCANCODE_F:
                             this->graphics.toggleWireFrame();
                             break;                                

@@ -85,6 +85,7 @@ class Graphics final {
         VkSampler textureSampler = nullptr;
         
         Models models;
+        Components components;
         
         RenderContext context;
 
@@ -159,6 +160,7 @@ class Graphics final {
         void prepareModelTextures();
         void copyBufferToImage(VkBuffer & buffer, VkImage & image, uint32_t width, uint32_t height);
         bool createTextureSampler();
+        void copyModelsContentIntoBuffer(void* data, ModelsContentType modelsContentType, VkDeviceSize maxSize);
         
     public:
         Graphics(const Graphics&) = delete;
@@ -178,7 +180,7 @@ class Graphics final {
         bool updateSwapChain();
         void drawFrame();
         void addModel(Model * model);
-        void addModel(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices);
+        void addModel(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, std::string name);
         void addModel(const std::string & dir, const std::string & file);
         bool prepareModels();
 
@@ -188,6 +190,9 @@ class Graphics final {
         void renderScene();
         void toggleWireFrame();
         SDL_Window * getSdlWindow();
+        
+        void prepareComponents();
+        Component * addModelComponent(std::string modelLocation);
         
         Models & getModels();
 

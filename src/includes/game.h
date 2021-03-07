@@ -17,6 +17,7 @@ class Game final {
         void init();
         void loop();
         bool loadModels();
+        bool addComponents();
         ~Game();
 };
 

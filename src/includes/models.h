@@ -98,8 +98,6 @@ class Texture final {
 
 struct RenderContext {
     std::vector<VkCommandBuffer> commandBuffers;
-    VkBuffer indirectDrawsBuffer = nullptr;
-    VkDeviceMemory indirectDrawsBufferMemory = nullptr;
     VkPipelineLayout graphicsPipelineLayout = nullptr;
 };
 
@@ -112,10 +110,6 @@ class Model final {
         bool loaded = false;
         bool visible = true;
 
-        glm::vec3 position = glm::vec3(0.0f);
-        glm::vec3 rotation = glm::vec3(0.0f);
-        float scaleFactor = 1.0f;
-
         void processNode(const aiNode * node, const aiScene *scene);
         Mesh processMesh(const aiMesh *mesh, const aiScene *scene);
         void calculateNormals();
@@ -123,19 +117,13 @@ class Model final {
         ~Model();
         Model() {};
         Model(const std::string & dir, const std::string & file);
-        Model(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices);
+        Model(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, std::string name);
         void init();
         bool hasBeenLoaded();
         bool isVisible();
         std::string getPath();
         std::vector<Mesh> & getMeshes();
         void setColor(glm::vec3 color);
-        void setPosition(float x, float y, float z);
-        void setPosition(glm::vec3 position);
-        glm::vec3 getPosition();
-        void setRotation(int xAxis = 0, int yAxis = 0, int zAxis = 0);
-        void scale(float factor);
-        glm::mat4 getModelMatrix();
         TextureInformation addTextures(const aiMaterial * mat);
         void correctTexturePath(char * path);
 };
@@ -155,22 +143,22 @@ class Models final {
     public:
         void addModel(Model * model);
         void clear();
-        std::vector<VkDrawIndexedIndirectCommand> draw(RenderContext & context, int commandBufferIndex, bool useIndices);
-        void copyModelsContentIntoBuffer(void* data, ModelsContentType modelsContentType, VkDeviceSize maxSize);
+        void draw(RenderContext & context, int commandBufferIndex, bool useIndices);
         VkDeviceSize getTotalNumberOfVertices();
         VkDeviceSize getTotalNumberOfIndices();
         VkDeviceSize getTotalNumberOfMeshes();
         void setColor(glm::vec3 color);
-        void setPosition(float x, float y, float z);
-        // TODO: more translation and rotation methods
         const static std::string AMBIENT_TEXTURE;
         const static std::string DIFFUSE_TEXTURE;
         const static std::string SPECULAR_TEXTURE;
         const static std::string TEXTURE_NORMALS;
         void processTextures(Mesh & mesh);
         std::map<std::string, std::unique_ptr<Texture>> &  getTextures();
+        std::vector<std::string> getModelLocations();
         VkImageView findTextureImageViewById(unsigned int id); 
         void cleanUpTextures(const VkDevice & device);
+        std::vector<std::unique_ptr<Model>> & getModels();
+        Model * findModelByLocation(std::string path);
         ~Models();
 
 };

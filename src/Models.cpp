@@ -112,9 +112,9 @@ void Mesh::setTextureInformation(TextureInformation & textures) {
     this->textures = textures;
 }
 
-Model::Model(const std::vector< Vertex >& vertices, const std::vector< uint32_t > indices)
+Model::Model(const std::vector< Vertex >& vertices, const std::vector< uint32_t > indices, std::string name)
 {
-    this->file = "";
+    this->file = name;
     this->dir = "";
     this->meshes = { Mesh(vertices, indices) };
     this->calculateNormals();
@@ -236,61 +236,22 @@ Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
      return Mesh(vertices, indices, textures);
 }
 
-glm::mat4 Model::getModelMatrix() {
-    glm::mat4 transformation = glm::mat4(1.0f);
-
-    transformation = glm::translate(transformation, this->position);
-
-    if (this->rotation.x != 0.0f) transformation = glm::rotate(transformation, this->rotation.x, glm::vec3(1, 0, 0));
-    if (this->rotation.y != 0.0f) transformation = glm::rotate(transformation, this->rotation.y, glm::vec3(0, 1, 0));
-    if (this->rotation.z != 0.0f) transformation = glm::rotate(transformation, this->rotation.z, glm::vec3(0, 0, 1));
-
-    return glm::scale(transformation, glm::vec3(this->scaleFactor));   
-}
-
 void Model::setColor(glm::vec3 color) {
     for (Mesh & m : this->meshes) {
         m.setColor(color);
     }
 }
 
-void Model::setPosition(float x, float y, float z) {
-    this->setPosition(glm::vec3(x,y,z));
-}
-
-void Model::setPosition(glm::vec3 position) {
-    this->position = position;
-}
-
-glm::vec3 Model::getPosition() {
-    return this->position;
-}
-
-void Model::setRotation(int xAxis, int yAxis, int zAxis) {
-    this->rotation.x = glm::radians(static_cast<float>(xAxis));
-    this->rotation.y = glm::radians(static_cast<float>(yAxis));
-    this->rotation.z = glm::radians(static_cast<float>(zAxis));
-}
-
-void Model::scale(float factor) {
-    if (factor <= 0) return;
-    
-    this->scaleFactor = factor;
-}
-
 void Models::addModel(Model * model) {
     if (!model->hasBeenLoaded()) return;
 
     auto & meshes = model->getMeshes();
-    int i=0;
     for (Mesh & m : meshes) {
         this->totalNumberOfVertices += m.getVertices().size();
         this->totalNumberOfIndices += m.getIndices().size();
         this->totalNumberOfMeshes += meshes.size();
         this->processTextures(m);
         TextureInformation info =  m.getTextureInformation();
-        std::cout << info.diffuseTextureLocation << " => " << i << std::endl;
-        i++;
     }
     
     this->models.push_back(std::unique_ptr<Model>(model));    
@@ -372,52 +333,20 @@ void Models::processTextures(Mesh & mesh) {
     mesh.setTextureInformation(textureInfo);
 }
 
-void Models::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsContentType, VkDeviceSize maxSize) {
-    
-    VkDeviceSize overallSize = 0;
-    for (auto & model : this->models) {
-        for (Mesh & mesh : model->getMeshes()) {            
-            VkDeviceSize dataSize = 0;
-            switch(modelsContentType) {
-                case INDEX:
-                    dataSize = mesh.getIndices().size() * sizeof(uint32_t);
-                    if (overallSize + dataSize <= maxSize) {
-                        memcpy(static_cast<char *>(data) + overallSize, mesh.getIndices().data(), dataSize);
-                    }
-                    break;
-                case VERTEX:
-                    dataSize = mesh.getVertices().size() * sizeof(class Vertex);
-                    if (overallSize + dataSize <= maxSize) {
-                        memcpy(static_cast<char *>(data)+overallSize, mesh.getVertices().data(), dataSize);
-                    }
-                    break;
-                case SSBO:
-                    TextureInformation textureInfo = mesh.getTextureInformation();
-                    ModelProperties modelProps = { 
-                        model->getModelMatrix(),
-                        textureInfo.ambientTexture,
-                        textureInfo.diffuseTexture,
-                        textureInfo.specularTexture,
-                        textureInfo.normalTexture
-                    };
-                    std::cout << modelProps.diffuseTexture << std::endl;
-                    dataSize = sizeof(struct ModelProperties);             
-                    if (overallSize + dataSize <= maxSize) {
-                        memcpy(static_cast<char *>(data)+overallSize, &modelProps, dataSize);
-                    }                    
-                    break;
-            }
-            overallSize += dataSize;
-        }
-    }
-    
+std::vector<std::unique_ptr<Model>> & Models::getModels() {
+    return this->models;
 }
 
+Model * Models::findModelByLocation(std::string path) {
+    for (auto & m : this->models) {
+        std::cout << m->getPath() << std::endl;
+        std::cout << path << std::endl;
+        if (m->getPath().compare(path) == 0) return m.get();
+    }
+    return nullptr;
+}
 
-std::vector<VkDrawIndexedIndirectCommand> Models::draw(RenderContext & context, int commandBufferIndex, bool useIndices) {
-    
-    std::vector<VkDrawIndexedIndirectCommand> indirectDraws;
-    
+void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndices) {
     VkDeviceSize lastVertexOffset = 0;
     VkDeviceSize lastIndexOffset = 0;
 
@@ -427,16 +356,8 @@ std::vector<VkDrawIndexedIndirectCommand> Models::draw(RenderContext & context, 
             VkDeviceSize vertexSize = mesh.getVertices().size();
             VkDeviceSize indexSize = mesh.getIndices().size();
             
-            if (useIndices) {
-                VkDrawIndexedIndirectCommand indirectDraw {};
-                indirectDraw.firstIndex = lastIndexOffset;
-                indirectDraw.indexCount = indexSize;
-                indirectDraw.vertexOffset = lastVertexOffset;
-                indirectDraw.instanceCount = 1;
-                indirectDraw.firstInstance = c;
-                indirectDraws.push_back(indirectDraw);
-                
-                //vkCmdDrawIndexed(context.commandBuffers[commandBufferIndex], indexSize , 1, lastIndexOffset, lastVertexOffset, 0);
+            if (useIndices) {                
+                vkCmdDrawIndexed(context.commandBuffers[commandBufferIndex], indexSize , 2, lastIndexOffset, lastVertexOffset, c);
             } else {
                 vkCmdDraw(context.commandBuffers[commandBufferIndex], vertexSize, 1, 0, 0);
             }
@@ -446,8 +367,6 @@ std::vector<VkDrawIndexedIndirectCommand> Models::draw(RenderContext & context, 
             c++;
         }
     }
-    
-    return indirectDraws;
 }
 
 TextureInformation Model::addTextures(const aiMaterial * mat) {
@@ -519,6 +438,14 @@ std::map< std::string, std::unique_ptr< Texture >>& Models::getTextures()
     return this->textures;
 }
 
+std::vector<std::string>  Models::getModelLocations() {
+    std::vector<std::string> modelLocations;
+    for (auto & m : this->models) {
+        modelLocations.push_back(m->getPath());
+    }
+    return modelLocations;
+}
+
 VkDeviceSize Models::getTotalNumberOfVertices() {
     return this->totalNumberOfVertices;
 }
@@ -531,12 +458,6 @@ void Models::setColor(glm::vec3 color) {
     for (auto & model : this->models) {
         model->setColor(color);
     }
-}
-
-void Models::setPosition(float x, float y, float z) {
-    for (auto & model : this->models) {
-        model->setPosition(x,y,z);
-    }    
 }
 
 void Models::cleanUpTextures(const VkDevice & device) {
