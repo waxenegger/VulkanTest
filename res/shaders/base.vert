@@ -23,8 +23,8 @@ struct ModelProperties {
     int normalTexture;
 };
 
-layout(binding = 1) uniform SSBO {
-    ModelProperties props;
+layout(std430, binding = 1) buffer SSBO {
+    ModelProperties props[];
 } modelPropertiesSSBO;
 
 layout(location = 0) out vec3 fragPosition;
@@ -36,7 +36,7 @@ layout(location = 5) out vec4 light;
 layout(location = 6) out ModelProperties modelProperties;
 
 void main() {
-    ModelProperties modelProps = modelPropertiesSSBO.props;
+    ModelProperties modelProps = modelPropertiesSSBO.props[gl_BaseInstance];
 
     vec4 pos = modelProps.matrix * vec4(inPosition, 1.0);
     fragPosition = vec3(pos);

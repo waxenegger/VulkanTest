@@ -401,7 +401,7 @@ void Models::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsCon
                         textureInfo.normalTexture
                     };
                     std::cout << modelProps.diffuseTexture << std::endl;
-                    dataSize = sizeof(textureInfo);             
+                    dataSize = sizeof(struct ModelProperties);             
                     if (overallSize + dataSize <= maxSize) {
                         memcpy(static_cast<char *>(data)+overallSize, &modelProps, dataSize);
                     }                    
@@ -426,21 +426,6 @@ std::vector<VkDrawIndexedIndirectCommand> Models::draw(RenderContext & context, 
         for (Mesh & mesh : model->getMeshes()) {
             VkDeviceSize vertexSize = mesh.getVertices().size();
             VkDeviceSize indexSize = mesh.getIndices().size();
-
-            TextureInformation textureInfo = mesh.getTextureInformation();
-            ModelProperties modelProps = { 
-                model->getModelMatrix(),
-                 c,
-                 textureInfo.diffuseTexture,
-                 textureInfo.specularTexture,
-                 textureInfo.normalTexture
-            };
-
-            vkCmdPushConstants(
-                context.commandBuffers[commandBufferIndex], context.graphicsPipelineLayout,
-                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                sizeof(struct ModelProperties), &modelProps);
-            
             
             if (useIndices) {
                 VkDrawIndexedIndirectCommand indirectDraw {};

@@ -68,13 +68,14 @@ bool Game::loadModels() {
         4, 7, 6, 6, 5, 4
     };
     Model * quad = new Model(vertices, indices);
+    quad->scale(5);
     this->graphics.addModel(quad);
 
     std::chrono::high_resolution_clock::time_point batmanStart = std::chrono::high_resolution_clock::now();
 
     Model * batman = new Model("/opt/projects/VulkanTest/res/models/", "batman.obj");
-    batman->setPosition(0.0f, 0.0f, 10.0f);
-    batman->scale(5);
+    batman->setPosition(5.0f, 0.0f, 5.0f);
+    batman->scale(2);
     this->graphics.addModel(batman);
 
     Model * mammoth = new Model("/opt/projects/VulkanTest/res/models/", "woolly-mammoth-150k.obj");
@@ -95,14 +96,15 @@ bool Game::loadModels() {
             pos.x -= j * 10;
             teapot->setPosition(pos);
             teapot->setPosition(glm::vec3(0,0,-15));
-            //this->graphics.addModel(teapot);
+            this->graphics.addModel(teapot);
         }
     }
 
     std::chrono::high_resolution_clock::time_point nanosuitStart = std::chrono::high_resolution_clock::now();
 
-    //Model * nanosuit = new Model("/opt/projects/VulkanTest/res/models/", "nanosuit.obj");
-    //this->graphics.addModel(nanosuit);
+    Model * nanosuit = new Model("/opt/projects/VulkanTest/res/models/", "nanosuit.obj");
+    nanosuit->scale(0.5);
+    this->graphics.addModel(nanosuit);
 
     time_span = std::chrono::high_resolution_clock::now() - nanosuitStart;
     std::cout << "load nanosuit: " << time_span.count() <<  std::endl;

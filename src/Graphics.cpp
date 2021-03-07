@@ -777,17 +777,19 @@ bool Graphics::createGraphicsPipeline() {
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
 
+    /*
     VkPushConstantRange pushConstantRange{};
     pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     pushConstantRange.offset = 0;
     pushConstantRange.size = sizeof(struct ModelProperties);
-
+    */
+    
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.pSetLayouts = &this->descriptorSetLayout;
     pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pushConstantRangeCount = 1;
-    pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    //pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
     VkResult ret = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->context.graphicsPipelineLayout);
     ASSERT_VULKAN(ret);
@@ -860,7 +862,7 @@ bool Graphics::createDescriptorPool() {
 
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(this->swapChainImages.size());
-    poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     poolSizes[1].descriptorCount = static_cast<uint32_t>(this->swapChainImages.size());
     poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_TEXTURES * 2);
@@ -966,7 +968,7 @@ bool Graphics::createDescriptorSetLayout() {
     VkDescriptorSetLayoutBinding ssboLayoutBinding{};
     ssboLayoutBinding.binding = 1;
     ssboLayoutBinding.descriptorCount = 1;
-    ssboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    ssboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     ssboLayoutBinding.pImmutableSamplers = nullptr;
     ssboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     layoutBindings.push_back(ssboLayoutBinding);
@@ -1030,16 +1032,16 @@ bool Graphics::createDescriptorSets() {
             descriptorImageInfos.push_back(texureDescriptorInfo);        
     }
 
+    VkDescriptorBufferInfo ssboBufferInfo{};
+    ssboBufferInfo.buffer = this->ssboBuffer;
+    ssboBufferInfo.offset = 0;
+    ssboBufferInfo.range = sizeof(struct ModelProperties) * this->models.getTotalNumberOfMeshes();
+
     for (size_t i = 0; i < this->descriptorSets.size(); i++) {
         VkDescriptorBufferInfo uniformBufferInfo{};
         uniformBufferInfo.buffer = this->uniformBuffers[i];
         uniformBufferInfo.offset = 0;
         uniformBufferInfo.range = sizeof(struct ModelUniforms);
-
-        VkDescriptorBufferInfo ssboBufferInfo{};
-        ssboBufferInfo.buffer = this->ssboBuffer;
-        ssboBufferInfo.offset = 0;
-        ssboBufferInfo.range = sizeof(struct ModelProperties);
 
         std::vector<VkWriteDescriptorSet> descriptorWrites;
 
@@ -1058,7 +1060,7 @@ bool Graphics::createDescriptorSets() {
         ssboDescriptorSet.dstSet = this->descriptorSets[i];
         ssboDescriptorSet.dstBinding = 1;
         ssboDescriptorSet.dstArrayElement = 0;
-        ssboDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        ssboDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         ssboDescriptorSet.descriptorCount = 1;
         ssboDescriptorSet.pBufferInfo = &ssboBufferInfo;
         descriptorWrites.push_back(ssboDescriptorSet);
@@ -1168,8 +1170,8 @@ bool Graphics::createCommandBuffers() {
                 
                 
                 // indirect draw buffers
-                if (this->context.indirectDrawsBuffer != nullptr) vkDestroyBuffer(this->device, this->context.indirectDrawsBuffer, nullptr);
-                if (this->context.indirectDrawsBufferMemory != nullptr) vkFreeMemory(this->device, this->context.indirectDrawsBufferMemory, nullptr);
+                //if (this->context.indirectDrawsBuffer != nullptr) vkDestroyBuffer(this->device, this->context.indirectDrawsBuffer, nullptr);
+                //if (this->context.indirectDrawsBufferMemory != nullptr) vkFreeMemory(this->device, this->context.indirectDrawsBufferMemory, nullptr);
 
                 VkDeviceSize drawCommandSize = sizeof(VkDrawIndexedIndirectCommand);
                 VkDeviceSize bufferSize = drawCommandSize * drawCommands.size();
@@ -1595,7 +1597,7 @@ bool Graphics::createBuffersFromModel() {
 
         if (!this->createBuffer(
                 bufferSize,
-                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                 this->ssboBuffer, this->ssboBufferMemory)) {
             std::cerr << "Failed to get Create Vertex Buffer" << std::endl;
             return false;
