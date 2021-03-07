@@ -143,7 +143,6 @@ class Models final {
     public:
         void addModel(Model * model);
         void clear();
-        void draw(RenderContext & context, int commandBufferIndex, bool useIndices);
         VkDeviceSize getTotalNumberOfVertices();
         VkDeviceSize getTotalNumberOfIndices();
         VkDeviceSize getTotalNumberOfMeshes();

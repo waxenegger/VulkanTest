@@ -161,6 +161,7 @@ class Graphics final {
         void copyBufferToImage(VkBuffer & buffer, VkImage & image, uint32_t width, uint32_t height);
         bool createTextureSampler();
         void copyModelsContentIntoBuffer(void* data, ModelsContentType modelsContentType, VkDeviceSize maxSize);
+        void draw(RenderContext & context, int commandBufferIndex, bool useIndices);
         
     public:
         Graphics(const Graphics&) = delete;

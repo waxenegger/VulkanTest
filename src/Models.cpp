@@ -346,29 +346,6 @@ Model * Models::findModelByLocation(std::string path) {
     return nullptr;
 }
 
-void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndices) {
-    VkDeviceSize lastVertexOffset = 0;
-    VkDeviceSize lastIndexOffset = 0;
-
-    int c = 0;
-    for (auto & model : this->models) {
-        for (Mesh & mesh : model->getMeshes()) {
-            VkDeviceSize vertexSize = mesh.getVertices().size();
-            VkDeviceSize indexSize = mesh.getIndices().size();
-            
-            if (useIndices) {                
-                vkCmdDrawIndexed(context.commandBuffers[commandBufferIndex], indexSize , 2, lastIndexOffset, lastVertexOffset, c);
-            } else {
-                vkCmdDraw(context.commandBuffers[commandBufferIndex], vertexSize, 1, 0, 0);
-            }
-                        
-            lastIndexOffset += indexSize;
-            lastVertexOffset += vertexSize;
-            c++;
-        }
-    }
-}
-
 TextureInformation Model::addTextures(const aiMaterial * mat) {
     TextureInformation textureInfo;
     

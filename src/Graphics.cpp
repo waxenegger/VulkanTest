@@ -1165,9 +1165,9 @@ bool Graphics::createCommandBuffers() {
            
             if (this->indexBuffer != nullptr) {
                 vkCmdBindIndexBuffer(this->context.commandBuffers[i], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-                this->models.draw(this->context, i, true);
+                this->draw(this->context, i, true);
             } else {
-                this->models.draw(this->context, i, false);                
+                this->draw(this->context, i, false);                
             }
 
 
@@ -1635,6 +1635,30 @@ bool Graphics::createBuffersFromModel() {
     std::cout << "createBuffersFromModel: " << time_span.count() <<  std::endl;
 
     return true;
+}
+
+void Graphics::draw(RenderContext & context, int commandBufferIndex, bool useIndices) {
+    VkDeviceSize lastVertexOffset = 0;
+    VkDeviceSize lastIndexOffset = 0;
+
+    int c = 0;
+    auto & models = this->models.getModels();
+    for (auto & model : models) {
+        for (Mesh & mesh : model->getMeshes()) {
+            VkDeviceSize vertexSize = mesh.getVertices().size();
+            VkDeviceSize indexSize = mesh.getIndices().size();
+            
+            if (useIndices) {                
+                vkCmdDrawIndexed(context.commandBuffers[commandBufferIndex], indexSize , 1, lastIndexOffset, lastVertexOffset, c);
+            } else {
+                vkCmdDraw(context.commandBuffers[commandBufferIndex], vertexSize, 1, 0, 0);
+            }
+                        
+            lastIndexOffset += indexSize;
+            lastVertexOffset += vertexSize;
+            c++;
+        }
+    }
 }
 
 void Graphics::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsContentType, VkDeviceSize maxSize) {
