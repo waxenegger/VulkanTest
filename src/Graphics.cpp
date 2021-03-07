@@ -860,7 +860,7 @@ bool Graphics::createDescriptorPool() {
 
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSizes[0].descriptorCount = static_cast<uint32_t>(this->swapChainImages.size());
-    poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSizes[1].descriptorCount = static_cast<uint32_t>(this->swapChainImages.size());
     poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_TEXTURES * 2);
@@ -966,7 +966,7 @@ bool Graphics::createDescriptorSetLayout() {
     VkDescriptorSetLayoutBinding ssboLayoutBinding{};
     ssboLayoutBinding.binding = 1;
     ssboLayoutBinding.descriptorCount = 1;
-    ssboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    ssboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     ssboLayoutBinding.pImmutableSamplers = nullptr;
     ssboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     layoutBindings.push_back(ssboLayoutBinding);
@@ -1058,7 +1058,7 @@ bool Graphics::createDescriptorSets() {
         ssboDescriptorSet.dstSet = this->descriptorSets[i];
         ssboDescriptorSet.dstBinding = 1;
         ssboDescriptorSet.dstArrayElement = 0;
-        ssboDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        ssboDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         ssboDescriptorSet.descriptorCount = 1;
         ssboDescriptorSet.pBufferInfo = &ssboBufferInfo;
         descriptorWrites.push_back(ssboDescriptorSet);
@@ -1163,7 +1163,47 @@ bool Graphics::createCommandBuffers() {
            
             if (this->indexBuffer != nullptr) {
                 vkCmdBindIndexBuffer(this->context.commandBuffers[i], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-                this->models.draw(this->context, i, true);
+                std::vector< VkDrawIndexedIndirectCommand > drawCommands = this->models.draw(this->context, i, true);
+                
+                
+                
+                // indirect draw buffers
+                if (this->context.indirectDrawsBuffer != nullptr) vkDestroyBuffer(this->device, this->context.indirectDrawsBuffer, nullptr);
+                if (this->context.indirectDrawsBufferMemory != nullptr) vkFreeMemory(this->device, this->context.indirectDrawsBufferMemory, nullptr);
+
+                VkDeviceSize drawCommandSize = sizeof(VkDrawIndexedIndirectCommand);
+                VkDeviceSize bufferSize = drawCommandSize * drawCommands.size();
+
+                VkBuffer stagingBuffer;
+                VkDeviceMemory stagingBufferMemory;
+                if (!this->createBuffer(
+                        bufferSize,
+                        VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                        stagingBuffer, stagingBufferMemory)) {
+                    std::cerr << "Failed to get Create Staging Buffer" << std::endl;
+                    return false;
+                }
+
+                void * data = nullptr;
+                vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+                memcpy(data, drawCommands.data(), bufferSize);
+                vkUnmapMemory(this->device, stagingBufferMemory);
+
+                if (!this->createBuffer(
+                        bufferSize,
+                        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                        this->context.indirectDrawsBuffer, this->context.indirectDrawsBufferMemory)) {
+                    std::cerr << "Failed to get Create Indirect Draws Buffer" << std::endl;
+                    return false;
+                }
+
+                this->copyBuffer(stagingBuffer,this->context.indirectDrawsBuffer, bufferSize);
+
+                vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+                vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+
+                vkCmdDrawIndexedIndirect(
+                    this->context.commandBuffers[i], this->context.indirectDrawsBuffer, 0, drawCommands.size(), drawCommandSize);
             } else {
                 this->models.draw(this->context, i, false);                
             }
@@ -1521,7 +1561,7 @@ bool Graphics::createBuffersFromModel() {
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
     
-    // meshes (SSBOs)
+    // meshes (SSBOs) and indirect draw buffers
     if (this->models.getTotalNumberOfMeshes() != 0) {
         if (this->ssboBuffer != nullptr) vkDestroyBuffer(this->device, this->ssboBuffer, nullptr);
         if (this->ssboBufferMemory != nullptr) vkFreeMemory(this->device, this->ssboBufferMemory, nullptr);
@@ -1555,7 +1595,7 @@ bool Graphics::createBuffersFromModel() {
 
         if (!this->createBuffer(
                 bufferSize,
-                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                 this->ssboBuffer, this->ssboBufferMemory)) {
             std::cerr << "Failed to get Create Vertex Buffer" << std::endl;
             return false;
@@ -1968,6 +2008,9 @@ Graphics::~Graphics() {
 
     if (this->ssboBuffer != nullptr) vkDestroyBuffer(this->device, this->ssboBuffer, nullptr);
     if (this->ssboBufferMemory != nullptr) vkFreeMemory(this->device, this->ssboBufferMemory, nullptr);
+    
+    if (this->context.indirectDrawsBuffer != nullptr) vkDestroyBuffer(this->device, this->context.indirectDrawsBuffer, nullptr);
+    if (this->context.indirectDrawsBufferMemory != nullptr) vkFreeMemory(this->device, this->context.indirectDrawsBufferMemory, nullptr);
 
     for (size_t i = 0; i < this->uniformBuffers.size(); i++) {
         if (this->uniformBuffers[i] != nullptr) vkDestroyBuffer(this->device, this->uniformBuffers[i], nullptr);

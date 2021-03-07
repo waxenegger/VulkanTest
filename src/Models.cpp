@@ -414,7 +414,10 @@ void Models::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsCon
 }
 
 
-void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndices) {
+std::vector<VkDrawIndexedIndirectCommand> Models::draw(RenderContext & context, int commandBufferIndex, bool useIndices) {
+    
+    std::vector<VkDrawIndexedIndirectCommand> indirectDraws;
+    
     VkDeviceSize lastVertexOffset = 0;
     VkDeviceSize lastIndexOffset = 0;
 
@@ -440,7 +443,15 @@ void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndic
             
             
             if (useIndices) {
-                vkCmdDrawIndexed(context.commandBuffers[commandBufferIndex], indexSize , 1, lastIndexOffset, lastVertexOffset, 0);
+                VkDrawIndexedIndirectCommand indirectDraw {};
+                indirectDraw.firstIndex = lastIndexOffset;
+                indirectDraw.indexCount = indexSize;
+                indirectDraw.vertexOffset = lastVertexOffset;
+                indirectDraw.instanceCount = 1;
+                indirectDraw.firstInstance = c;
+                indirectDraws.push_back(indirectDraw);
+                
+                //vkCmdDrawIndexed(context.commandBuffers[commandBufferIndex], indexSize , 1, lastIndexOffset, lastVertexOffset, 0);
             } else {
                 vkCmdDraw(context.commandBuffers[commandBufferIndex], vertexSize, 1, 0, 0);
             }
@@ -450,6 +461,8 @@ void Models::draw(RenderContext & context, int commandBufferIndex, bool useIndic
             c++;
         }
     }
+    
+    return indirectDraws;
 }
 
 TextureInformation Model::addTextures(const aiMaterial * mat) {

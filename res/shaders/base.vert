@@ -23,7 +23,7 @@ struct ModelProperties {
     int normalTexture;
 };
 
-layout(binding = 1) buffer SSBO {
+layout(binding = 1) uniform SSBO {
     ModelProperties props;
 } modelPropertiesSSBO;
 

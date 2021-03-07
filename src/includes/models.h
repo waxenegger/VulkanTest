@@ -98,6 +98,8 @@ class Texture final {
 
 struct RenderContext {
     std::vector<VkCommandBuffer> commandBuffers;
+    VkBuffer indirectDrawsBuffer = nullptr;
+    VkDeviceMemory indirectDrawsBufferMemory = nullptr;
     VkPipelineLayout graphicsPipelineLayout = nullptr;
 };
 
@@ -153,7 +155,7 @@ class Models final {
     public:
         void addModel(Model * model);
         void clear();
-        void draw(RenderContext & context, int commandBufferIndex, bool useIndices);
+        std::vector<VkDrawIndexedIndirectCommand> draw(RenderContext & context, int commandBufferIndex, bool useIndices);
         void copyModelsContentIntoBuffer(void* data, ModelsContentType modelsContentType, VkDeviceSize maxSize);
         VkDeviceSize getTotalNumberOfVertices();
         VkDeviceSize getTotalNumberOfIndices();
