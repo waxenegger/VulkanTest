@@ -7,6 +7,12 @@
 const int MAX_FRAMES_IN_FLIGHT = 2;
 const int MAX_TEXTURES = 25;
 
+struct ModelSummary {
+    VkDeviceSize vertexBufferSize = 0;
+    VkDeviceSize indexBufferSize = 0;
+    VkDeviceSize ssboBufferSize = 0;
+};
+
 class Graphics final {
     private:
         SDL_Window * sdlWindow = nullptr;
@@ -196,6 +202,7 @@ class Graphics final {
         Component * addModelComponent(std::string modelLocation);
         
         Models & getModels();
+        ModelSummary getModelsBufferSizes();
 
         ~Graphics();
 

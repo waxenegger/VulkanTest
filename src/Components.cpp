@@ -75,6 +75,10 @@ Component * Components::addComponent(Component * component) {
     return component;
 }
 
+std::map<std::string, std::vector<std::unique_ptr<Component>>> & Components::getComponents() {
+    return this->components;
+}
+
 void Components::initWithModelLocations(std::vector<std::string> modelLocations) {
     for(auto & l : modelLocations) {
         this->components[l] = std::vector<std::unique_ptr<Component>>();

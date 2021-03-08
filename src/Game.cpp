@@ -95,15 +95,17 @@ bool Game::addComponents() {
     if (this->graphics.addModelComponent("quad") == nullptr) return false;
     Component * quad = this->graphics.addModelComponent("quad");
     if (quad == nullptr) return false;
-    quad->setPosition(glm::vec3(5));
+    quad->setPosition(glm::vec3(2));
     
     if (this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/batman.obj") == nullptr) return false;
     
-    Component * batman = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/batman.obj");
-    if (batman == nullptr) return false;
-
-    batman->setPosition(glm::vec3(-5));
-
+    for (int x=-100;x<100;x+=5) {
+        for (int z=-100;z<100;z+=5) {
+            Component * batman = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/batman.obj");
+            if (batman == nullptr) return false;
+            batman->setPosition(glm::vec3(x,0,z));            
+        }        
+    }
     
     return true;
 }

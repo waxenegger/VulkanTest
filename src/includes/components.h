@@ -36,6 +36,7 @@ class Components final {
         Component * addComponent(Component * component);
         std::vector<ModelProperties> getAllPropertiesForModel(std::string model);
         void initWithModelLocations(std::vector<std::string> modelLocations);
+        std::map<std::string, std::vector<std::unique_ptr<Component>>> & getComponents();
         ~Components();
 };
 

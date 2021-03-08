@@ -136,16 +136,10 @@ class Models final {
     private:
         std::map<std::string, std::unique_ptr<Texture>> textures;
         std::vector<std::unique_ptr<Model>> models;
-        VkDeviceSize totalNumberOfVertices = 0;
-        VkDeviceSize totalNumberOfIndices = 0;
-        VkDeviceSize totalNumberOfMeshes = 0;
 
     public:
         void addModel(Model * model);
         void clear();
-        VkDeviceSize getTotalNumberOfVertices();
-        VkDeviceSize getTotalNumberOfIndices();
-        VkDeviceSize getTotalNumberOfMeshes();
         void setColor(glm::vec3 color);
         const static std::string AMBIENT_TEXTURE;
         const static std::string DIFFUSE_TEXTURE;

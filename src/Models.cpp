@@ -247,18 +247,11 @@ void Models::addModel(Model * model) {
 
     auto & meshes = model->getMeshes();
     for (Mesh & m : meshes) {
-        this->totalNumberOfVertices += m.getVertices().size();
-        this->totalNumberOfIndices += m.getIndices().size();
-        this->totalNumberOfMeshes += meshes.size();
         this->processTextures(m);
         TextureInformation info =  m.getTextureInformation();
     }
     
     this->models.push_back(std::unique_ptr<Model>(model));    
-}
-
-VkDeviceSize Models::getTotalNumberOfMeshes() {
-    return this->totalNumberOfMeshes;
 }
 
 VkImageView Models::findTextureImageViewById(unsigned int id) {
@@ -339,8 +332,6 @@ std::vector<std::unique_ptr<Model>> & Models::getModels() {
 
 Model * Models::findModelByLocation(std::string path) {
     for (auto & m : this->models) {
-        std::cout << m->getPath() << std::endl;
-        std::cout << path << std::endl;
         if (m->getPath().compare(path) == 0) return m.get();
     }
     return nullptr;
@@ -404,8 +395,6 @@ Model::~Model() {
 }
 
 void Models::clear() {
-    this->totalNumberOfVertices = 0;
-    this->totalNumberOfIndices = 0;
     this->models.clear();
     this->textures.clear();
 }
@@ -421,14 +410,6 @@ std::vector<std::string>  Models::getModelLocations() {
         modelLocations.push_back(m->getPath());
     }
     return modelLocations;
-}
-
-VkDeviceSize Models::getTotalNumberOfVertices() {
-    return this->totalNumberOfVertices;
-}
-
-VkDeviceSize Models::getTotalNumberOfIndices() {
-    return this->totalNumberOfIndices;
 }
 
 void Models::setColor(glm::vec3 color) {
