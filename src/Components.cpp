@@ -32,7 +32,7 @@ void Component::setPosition(float x, float y, float z) {
 
 void Component::setPosition(glm::vec3 position) {
     this->position = position;
-    this->isDirty = true;
+    this->sceneUpdate = true;
 }
 
 glm::vec3 Component::getPosition() {
@@ -45,32 +45,25 @@ void Component::rotate(int xAxis, int yAxis, int zAxis) {
     rot.y = glm::radians(static_cast<float>(yAxis));
     rot.z = glm::radians(static_cast<float>(zAxis));
     this->rotation += rot;
-    this->isDirty = true;
+    this->sceneUpdate = true;
 }
 
 void Component::move(float xAxis, float yAxis, float zAxis) {
     this->position.x += xAxis;
     this->position.y += yAxis;
     this->position.z += zAxis;
-    this->isDirty = true;
+    this->sceneUpdate = true;
 }
 
 void Component::setRotation(glm::vec3 rotation) {
     this->rotation = rotation;
-    this->isDirty = true;
+    this->sceneUpdate = true;
 }
 
 void Component::scale(float factor) {
     if (factor <= 0) return;
-    
     this->scaleFactor = factor;
-    this->isDirty = true;
-}
-
-
-ModelProperties & Component::getModelProperties() {
-    this->properties.matrix = this->getModelMatrix();
-    return this->properties;
+    this->sceneUpdate = true;
 }
 
 Component * Components::addComponent(Component * component) {
@@ -106,7 +99,23 @@ Components::~Components() {
     this->components.clear();
 }
 
-std::vector<Component *> Components::getDirtyComponents() {
+bool Components::isSceneUpdateNeeded(bool reset)
+{
+    bool ret = false;
+    for (auto & c : this->components) {
+        for (auto & m : c.second) {
+            if (m->needsSceneUpdate()) {
+                ret = true;
+            }
+            if (reset) m->markSceneAsUpdated();
+            else if (ret) return true;
+        }
+    }
+    return ret;
+}
+
+
+std::vector<Component *> Components::getSsboComponentsThatNeedUpdate() {
     std::vector<Component *> dirtyComponents;
     
     for (auto & entry : this->components) {
@@ -119,26 +128,38 @@ std::vector<Component *> Components::getDirtyComponents() {
     return dirtyComponents;
 }
 
-std::vector<ModelProperties> Components::getAllPropertiesForModel(std::string model) {
-    std::vector<ModelProperties> allModelProperties;
+std::vector<Component *> Components::getAllComponentsForModel(std::string model, bool hasModel) {
+    std::vector<Component *> allMeshProperties;
     
     std::map<std::string, std::vector<std::unique_ptr<Component>>>::iterator it = this->components.find(model);
-    if (it == this->components.end()) return allModelProperties;
+    if (it == this->components.end()) return allMeshProperties;
     
-    for (auto & comp : it->second) {
-        allModelProperties.push_back(comp->getModelProperties());
+    std::vector<std::unique_ptr<Component>> & comps = it->second;
+    for (std::unique_ptr<Component> & comp : comps) {
+        if (comp->hasModel()) allMeshProperties.push_back(comp.get());
     }
     
-    return allModelProperties;
+    return allMeshProperties;
 }
 
 bool Component::needsSsboUpdate() {
-    return this->isDirty;
+    return this->ssboUpdate;
 }
 
-void Component::markAsNotDirty() {
-    this->isDirty = false;
+void Component::markSsboAsNotDirty() {
+    this->ssboUpdate = false;
 }
+
+void Component::markSceneAsUpdated()
+{
+    this->sceneUpdate = false;
+}
+
+bool Component::needsSceneUpdate()
+{
+    return this->sceneUpdate;
+}
+
 
 void Component::setSsboIndex(int index)
 {

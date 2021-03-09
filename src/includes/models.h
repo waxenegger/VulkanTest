@@ -3,6 +3,19 @@
 
 #include "camera.h"
 
+struct MeshProperties final {
+    public:
+        int ambientTexture = -1;
+        int diffuseTexture = -1;
+        int specularTexture = -1;
+        int normalTexture = -1;
+};
+
+struct ModelProperties final {
+    public:
+        glm::mat4 matrix = glm::mat4(1);
+};
+
 class Vertex final {
     private:
         glm::vec3 position;

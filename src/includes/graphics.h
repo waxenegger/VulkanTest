@@ -25,7 +25,7 @@ class Graphics final {
         std::vector<const char *> vkExtensionNames;
         std::vector<VkPhysicalDevice> vkPhysicalDevices;
         std::vector<const char *> vkLayerNames = {
-           // "VK_LAYER_KHRONOS_validation"
+           //"VK_LAYER_KHRONOS_validation"
         };
 
         bool showWireFrame = false;
@@ -142,6 +142,7 @@ class Graphics final {
         bool createCommandPool();
         bool createFramebuffers();
         bool createCommandBuffers();
+        bool createCommandBuffer(uint16_t commandBufferIndex);
         bool createRenderPass();
 
         bool createSyncObjects();
@@ -152,7 +153,8 @@ class Graphics final {
         bool findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, uint32_t & memoryType);
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-        bool createBuffersFromModel();
+        bool createBuffersFromModel(bool makeSsboBufferHostWritable = false);
+        bool createSsboBufferFromModel(VkDeviceSize bufferSize, bool makeHostWritable = false);
         
         VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
         bool createDepthResources();
@@ -195,7 +197,7 @@ class Graphics final {
         VkExtent2D getWindowExtent();
         
         RenderContext & getRenderContext();
-        void renderScene();
+        void updateScene(uint16_t commandBufferIndex);
         void toggleWireFrame();
         SDL_Window * getSdlWindow();
         

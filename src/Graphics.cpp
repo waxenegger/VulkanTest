@@ -760,19 +760,17 @@ bool Graphics::createGraphicsPipeline() {
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
 
-    /*
     VkPushConstantRange pushConstantRange{};
     pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     pushConstantRange.offset = 0;
     pushConstantRange.size = sizeof(struct ModelProperties);
-    */
     
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.pSetLayouts = &this->descriptorSetLayout;
     pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
-    //pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
     VkResult ret = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->context.graphicsPipelineLayout);
     ASSERT_VULKAN(ret);
@@ -1095,73 +1093,79 @@ bool Graphics::createTextureSampler() {
 bool Graphics::createCommandBuffers() {
     this->context.commandBuffers.resize(this->swapChainFramebuffers.size());
 
+    for (uint16_t i=0; i<this->context.commandBuffers.size();i++) {
+        if (!this->createCommandBuffer(i)) return false;
+    }
+
+    return true;
+}
+
+bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.commandPool = this->commandPool;
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandBufferCount = (uint32_t) this->context.commandBuffers.size();
+    allocInfo.commandBufferCount = 1;
 
-    VkResult ret = vkAllocateCommandBuffers(device, &allocInfo, this->context.commandBuffers.data());
+    VkResult ret = vkAllocateCommandBuffers(device, &allocInfo, &this->context.commandBuffers[commandBufferIndex]);
     if (ret != VK_SUCCESS) {
-        std::cerr << "Failed to Allocate Command Buffers!" << std::endl;
+        std::cerr << "Failed to Allocate Command Buffer!" << std::endl;
         return false;
     }
 
-    for (size_t i = 0; i < this->context.commandBuffers.size(); i++) {
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-        ret = vkBeginCommandBuffer(this->context.commandBuffers[i], &beginInfo);
-        if (ret != VK_SUCCESS) {
-            std::cerr << "Failed to begin Recording Command Buffer!" << std::endl;
-            return false;
-        }
-
-        VkRenderPassBeginInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = this->renderPass;
-        renderPassInfo.framebuffer = this->swapChainFramebuffers[i];
-        renderPassInfo.renderArea.offset = {0, 0};
-        renderPassInfo.renderArea.extent = this->swapChainExtent;
-
-        std::array<VkClearValue, 2> clearValues{};
-        clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
-        clearValues[1].depthStencil = {1.0f, 0};
-
-        renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-        renderPassInfo.pClearValues = clearValues.data();
-
-        vkCmdBeginRenderPass(this->context.commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-        
-        vkCmdBindPipeline(this->context.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphicsPipeline);
-        
-        if (this->vertexBuffer != nullptr) {
-            VkBuffer vertexBuffers[] = {this->vertexBuffer};
-            VkDeviceSize offsets[] = {0};
-            vkCmdBindVertexBuffers(this->context.commandBuffers[i], 0, 1, vertexBuffers, offsets);
-        }
-        
-        vkCmdBindDescriptorSets(
-            this->context.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, 
-            this->context.graphicsPipelineLayout, 0, 1, &this->descriptorSets[i], 0, nullptr);
-        
-        if (this->indexBuffer != nullptr) {
-            vkCmdBindIndexBuffer(this->context.commandBuffers[i], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-            this->draw(this->context, i, true);
-        } else {
-            this->draw(this->context, i, false);                
-        }
-
-
-        vkCmdEndRenderPass(this->context.commandBuffers[i]);
-
-        ret = vkEndCommandBuffer(this->context.commandBuffers[i]);
-        if (ret != VK_SUCCESS) {
-            std::cerr << "Failed to end  Recording Command Buffer!" << std::endl;
-            return false;
-        }
+    ret = vkBeginCommandBuffer(this->context.commandBuffers[commandBufferIndex], &beginInfo);
+    if (ret != VK_SUCCESS) {
+        std::cerr << "Failed to begin Recording Command Buffer!" << std::endl;
+        return false;
     }
 
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = this->renderPass;
+    renderPassInfo.framebuffer = this->swapChainFramebuffers[commandBufferIndex];
+    renderPassInfo.renderArea.offset = {0, 0};
+    renderPassInfo.renderArea.extent = this->swapChainExtent;
+
+    std::array<VkClearValue, 2> clearValues{};
+    clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+    clearValues[1].depthStencil = {1.0f, 0};
+
+    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassInfo.pClearValues = clearValues.data();
+
+    vkCmdBeginRenderPass(this->context.commandBuffers[commandBufferIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    
+    vkCmdBindPipeline(this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphicsPipeline);
+    
+    if (this->vertexBuffer != nullptr) {
+        VkBuffer vertexBuffers[] = {this->vertexBuffer};
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(this->context.commandBuffers[commandBufferIndex], 0, 1, vertexBuffers, offsets);
+    }
+    
+    vkCmdBindDescriptorSets(
+        this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, 
+        this->context.graphicsPipelineLayout, 0, 1, &this->descriptorSets[commandBufferIndex], 0, nullptr);
+    
+    if (this->indexBuffer != nullptr) {
+        vkCmdBindIndexBuffer(this->context.commandBuffers[commandBufferIndex], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        this->draw(this->context, commandBufferIndex, true);
+    } else {
+        this->draw(this->context, commandBufferIndex, false);                
+    }
+
+
+    vkCmdEndRenderPass(this->context.commandBuffers[commandBufferIndex]);
+
+    ret = vkEndCommandBuffer(this->context.commandBuffers[commandBufferIndex]);
+    if (ret != VK_SUCCESS) {
+        std::cerr << "Failed to end  Recording Command Buffer!" << std::endl;
+        return false;
+    }
+    
     return true;
 }
 
@@ -1273,35 +1277,39 @@ void Graphics::updateUniformBuffer(uint32_t currentImage) {
 }
 
 void Graphics::updateSsboBuffer() {
-    auto dirtyComponents = this->components.getDirtyComponents();
+    auto dirtyComponents = this->components.getSsboComponentsThatNeedUpdate();
     
     for (auto & c : dirtyComponents) {
         void* data;
-        glm::mat4 matrix = c->getModelMatrix();
         auto model = c->getModel();
         if (model != nullptr) {
-            auto numberOfCompsForModel = this->components.getAllPropertiesForModel(model->getPath()).size();
-            auto meshCount = model->getMeshes().size();
-            for (uint32_t m=0;m<meshCount;m++) {
+            auto numberOfCompsForModel = this->components.getAllComponentsForModel(model->getPath(), true).size();
+            auto meshes = model->getMeshes();
+            uint32_t m=0;
+            for (auto & mesh : meshes) {
                 vkMapMemory(this->device, 
-                            this->ssboBufferMemory, model->getSsboOffset() + numberOfCompsForModel * m * sizeof(struct ModelProperties) +
-                            c->getSsboIndex() * sizeof(struct ModelProperties), 
-                            sizeof(matrix), 0, &data);
-                memcpy(data, &matrix, sizeof(matrix));
+                            this->ssboBufferMemory, model->getSsboOffset() + numberOfCompsForModel * m * sizeof(struct MeshProperties) +
+                            c->getSsboIndex() * sizeof(struct MeshProperties), 
+                            sizeof(struct MeshProperties), 0, &data);
+                TextureInformation textureInfo = mesh.getTextureInformation();
+                MeshProperties props = {
+                    textureInfo.ambientTexture,
+                    textureInfo.diffuseTexture,
+                    textureInfo.specularTexture,
+                    textureInfo.normalTexture
+                };
+                memcpy(data, &props, sizeof(struct MeshProperties));
                 vkUnmapMemory(this->device, this->ssboBufferMemory);
+                m++;
             }
         }
-        c->markAsNotDirty();
+        c->markSsboAsNotDirty();
     }
 }
 
-void Graphics::renderScene() {
-    vkDeviceWaitIdle(this->device);
-    
-    vkFreeCommandBuffers(
-        this->device, this->commandPool, static_cast<uint32_t>(this->context.commandBuffers.size()), this->context.commandBuffers.data());
-
-    this->createCommandBuffers();
+void Graphics::updateScene(uint16_t commandBufferIndex) {
+    vkFreeCommandBuffers(this->device, this->commandPool, 1, &this->context.commandBuffers[commandBufferIndex]);
+    this->createCommandBuffer(commandBufferIndex);
 }
     
 void Graphics::drawFrame() {
@@ -1327,7 +1335,11 @@ void Graphics::drawFrame() {
     }
     
     this->updateUniformBuffer(imageIndex);
-    this->updateSsboBuffer();
+    // not writable
+    //this->updateSsboBuffer();
+    if (this->components.isSceneUpdateNeeded()) {
+        this->updateScene(imageIndex);
+    }
     
     if (this->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
         vkWaitForFences(device, 1, &this->imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
@@ -1489,7 +1501,7 @@ ModelSummary Graphics::getModelsBufferSizes() {
 
             bufferSizes.vertexBufferSize += vertexSize * sizeof(class Vertex);
             bufferSizes.indexBufferSize += indexSize * sizeof(uint32_t);
-            bufferSizes.ssboBufferSize += meshes.size() * compCount * sizeof(struct ModelProperties);
+            bufferSizes.ssboBufferSize += meshes.size() * compCount * sizeof(struct MeshProperties);
         }
     }
     
@@ -1500,7 +1512,7 @@ ModelSummary Graphics::getModelsBufferSizes() {
     return bufferSizes;
 }
 
-bool Graphics::createBuffersFromModel() {
+bool Graphics::createBuffersFromModel(bool makeSsboBufferHostWritable) {
     ModelSummary bufferSizes = this->getModelsBufferSizes();
      
     if (bufferSizes.vertexBufferSize == 0) return true;
@@ -1536,24 +1548,8 @@ bool Graphics::createBuffersFromModel() {
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
     
-    // meshes (SSBOs) and indirect draw buffers
-    if (bufferSizes.ssboBufferSize != 0) {
-        if (this->ssboBuffer != nullptr) vkDestroyBuffer(this->device, this->ssboBuffer, nullptr);
-        if (this->ssboBufferMemory != nullptr) vkFreeMemory(this->device, this->ssboBufferMemory, nullptr);
-
-        if (!this->createBuffer(
-                bufferSizes.ssboBufferSize,
-                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                this->ssboBuffer, this->ssboBufferMemory)) {
-            std::cerr << "Failed to get Create Vertex Buffer" << std::endl;
-            return false;
-        }
-
-        data = nullptr;
-        vkMapMemory(this->device, ssboBufferMemory, 0, bufferSizes.ssboBufferSize, 0, &data);
-        this->copyModelsContentIntoBuffer(data, SSBO, bufferSizes.ssboBufferSize);
-        vkUnmapMemory(this->device, ssboBufferMemory);
-    }
+    // meshes (SSBOs)
+    if (!this->createSsboBufferFromModel(bufferSizes.ssboBufferSize, makeSsboBufferHostWritable)) return false;
         
     // indices
     if (bufferSizes.indexBufferSize == 0) return true;
@@ -1590,6 +1586,58 @@ bool Graphics::createBuffersFromModel() {
     return true;
 }
 
+bool Graphics::createSsboBufferFromModel(VkDeviceSize bufferSize, bool makeHostWritable)
+{
+    if (bufferSize == 0) return true;
+
+    if (this->ssboBuffer != nullptr) vkDestroyBuffer(this->device, this->ssboBuffer, nullptr);
+    if (this->ssboBufferMemory != nullptr) vkFreeMemory(this->device, this->ssboBufferMemory, nullptr);
+
+    if (!makeHostWritable) {
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        if (!this->createBuffer(bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                stagingBuffer, stagingBufferMemory)) {
+            std::cerr << "Failed to get Create Staging Buffer" << std::endl;
+            return false;
+        }
+
+        void* data = nullptr;
+        vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        this->copyModelsContentIntoBuffer(data, SSBO, bufferSize);
+        vkUnmapMemory(this->device, stagingBufferMemory);
+
+        if (!this->createBuffer(bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                this->ssboBuffer, this->ssboBufferMemory)) {
+            std::cerr << "Failed to get Create SSBO Buffer" << std::endl;
+            return false;
+        }
+
+        this->copyBuffer(stagingBuffer,this->ssboBuffer, bufferSize);
+
+        vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+        vkFreeMemory(this->device, stagingBufferMemory, nullptr);        
+    } else {
+        if (!this->createBuffer(
+                bufferSize,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                this->ssboBuffer, this->ssboBufferMemory)) {
+            std::cerr << "Failed to get Create Vertex Buffer" << std::endl;
+            return false;
+        }
+
+        void * data = nullptr;
+        vkMapMemory(this->device, ssboBufferMemory, 0, bufferSize, 0, &data);
+        this->copyModelsContentIntoBuffer(data, SSBO, bufferSize);
+        vkUnmapMemory(this->device, ssboBufferMemory);        
+    }
+    
+    return true;
+}
+
+
 void Graphics::draw(RenderContext & context, int commandBufferIndex, bool useIndices) {
     VkDeviceSize lastVertexOffset = 0;
     VkDeviceSize lastIndexOffset = 0;
@@ -1604,20 +1652,29 @@ void Graphics::draw(RenderContext & context, int commandBufferIndex, bool useInd
         if (compCount == 0) continue;
         
         auto model = compsPerModel[0]->getModel();
+        if (model == nullptr) continue;
+        
         auto meshes = model->getMeshes();
         for (Mesh & mesh : meshes) {
             VkDeviceSize vertexSize = mesh.getVertices().size();
             VkDeviceSize indexSize = mesh.getIndices().size();
             
-            if (useIndices) {                
-                vkCmdDrawIndexed(context.commandBuffers[commandBufferIndex], indexSize , compCount, lastIndexOffset, lastVertexOffset, c);
-            } else {
-                vkCmdDraw(context.commandBuffers[commandBufferIndex], vertexSize, compCount, 0, 0);
+            for (auto & comp : compsPerModel) {
+                ModelProperties props = { comp->getModelMatrix()};
+                vkCmdPushConstants(
+                    context.commandBuffers[commandBufferIndex], context.graphicsPipelineLayout,
+                    VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(struct ModelProperties), &props);
+
+                if (useIndices) {                
+                    vkCmdDrawIndexed(context.commandBuffers[commandBufferIndex], indexSize , 1, lastIndexOffset, lastVertexOffset, c);
+                } else {
+                    vkCmdDraw(context.commandBuffers[commandBufferIndex], vertexSize, 1, 0, 0);
+                }
+                c++;
             }
                         
             lastIndexOffset += indexSize;
             lastVertexOffset += vertexSize;
-            c+= compCount;
         }
     }
 }
@@ -1659,14 +1716,13 @@ void Graphics::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsC
                     TextureInformation textureInfo = mesh.getTextureInformation();
                     int i=0;
                     for (auto & c : compsPerModel) {
-                        ModelProperties modelProps = { 
-                            c->getModelMatrix(),
+                        MeshProperties modelProps = { 
                             textureInfo.ambientTexture,
                             textureInfo.diffuseTexture,
                             textureInfo.specularTexture,
                             textureInfo.normalTexture
                         };
-                        dataSize = sizeof(struct ModelProperties);             
+                        dataSize = sizeof(struct MeshProperties);             
                         if (overallSize + dataSize <= maxSize) {
                             memcpy(static_cast<char *>(data)+overallSize, &modelProps, dataSize);
                             overallSize += dataSize;
@@ -1674,7 +1730,7 @@ void Graphics::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsC
                         if (c->getSsboIndex() == -1) {
                             c->setSsboIndex(i);
                         }
-                        c->markAsNotDirty();
+                        c->markSsboAsNotDirty();
                         i++;
                     }
                     break;

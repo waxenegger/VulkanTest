@@ -10,17 +10,14 @@ class Component final {
         glm::vec3 position = glm::vec3(0.0f);
         glm::vec3 rotation = glm::vec3(0.0f);
         float scaleFactor = 1.0f;
-
-        ModelProperties properties {
-            glm::mat4(1), -1, -1, -1, -1
-        };
         
-        bool isDirty = false;
+        bool sceneUpdate = false;
+        bool ssboUpdate = false;
         int ssboIndex = -1;
     public:
         Component();
         Component(Model * model);
-        ModelProperties & getModelProperties();
+        MeshProperties & getModelProperties();
         bool hasModel();
         Model * getModel();
         void setPosition(float x, float y, float z);
@@ -32,7 +29,9 @@ class Component final {
         void scale(float factor);
         glm::mat4 getModelMatrix();
         bool needsSsboUpdate();
-        void markAsNotDirty();
+        bool needsSceneUpdate();
+        void markSsboAsNotDirty();
+        void markSceneAsUpdated();
         void setSsboIndex(int index);
         int getSsboIndex();
         glm::vec3 getRotation();
@@ -45,11 +44,12 @@ class Components final {
 
     public:
         Component * addComponent(Component * component);
-        std::vector<ModelProperties> getAllPropertiesForModel(std::string model);
+        std::vector<Component *> getAllComponentsForModel(std::string model, bool hasModel = false);
         void initWithModelLocations(std::vector<std::string> modelLocations);
         std::map<std::string, std::vector<std::unique_ptr<Component>>> & getComponents();
         ~Components();
-        std::vector<Component *> getDirtyComponents();
+        std::vector<Component *> getSsboComponentsThatNeedUpdate();
+        bool isSceneUpdateNeeded(bool reset = true);
 };
 
 #endif

@@ -15,17 +15,20 @@ layout(binding = 0) uniform UniformBufferObject {
     vec4 sun;
 } modelUniforms;
 
-struct ModelProperties {
-    mat4 matrix;
+struct MeshProperties {
     int ambientTexture;
     int diffuseTexture;
     int specularTexture;
     int normalTexture;
 };
 
-layout(std430, binding = 1) buffer SSBO {
-    ModelProperties props[];
-} modelPropertiesSSBO;
+layout(push_constant) uniform PushConstants {
+    mat4 matrix;
+} modelProperties;
+
+layout(std430, binding = 1) readonly buffer SSBO {
+    MeshProperties props[];
+} meshPropertiesSSBO;
 
 layout(location = 0) out vec3 fragPosition;
 layout(location = 1) out vec3 fragColor;
@@ -33,24 +36,24 @@ layout(location = 2) out vec2 fragTexCoord;
 layout(location = 3) out vec3 fragNormals;
 layout(location = 4) out vec4 eye;
 layout(location = 5) out vec4 light;
-layout(location = 6) out ModelProperties modelProperties;
+layout(location = 6) out MeshProperties meshProperties;
 
 void main() {
-    ModelProperties modelProps = modelPropertiesSSBO.props[gl_InstanceIndex];
+    MeshProperties meshProps = meshPropertiesSSBO.props[gl_InstanceIndex];
 
-    vec4 pos = modelProps.matrix * vec4(inPosition, 1.0);
+    vec4 pos = modelProperties.matrix * vec4(inPosition, 1.0);
     fragPosition = vec3(pos);
     fragColor = inColor;
     fragTexCoord = inUV;
     
-    mat3 invertTransposeModel = mat3(transpose(inverse(modelProps.matrix)));
+    mat3 invertTransposeModel = mat3(transpose(inverse(modelProperties.matrix)));
     
     fragNormals = normalize(invertTransposeModel * inNormal);
     eye = modelUniforms.camera;
     light = modelUniforms.sun;
-    modelProperties = modelProps;
+    meshProperties = meshProps;
 
-    if (modelProps.normalTexture != -1) {
+    if (meshProps.normalTexture != -1) {
         vec3 T = normalize(invertTransposeModel * inTangent);
         vec3 N = normalize(invertTransposeModel * inNormal);
         vec3 B = normalize(invertTransposeModel * inBitangent);

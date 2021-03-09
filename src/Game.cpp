@@ -97,8 +97,8 @@ bool Game::addComponents() {
     if (quad == nullptr) return false;
     quad->setPosition(glm::vec3(2));
     
-    for (int x=-5;x<5;x+=2) {
-        for (int z=-5;z<5;z+=2) {
+    for (int x=-100;x<100;x+=2) {
+        for (int z=-100;z<100;z+=2) {
             Component * batman = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/batman.obj");
             if (batman == nullptr) return false;
             batman->setPosition(glm::vec3(x,0,z));
@@ -220,7 +220,7 @@ void Game::loop() {
         }
         
         std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
-        if (time_span.count() > 100) {
+        if (time_span.count() > 25) {
             auto & components = this->graphics.getComponents().getComponents();
             for (auto & c : components) {
                 auto & allCompsPerModel =  c.second;
