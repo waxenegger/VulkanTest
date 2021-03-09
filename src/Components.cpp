@@ -37,7 +37,7 @@ void Component::setPosition(glm::vec3 position) {
 
 glm::vec3 Component::getPosition() {
     return this->position;
-}
+}   
 
 void Component::rotate(int xAxis, int yAxis, int zAxis) {
     glm::vec3 rot;
