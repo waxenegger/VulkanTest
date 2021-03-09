@@ -97,13 +97,11 @@ bool Game::addComponents() {
     if (quad == nullptr) return false;
     quad->setPosition(glm::vec3(2));
     
-    if (this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/batman.obj") == nullptr) return false;
-    
-    for (int x=-100;x<100;x+=5) {
-        for (int z=-100;z<100;z+=5) {
+    for (int x=-5;x<5;x+=2) {
+        for (int z=-5;z<5;z+=2) {
             Component * batman = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/batman.obj");
             if (batman == nullptr) return false;
-            batman->setPosition(glm::vec3(x,0,z));            
+            batman->setPosition(glm::vec3(x,0,z));
         }        
     }
     
@@ -121,6 +119,8 @@ void Game::loop() {
     bool isFullScreen = false;
     bool needsRestoreAfterFullScreen = false;
     
+       std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+
     while(!quit) {
         while (SDL_PollEvent(&e) != 0) {
             switch(e.type) {
@@ -218,8 +218,21 @@ void Game::loop() {
                     break;
             }
         }
-
+        
+        std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
+        if (time_span.count() > 100) {
+            auto & components = this->graphics.getComponents().getComponents();
+            for (auto & c : components) {
+                auto & allCompsPerModel =  c.second;
+                for (auto & cp : allCompsPerModel) {
+                    cp->rotate(0,10,0);
+                }
+            }
+            start = std::chrono::high_resolution_clock::now();
+        }
+        
         this->graphics.drawFrame();
+
     }
 
     SDL_StopTextInput();

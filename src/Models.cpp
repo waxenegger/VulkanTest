@@ -337,6 +337,15 @@ Model * Models::findModelByLocation(std::string path) {
     return nullptr;
 }
 
+void Model::setSsboOffset(VkDeviceSize offset) {
+    this->ssboOffset = offset;
+}
+
+VkDeviceSize Model::getSsboOffset() {
+    return this->ssboOffset;
+}
+
+
 TextureInformation Model::addTextures(const aiMaterial * mat) {
     TextureInformation textureInfo;
     

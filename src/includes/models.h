@@ -109,6 +109,8 @@ class Model final {
         std::vector<Mesh> meshes;
         bool loaded = false;
         bool visible = true;
+        VkDeviceSize ssboOffset = 0;
+
 
         void processNode(const aiNode * node, const aiScene *scene);
         Mesh processMesh(const aiMesh *mesh, const aiScene *scene);
@@ -126,6 +128,8 @@ class Model final {
         void setColor(glm::vec3 color);
         TextureInformation addTextures(const aiMaterial * mat);
         void correctTexturePath(char * path);
+        void setSsboOffset(VkDeviceSize offset);
+        VkDeviceSize getSsboOffset();
 };
 
 enum ModelsContentType {

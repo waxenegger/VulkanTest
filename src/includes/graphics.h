@@ -135,6 +135,7 @@ class Graphics final {
         
         bool createUniformBuffers();
         void updateUniformBuffer(uint32_t currentImage);
+        void updateSsboBuffer();
 
         void listVkPhysicalDeviceQueueFamilyProperties(const VkPhysicalDevice & device);
 
@@ -200,6 +201,7 @@ class Graphics final {
         
         void prepareComponents();
         Component * addModelComponent(std::string modelLocation);
+        Components & getComponents();
         
         Models & getModels();
         ModelSummary getModelsBufferSizes();

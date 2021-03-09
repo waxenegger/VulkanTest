@@ -23,7 +23,7 @@ void Graphics::init(const std::string & appName, uint32_t version, const std::st
     if (!this->initSDL()) return;
 
     SDL_SetWindowTitle(this->sdlWindow, appName.c_str());
-    SDL_SetRelativeMouseMode(SDL_TRUE);
+    SDL_SetRelativeMouseMode(SDL_FALSE);
 
     if (this->initVulkan(appName, version)) {
         this->active = true;
@@ -31,8 +31,6 @@ void Graphics::init(const std::string & appName, uint32_t version, const std::st
 }
 
 bool Graphics::initVulkan(const std::string & appName, uint32_t version) {
-    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-    
     this->queryVkInstanceExtensions();
 
     this->createVkInstance(appName, version);
@@ -63,9 +61,6 @@ bool Graphics::initVulkan(const std::string & appName, uint32_t version) {
     if (!this->createDescriptorPool()) return false;
     
     if (!this->createSyncObjects()) return false;
-
-    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
-    std::cout << "initVulkan: " << time_span.count() <<  std::endl;
     
     return true;
 }
@@ -130,8 +125,6 @@ VkExtent2D Graphics::getWindowExtent() {
 }
 
 bool Graphics::createSwapChain() {
-    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-
     if (this->device == nullptr) return false;
 
     const std::vector<VkPresentModeKHR> presentModes = this->queryDeviceSwapModes();
@@ -202,9 +195,6 @@ bool Graphics::createSwapChain() {
         std::cerr << "Failed to Create Swap Chain Images!" << std::endl;
         return false;
     }
-
-    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
-    std::cout << "createSwapChain: " << time_span.count() << std::endl;
 
     return true;
 }
@@ -524,8 +514,6 @@ std::vector<VkExtensionProperties> Graphics::queryPhysicalDeviceExtensions(const
 }
 
 void Graphics::createVkInstance(const std::string & appName, uint32_t version) {
-    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-
     VkApplicationInfo app;
     app.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app.pNext = nullptr,
@@ -547,9 +535,6 @@ void Graphics::createVkInstance(const std::string & appName, uint32_t version) {
 
     const VkResult ret = vkCreateInstance(&inst_info, nullptr, &this->vkInstance);
     ASSERT_VULKAN(ret);
-    
-    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
-    std::cout << "createVkInstance: " << time_span.count() <<  std::endl;
 }
 
 void Graphics::queryPhysicalDevices() {
@@ -1108,78 +1093,77 @@ bool Graphics::createTextureSampler() {
 }
 
 bool Graphics::createCommandBuffers() {
-        // TODO reset command buffers ?
-        this->context.commandBuffers.resize(this->swapChainFramebuffers.size());
+    this->context.commandBuffers.resize(this->swapChainFramebuffers.size());
 
-       VkCommandBufferAllocateInfo allocInfo{};
-       allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-       allocInfo.commandPool = this->commandPool;
-       allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-       allocInfo.commandBufferCount = (uint32_t) this->context.commandBuffers.size();
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = this->commandPool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = (uint32_t) this->context.commandBuffers.size();
 
-       VkResult ret = vkAllocateCommandBuffers(device, &allocInfo, this->context.commandBuffers.data());
-       if (ret != VK_SUCCESS) {
-          std::cerr << "Failed to Allocate Command Buffers!" << std::endl;
-          return false;
-       }
+    VkResult ret = vkAllocateCommandBuffers(device, &allocInfo, this->context.commandBuffers.data());
+    if (ret != VK_SUCCESS) {
+        std::cerr << "Failed to Allocate Command Buffers!" << std::endl;
+        return false;
+    }
 
-       for (size_t i = 0; i < this->context.commandBuffers.size(); i++) {
-            VkCommandBufferBeginInfo beginInfo{};
-            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    for (size_t i = 0; i < this->context.commandBuffers.size(); i++) {
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-            ret = vkBeginCommandBuffer(this->context.commandBuffers[i], &beginInfo);
-            if (ret != VK_SUCCESS) {
-                std::cerr << "Failed to begin Recording Command Buffer!" << std::endl;
-                return false;
-            }
+        ret = vkBeginCommandBuffer(this->context.commandBuffers[i], &beginInfo);
+        if (ret != VK_SUCCESS) {
+            std::cerr << "Failed to begin Recording Command Buffer!" << std::endl;
+            return false;
+        }
 
-           VkRenderPassBeginInfo renderPassInfo{};
-           renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-           renderPassInfo.renderPass = this->renderPass;
-           renderPassInfo.framebuffer = this->swapChainFramebuffers[i];
-           renderPassInfo.renderArea.offset = {0, 0};
-           renderPassInfo.renderArea.extent = this->swapChainExtent;
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = this->renderPass;
+        renderPassInfo.framebuffer = this->swapChainFramebuffers[i];
+        renderPassInfo.renderArea.offset = {0, 0};
+        renderPassInfo.renderArea.extent = this->swapChainExtent;
 
-            std::array<VkClearValue, 2> clearValues{};
-            clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
-            clearValues[1].depthStencil = {1.0f, 0};
+        std::array<VkClearValue, 2> clearValues{};
+        clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+        clearValues[1].depthStencil = {1.0f, 0};
 
-           renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-           renderPassInfo.pClearValues = clearValues.data();
+        renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+        renderPassInfo.pClearValues = clearValues.data();
 
-           vkCmdBeginRenderPass(this->context.commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-           
-           vkCmdBindPipeline(this->context.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphicsPipeline);
-           
-           if (this->vertexBuffer != nullptr) {
-               VkBuffer vertexBuffers[] = {this->vertexBuffer};
-               VkDeviceSize offsets[] = {0};
-               vkCmdBindVertexBuffers(this->context.commandBuffers[i], 0, 1, vertexBuffers, offsets);
-           }
-           
-           vkCmdBindDescriptorSets(
-               this->context.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, 
-               this->context.graphicsPipelineLayout, 0, 1, &this->descriptorSets[i], 0, nullptr);
-           
-            if (this->indexBuffer != nullptr) {
-                vkCmdBindIndexBuffer(this->context.commandBuffers[i], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-                this->draw(this->context, i, true);
-            } else {
-                this->draw(this->context, i, false);                
-            }
+        vkCmdBeginRenderPass(this->context.commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+        
+        vkCmdBindPipeline(this->context.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphicsPipeline);
+        
+        if (this->vertexBuffer != nullptr) {
+            VkBuffer vertexBuffers[] = {this->vertexBuffer};
+            VkDeviceSize offsets[] = {0};
+            vkCmdBindVertexBuffers(this->context.commandBuffers[i], 0, 1, vertexBuffers, offsets);
+        }
+        
+        vkCmdBindDescriptorSets(
+            this->context.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, 
+            this->context.graphicsPipelineLayout, 0, 1, &this->descriptorSets[i], 0, nullptr);
+        
+        if (this->indexBuffer != nullptr) {
+            vkCmdBindIndexBuffer(this->context.commandBuffers[i], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+            this->draw(this->context, i, true);
+        } else {
+            this->draw(this->context, i, false);                
+        }
 
 
-           vkCmdEndRenderPass(this->context.commandBuffers[i]);
+        vkCmdEndRenderPass(this->context.commandBuffers[i]);
 
-           ret = vkEndCommandBuffer(this->context.commandBuffers[i]);
-           if (ret != VK_SUCCESS) {
-               std::cerr << "Failed to end  Recording Command Buffer!" << std::endl;
-               return false;
-           }
-       }
+        ret = vkEndCommandBuffer(this->context.commandBuffers[i]);
+        if (ret != VK_SUCCESS) {
+            std::cerr << "Failed to end  Recording Command Buffer!" << std::endl;
+            return false;
+        }
+    }
 
-       return true;
-   }
+    return true;
+}
 
 bool Graphics::updateSwapChain() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
@@ -1288,6 +1272,29 @@ void Graphics::updateUniformBuffer(uint32_t currentImage) {
     vkUnmapMemory(this->device, this->uniformBuffersMemory[currentImage]);
 }
 
+void Graphics::updateSsboBuffer() {
+    auto dirtyComponents = this->components.getDirtyComponents();
+    
+    for (auto & c : dirtyComponents) {
+        void* data;
+        glm::mat4 matrix = c->getModelMatrix();
+        auto model = c->getModel();
+        if (model != nullptr) {
+            auto numberOfCompsForModel = this->components.getAllPropertiesForModel(model->getPath()).size();
+            auto meshCount = model->getMeshes().size();
+            for (uint32_t m=0;m<meshCount;m++) {
+                vkMapMemory(this->device, 
+                            this->ssboBufferMemory, model->getSsboOffset() + numberOfCompsForModel * m * sizeof(struct ModelProperties) +
+                            c->getSsboIndex() * sizeof(struct ModelProperties), 
+                            sizeof(matrix), 0, &data);
+                memcpy(data, &matrix, sizeof(matrix));
+                vkUnmapMemory(this->device, this->ssboBufferMemory);
+            }
+        }
+        c->markAsNotDirty();
+    }
+}
+
 void Graphics::renderScene() {
     vkDeviceWaitIdle(this->device);
     
@@ -1320,6 +1327,7 @@ void Graphics::drawFrame() {
     }
     
     this->updateUniformBuffer(imageIndex);
+    this->updateSsboBuffer();
     
     if (this->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
         vkWaitForFences(device, 1, &this->imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
@@ -1485,24 +1493,20 @@ ModelSummary Graphics::getModelsBufferSizes() {
         }
     }
     
-    std::cout << bufferSizes.vertexBufferSize << std::endl;
-    std::cout << bufferSizes.indexBufferSize << std::endl;
-    std::cout << bufferSizes.ssboBufferSize << std::endl;
+    std::cout << "Vertex Buffer Size: " << bufferSizes.vertexBufferSize << std::endl;
+    std::cout << "Index Buffer Size: " << bufferSizes.indexBufferSize << std::endl;
+    std::cout << "SSBO Buffer Size: " << bufferSizes.ssboBufferSize << std::endl;
     
     return bufferSizes;
 }
 
 bool Graphics::createBuffersFromModel() {
-    std::chrono::high_resolution_clock::time_point beginning = std::chrono::high_resolution_clock::now();
-    
     ModelSummary bufferSizes = this->getModelsBufferSizes();
      
     if (bufferSizes.vertexBufferSize == 0) return true;
 
     if (this->vertexBuffer != nullptr) vkDestroyBuffer(this->device, this->vertexBuffer, nullptr);
     if (this->vertexBufferMemory != nullptr) vkFreeMemory(this->device, this->vertexBufferMemory, nullptr);
-
-    std::chrono::high_resolution_clock::time_point stagingVertexBufferCreate = std::chrono::high_resolution_clock::now();
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1513,21 +1517,11 @@ bool Graphics::createBuffersFromModel() {
         std::cerr << "Failed to get Create Staging Buffer" << std::endl;
         return false;
     }
-    
-    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - stagingVertexBufferCreate;
-    std::cout << "stagingVertexBufferCreate: " << time_span.count() <<  std::endl;
-
-    std::chrono::high_resolution_clock::time_point stagingVertexBufferCopy = std::chrono::high_resolution_clock::now();
 
     void* data = nullptr;
     vkMapMemory(this->device, stagingBufferMemory, 0, bufferSizes.vertexBufferSize, 0, &data);
     this->copyModelsContentIntoBuffer(data, VERTEX, bufferSizes.vertexBufferSize);
     vkUnmapMemory(this->device, stagingBufferMemory);
-
-    time_span = std::chrono::high_resolution_clock::now() - stagingVertexBufferCopy;
-    std::cout << "stagingVertexBufferCopy: " << time_span.count() <<  std::endl;
-
-    std::chrono::high_resolution_clock::time_point vertexBufferCreate = std::chrono::high_resolution_clock::now();
 
     if (!this->createBuffer(
             bufferSizes.vertexBufferSize,
@@ -1537,15 +1531,7 @@ bool Graphics::createBuffersFromModel() {
         return false;
     }
 
-    time_span = std::chrono::high_resolution_clock::now() - vertexBufferCreate;
-    std::cout << "vertexBufferCreate: " << time_span.count() <<  std::endl;
-
-    std::chrono::high_resolution_clock::time_point vertexBufferCopy = std::chrono::high_resolution_clock::now();
-
     this->copyBuffer(stagingBuffer,this->vertexBuffer, bufferSizes.vertexBufferSize);
-
-    time_span = std::chrono::high_resolution_clock::now() - vertexBufferCopy;
-    std::cout << "vertexBufferCopy: " << time_span.count() <<  std::endl;
 
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
@@ -1555,51 +1541,18 @@ bool Graphics::createBuffersFromModel() {
         if (this->ssboBuffer != nullptr) vkDestroyBuffer(this->device, this->ssboBuffer, nullptr);
         if (this->ssboBufferMemory != nullptr) vkFreeMemory(this->device, this->ssboBufferMemory, nullptr);
 
-        std::chrono::high_resolution_clock::time_point stagingSsboBufferCreate = std::chrono::high_resolution_clock::now();
-        
         if (!this->createBuffer(
                 bufferSizes.ssboBufferSize,
-                VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                stagingBuffer, stagingBufferMemory)) {
-            std::cerr << "Failed to get Create Staging Buffer" << std::endl;
-            return false;
-        }
-        
-        time_span = std::chrono::high_resolution_clock::now() - stagingSsboBufferCreate;
-        std::cout << "stagingSsboBufferCreate: " << time_span.count() <<  std::endl;
-
-        std::chrono::high_resolution_clock::time_point stagingSsboBufferCopy = std::chrono::high_resolution_clock::now();
-        
-        data = nullptr;
-        vkMapMemory(this->device, stagingBufferMemory, 0, bufferSizes.ssboBufferSize, 0, &data);
-        this->copyModelsContentIntoBuffer(data, SSBO, bufferSizes.ssboBufferSize);
-        vkUnmapMemory(this->device, stagingBufferMemory);
-
-        time_span = std::chrono::high_resolution_clock::now() - stagingSsboBufferCopy;
-        std::cout << "stagingSsboBufferCopy: " << time_span.count() <<  std::endl;
-
-        std::chrono::high_resolution_clock::time_point startSsboBufferCreate = std::chrono::high_resolution_clock::now();
-
-        if (!this->createBuffer(
-                bufferSizes.ssboBufferSize,
-                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                 this->ssboBuffer, this->ssboBufferMemory)) {
             std::cerr << "Failed to get Create Vertex Buffer" << std::endl;
             return false;
         }
 
-        time_span = std::chrono::high_resolution_clock::now() - startSsboBufferCreate;
-        std::cout << "ssboBufferCreate: " << time_span.count() <<  std::endl;
-
-        std::chrono::high_resolution_clock::time_point ssboBufferCopy = std::chrono::high_resolution_clock::now();
-
-        this->copyBuffer(stagingBuffer,this->ssboBuffer, bufferSizes.ssboBufferSize);
-
-        time_span = std::chrono::high_resolution_clock::now() - ssboBufferCopy;
-        std::cout << "ssboBufferCopy: " << time_span.count() <<  std::endl;
-
-        vkDestroyBuffer(this->device, stagingBuffer, nullptr);
-        vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+        data = nullptr;
+        vkMapMemory(this->device, ssboBufferMemory, 0, bufferSizes.ssboBufferSize, 0, &data);
+        this->copyModelsContentIntoBuffer(data, SSBO, bufferSizes.ssboBufferSize);
+        vkUnmapMemory(this->device, ssboBufferMemory);
     }
         
     // indices
@@ -1608,8 +1561,6 @@ bool Graphics::createBuffersFromModel() {
     if (this->indexBuffer != nullptr) vkDestroyBuffer(this->device, this->indexBuffer, nullptr);
     if (this->indexBufferMemory != nullptr) vkFreeMemory(this->device, this->indexBufferMemory, nullptr);
 
-    std::chrono::high_resolution_clock::time_point stagingIndexBufferCreate = std::chrono::high_resolution_clock::now();
-    
     if (!this->createBuffer(
             bufferSizes.indexBufferSize,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -1617,21 +1568,11 @@ bool Graphics::createBuffersFromModel() {
         std::cerr << "Failed to get Create Staging Buffer" << std::endl;
         return false;
     }
-    
-    time_span = std::chrono::high_resolution_clock::now() - stagingIndexBufferCreate;
-    std::cout << "stagingIndexBufferCreate: " << time_span.count() <<  std::endl;
-
-    std::chrono::high_resolution_clock::time_point stagingIndexBufferCopy = std::chrono::high_resolution_clock::now();
 
     data = nullptr;
     vkMapMemory(this->device, stagingBufferMemory, 0, bufferSizes.indexBufferSize, 0, &data);
     this->copyModelsContentIntoBuffer(data, INDEX, bufferSizes.indexBufferSize);
     vkUnmapMemory(this->device, stagingBufferMemory);
-
-    time_span = std::chrono::high_resolution_clock::now() - stagingIndexBufferCopy;
-    std::cout << "stagingIndexBufferCopy: " << time_span.count() <<  std::endl;
-
-    std::chrono::high_resolution_clock::time_point startIndexBufferCreate = std::chrono::high_resolution_clock::now();
 
     if (!this->createBuffer(
             bufferSizes.indexBufferSize,
@@ -1641,22 +1582,11 @@ bool Graphics::createBuffersFromModel() {
         return false;
     }
     
-    time_span = std::chrono::high_resolution_clock::now() - startIndexBufferCreate;
-    std::cout << "indexBufferCreate: " << time_span.count() <<  std::endl;
-
-    std::chrono::high_resolution_clock::time_point startIndexBufferCopy = std::chrono::high_resolution_clock::now();
-    
     this->copyBuffer(stagingBuffer,this->indexBuffer, bufferSizes.indexBufferSize);
 
-    time_span = std::chrono::high_resolution_clock::now() - startIndexBufferCopy;
-    std::cout << "indexBufferCopy: " << time_span.count() <<  std::endl;
-    
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
     
-    time_span = std::chrono::high_resolution_clock::now() - beginning;
-    std::cout << "createBuffersFromModel: " << time_span.count() <<  std::endl;
-
     return true;
 }
 
@@ -1703,6 +1633,11 @@ void Graphics::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsC
         if (compCount == 0) continue;
         
         auto model = compsPerModel[0]->getModel();
+        
+        if (modelsContentType == SSBO) {
+            model->setSsboOffset(overallSize);
+        }
+
         for (Mesh & mesh : model->getMeshes()) {            
             VkDeviceSize dataSize = 0;
             switch(modelsContentType) {
@@ -1722,9 +1657,10 @@ void Graphics::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsC
                     break;
                 case SSBO:
                     TextureInformation textureInfo = mesh.getTextureInformation();
-                    for (auto & props : compsPerModel) {
+                    int i=0;
+                    for (auto & c : compsPerModel) {
                         ModelProperties modelProps = { 
-                            props->getModelMatrix(),
+                            c->getModelMatrix(),
                             textureInfo.ambientTexture,
                             textureInfo.diffuseTexture,
                             textureInfo.specularTexture,
@@ -1734,7 +1670,12 @@ void Graphics::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsC
                         if (overallSize + dataSize <= maxSize) {
                             memcpy(static_cast<char *>(data)+overallSize, &modelProps, dataSize);
                             overallSize += dataSize;
-                        }      
+                        }
+                        if (c->getSsboIndex() == -1) {
+                            c->setSsboIndex(i);
+                        }
+                        c->markAsNotDirty();
+                        i++;
                     }
                     break;
             }
@@ -2126,6 +2067,10 @@ RenderContext & Graphics::getRenderContext() {
 
 Models & Graphics::getModels() {
     return this->models;
+}
+
+Components & Graphics::getComponents() {
+    return this->components;
 }
 
 void Graphics::prepareComponents() {

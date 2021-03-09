@@ -32,22 +32,39 @@ void Component::setPosition(float x, float y, float z) {
 
 void Component::setPosition(glm::vec3 position) {
     this->position = position;
+    this->isDirty = true;
 }
 
 glm::vec3 Component::getPosition() {
     return this->position;
 }
 
-void Component::setRotation(int xAxis, int yAxis, int zAxis) {
-    this->rotation.x = glm::radians(static_cast<float>(xAxis));
-    this->rotation.y = glm::radians(static_cast<float>(yAxis));
-    this->rotation.z = glm::radians(static_cast<float>(zAxis));
+void Component::rotate(int xAxis, int yAxis, int zAxis) {
+    glm::vec3 rot;
+    rot.x = glm::radians(static_cast<float>(xAxis));
+    rot.y = glm::radians(static_cast<float>(yAxis));
+    rot.z = glm::radians(static_cast<float>(zAxis));
+    this->rotation += rot;
+    this->isDirty = true;
+}
+
+void Component::move(float xAxis, float yAxis, float zAxis) {
+    this->position.x += xAxis;
+    this->position.y += yAxis;
+    this->position.z += zAxis;
+    this->isDirty = true;
+}
+
+void Component::setRotation(glm::vec3 rotation) {
+    this->rotation = rotation;
+    this->isDirty = true;
 }
 
 void Component::scale(float factor) {
     if (factor <= 0) return;
     
     this->scaleFactor = factor;
+    this->isDirty = true;
 }
 
 
@@ -89,6 +106,19 @@ Components::~Components() {
     this->components.clear();
 }
 
+std::vector<Component *> Components::getDirtyComponents() {
+    std::vector<Component *> dirtyComponents;
+    
+    for (auto & entry : this->components) {
+        auto & comps = entry.second;
+        for (auto & c : comps) {
+            if (c->needsSsboUpdate()) dirtyComponents.push_back(c.get());
+        }
+    }
+    
+    return dirtyComponents;
+}
+
 std::vector<ModelProperties> Components::getAllPropertiesForModel(std::string model) {
     std::vector<ModelProperties> allModelProperties;
     
@@ -102,4 +132,23 @@ std::vector<ModelProperties> Components::getAllPropertiesForModel(std::string mo
     return allModelProperties;
 }
 
+bool Component::needsSsboUpdate() {
+    return this->isDirty;
+}
 
+void Component::markAsNotDirty() {
+    this->isDirty = false;
+}
+
+void Component::setSsboIndex(int index)
+{
+    this->ssboIndex = index;
+}
+
+int Component::getSsboIndex() {
+    return this->ssboIndex;
+}
+
+glm::vec3 Component::getRotation() {
+    return this->rotation;
+}
