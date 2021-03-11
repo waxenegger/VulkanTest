@@ -192,7 +192,7 @@ class Graphics final {
         bool transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint16_t layerCount = 1);
         void prepareModelTextures();
         void copyBufferToImage(VkBuffer & buffer, VkImage & image, uint32_t width, uint32_t height, uint16_t layerCount = 1);
-        bool createTextureSampler(VkSampler & sampler);
+        bool createTextureSampler(VkSampler & sampler, VkSamplerAddressMode addressMode);
         void copyModelsContentIntoBuffer(void* data, ModelsContentType modelsContentType, VkDeviceSize maxSize);
         void draw(RenderContext & context, int commandBufferIndex, bool useIndices);
         void drawSkybox(RenderContext & context, int commandBufferIndex);

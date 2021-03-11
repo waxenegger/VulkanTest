@@ -1421,7 +1421,7 @@ bool Graphics::createSkyboxDescriptorSets() {
     return true;
 }
 
-bool Graphics::createTextureSampler(VkSampler & sampler) {
+bool Graphics::createTextureSampler(VkSampler & sampler, VkSamplerAddressMode addressMode) {
     VkPhysicalDeviceProperties properties{};
     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
@@ -1429,15 +1429,15 @@ bool Graphics::createTextureSampler(VkSampler & sampler) {
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     samplerInfo.magFilter = VK_FILTER_LINEAR;
     samplerInfo.minFilter = VK_FILTER_LINEAR;
-    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeU = addressMode;
+    samplerInfo.addressModeV = addressMode;
+    samplerInfo.addressModeW = addressMode;
     samplerInfo.anisotropyEnable = VK_TRUE;
     samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
     samplerInfo.unnormalizedCoordinates = VK_FALSE;
     samplerInfo.compareEnable = VK_FALSE;
-    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
     VkResult ret = vkCreateSampler(this->device, &samplerInfo, nullptr, &sampler);
@@ -1497,7 +1497,6 @@ bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
     
     vkCmdBeginRenderPass(this->context.commandBuffers[commandBufferIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     
-    /*
     if (this->hasSkybox) {
         vkCmdBindDescriptorSets(
             this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, 
@@ -1506,8 +1505,9 @@ bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
         vkCmdBindPipeline(this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, this->skyboxGraphicsPipeline);
 
         this->drawSkybox(this->context, commandBufferIndex);
-    }*/
+    }
 
+    /*
     vkCmdBindDescriptorSets(
         this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, 
         this->context.graphicsPipelineLayout, 0, 1, &this->descriptorSets[commandBufferIndex], 0, nullptr);
@@ -1534,7 +1534,7 @@ bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
     if (ret != VK_SUCCESS) {
         std::cerr << "Failed to end  Recording Command Buffer!" << std::endl;
         return false;
-    }
+    }*/
     
     return true;
 }
@@ -1841,9 +1841,9 @@ bool Graphics::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags propert
 }
 
 bool Graphics::createUniformBuffers() {
-    if (!this->createTextureSampler(this->textureSampler)) return false;
+    if (!this->createTextureSampler(this->textureSampler, VK_SAMPLER_ADDRESS_MODE_REPEAT)) return false;
     if (this->hasSkybox) {
-        if (!this->createTextureSampler(this->skyboxSampler)) return false;
+        if (!this->createTextureSampler(this->skyboxSampler, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)) return false;
         if (!this->createSkyboxDescriptorSetLayout()) return false;
     }
     if (!this->createDescriptorSetLayout()) return false;
