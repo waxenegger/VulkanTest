@@ -54,12 +54,18 @@ bool Graphics::initVulkan(const std::string & appName, uint32_t version) {
     if (!this->createSwapChain()) return false;
     if (!this->createImageViews()) return false;
     if (!this->createRenderPass()) return false;
-    
-    if (!this->createSkyboxShaderStageInfo()) return false;
-    if (!this->createShaderStageInfo()) return false;
-
     if (!this->createCommandPool()) return false;
-    //if (!this->createSkyboxDescriptorPool()) return false;
+    
+    this->hasSkybox = this->createSkybox();
+        
+    if (!this->createShaderStageInfo()) return false;
+    if (this->hasSkybox) {
+        if (!this->createSkyboxShaderStageInfo()) return false;        
+    }
+
+    if (this->hasSkybox) {
+        if (!this->createSkyboxDescriptorPool()) return false;
+    }
     if (!this->createDescriptorPool()) return false;
     
     if (!this->createSyncObjects()) return false;
@@ -226,6 +232,89 @@ VkImageView Graphics::createImageView(VkImage image, VkFormat format, VkImageAsp
     }
 
     return imageView;
+}
+
+bool Graphics::createSkybox() {
+    std::array<std::string, 6> skyboxCubeImageLocations = {
+        "sky_back.png", "sky_bottom.png", "sky_front.png", "sky_left.png", "sky_right.png", "sky_top.png"
+    };
+    
+    std::vector<std::unique_ptr<Texture>> skyboxCubeTextures;
+    
+    for (auto & s : skyboxCubeImageLocations) {
+        std::unique_ptr<Texture> texture = std::make_unique<Texture>();
+        texture->setPath(this->dir + "res/models/" + s);
+        texture->load();
+        if (texture->isValid()) {
+            skyboxCubeTextures.push_back(std::move(texture));
+        }            
+    }
+    
+    if (skyboxCubeTextures.size() != 6) return false;
+    
+    
+    VkBuffer stagingBuffer = nullptr;
+    VkDeviceMemory stagingBufferMemory = nullptr;
+    VkDeviceSize skyboxCubeSize = skyboxCubeTextures.size() * skyboxCubeTextures[0]->getSize();
+    
+    if (!this->createBuffer(
+        skyboxCubeSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory)) {
+            std::cerr << "Failed to Create Skybox Staging Buffer" << std::endl;
+            return false;
+    }
+
+    void* data;
+    VkDeviceSize offset = 0;
+    vkMapMemory(device, stagingBufferMemory, 0, skyboxCubeSize, 0, &data);
+    for (auto & tex : skyboxCubeTextures) {
+        memcpy(static_cast<char *>(data) + offset, tex->getPixels(), tex->getSize());
+        offset += tex->getSize();
+    }
+    vkUnmapMemory(device, stagingBufferMemory);
+
+    if (!this->createImage(
+        skyboxCubeTextures[0]->getWidth(), skyboxCubeTextures[0]->getHeight(), skyboxCubeTextures[0]->getImageFormat(), 
+        VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+        this->skyboxCubeImage, this->skyboxCubeImageMemory, skyboxCubeTextures.size())) {
+            std::cerr << "Failed to Create Skybox Image" << std::endl;
+            return false;
+    }
+
+    transitionImageLayout(
+        this->skyboxCubeImage, skyboxCubeTextures[0]->getImageFormat(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, skyboxCubeTextures.size());
+    
+    this->copyBufferToImage(
+        stagingBuffer, this->skyboxCubeImage, skyboxCubeTextures[0]->getWidth(), skyboxCubeTextures[0]->getHeight(), skyboxCubeTextures.size());
+    
+    transitionImageLayout(
+        this->skyboxCubeImage, skyboxCubeTextures[0]->getImageFormat(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+    
+    VkImageViewCreateInfo viewInfo{};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = this->skyboxCubeImage;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+    viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+    viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = skyboxCubeTextures.size();
+
+    VkResult ret = vkCreateImageView(this->device, &viewInfo, nullptr, &this->skyboxImageView);
+    ASSERT_VULKAN(ret);
+    if (ret != VK_SUCCESS) {
+        std::cerr << "Failed to Create Skybox Image View!" << std::endl;
+        return false;
+    }
+
+    return true;
 }
 
 bool Graphics::createImageViews() {
@@ -666,13 +755,13 @@ bool Graphics::createShaderStageInfo() {
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertShaderStageInfo.module = vertShaderModule;
+    vertShaderStageInfo.module = this->vertShaderModule;
     vertShaderStageInfo.pName = "main";
 
     VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
     fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragShaderStageInfo.module = fragShaderModule;
+    fragShaderStageInfo.module = this->fragShaderModule;
     fragShaderStageInfo.pName = "main";
 
     this->shaderStageInfo[0] = vertShaderStageInfo;
@@ -698,13 +787,13 @@ bool Graphics::createSkyboxShaderStageInfo() {
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertShaderStageInfo.module = vertShaderModule;
+    vertShaderStageInfo.module = this->skyboxVertShaderModule;
     vertShaderStageInfo.pName = "main";
 
     VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
     fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragShaderStageInfo.module = fragShaderModule;
+    fragShaderStageInfo.module = this->skyboxFragShaderModule;
     fragShaderStageInfo.pName = "main";
 
     this->skyboxShaderStageInfo[0] = vertShaderStageInfo;
@@ -818,7 +907,7 @@ bool Graphics::createSkyboxGraphicsPipeline() {
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDepthStencilState = &depthStencil;
     pipelineInfo.layout = this->skyboxGraphicsPipelineLayout;
-    //pipelineInfo.renderPass = this->renderPass;
+    pipelineInfo.renderPass = this->renderPass;
     pipelineInfo.subpass = 0;
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -1294,9 +1383,9 @@ bool Graphics::createSkyboxDescriptorSets() {
     }
 
     VkDescriptorImageInfo descriptorImageInfo;
-    descriptorImageInfo.sampler = this->textureSampler;
+    descriptorImageInfo.sampler = this->skyboxSampler;
     descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    descriptorImageInfo.imageView = this->models.findTextureImageViewById(0);
+    descriptorImageInfo.imageView = this->skyboxImageView;
 
     for (size_t i = 0; i < this->skyboxDescriptorSets.size(); i++) {
         VkDescriptorBufferInfo uniformBufferInfo{};
@@ -1332,7 +1421,7 @@ bool Graphics::createSkyboxDescriptorSets() {
     return true;
 }
 
-bool Graphics::createTextureSampler() {
+bool Graphics::createTextureSampler(VkSampler & sampler) {
     VkPhysicalDeviceProperties properties{};
     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
@@ -1351,7 +1440,7 @@ bool Graphics::createTextureSampler() {
     samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
-    VkResult ret = vkCreateSampler(this->device, &samplerInfo, nullptr, &this->textureSampler);
+    VkResult ret = vkCreateSampler(this->device, &samplerInfo, nullptr, &sampler);
     if (ret != VK_SUCCESS) {
         std::cerr << "Failed to Create Texture Sampler!" << std::endl;
         return false;
@@ -1405,8 +1494,24 @@ bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
 
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
     renderPassInfo.pClearValues = clearValues.data();
-
+    
     vkCmdBeginRenderPass(this->context.commandBuffers[commandBufferIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    
+    /*
+    if (this->hasSkybox) {
+        vkCmdBindDescriptorSets(
+            this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, 
+            this->skyboxGraphicsPipelineLayout, 0, 1, &this->skyboxDescriptorSets[commandBufferIndex], 0, nullptr);
+    
+        vkCmdBindPipeline(this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, this->skyboxGraphicsPipeline);
+
+        this->drawSkybox(this->context, commandBufferIndex);
+    }*/
+
+    vkCmdBindDescriptorSets(
+        this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, 
+        this->context.graphicsPipelineLayout, 0, 1, &this->descriptorSets[commandBufferIndex], 0, nullptr);
+
     
     vkCmdBindPipeline(this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphicsPipeline);
     
@@ -1415,18 +1520,13 @@ bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(this->context.commandBuffers[commandBufferIndex], 0, 1, vertexBuffers, offsets);
     }
-    
-    vkCmdBindDescriptorSets(
-        this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, 
-        this->context.graphicsPipelineLayout, 0, 1, &this->descriptorSets[commandBufferIndex], 0, nullptr);
-    
+        
     if (this->indexBuffer != nullptr) {
         vkCmdBindIndexBuffer(this->context.commandBuffers[commandBufferIndex], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
         this->draw(this->context, commandBufferIndex, true);
     } else {
         this->draw(this->context, commandBufferIndex, false);                
     }
-
 
     vkCmdEndRenderPass(this->context.commandBuffers[commandBufferIndex]);
 
@@ -1449,7 +1549,11 @@ bool Graphics::updateSwapChain() {
     if (!this->createSwapChain()) return false;
     if (!this->createImageViews()) return false;
     if (!this->createRenderPass()) return false;
-    //if (!this->createSkyboxGraphicsPipeline()) return false;
+    
+    if (this->hasSkybox) {
+        if (!this->createSkyboxGraphicsPipeline()) return false;
+    }
+    
     if (!this->createGraphicsPipeline()) return false;
     if (!this->createDepthResources()) return false;
     if (!this->createFramebuffers()) return false;
@@ -1737,9 +1841,13 @@ bool Graphics::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags propert
 }
 
 bool Graphics::createUniformBuffers() {
-    if (!this->createTextureSampler()) return false;
-    //if (!this->createSkyboxDescriptorSetLayout()) return false;
+    if (!this->createTextureSampler(this->textureSampler)) return false;
+    if (this->hasSkybox) {
+        if (!this->createTextureSampler(this->skyboxSampler)) return false;
+        if (!this->createSkyboxDescriptorSetLayout()) return false;
+    }
     if (!this->createDescriptorSetLayout()) return false;
+
     
     VkDeviceSize bufferSize = sizeof(struct ModelUniforms);
 
@@ -1752,8 +1860,10 @@ bool Graphics::createUniformBuffers() {
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
             this->uniformBuffers[i], this->uniformBuffersMemory[i]);
     }
-    
-    //if (!this->createSkyboxDescriptorSets()) return false;
+
+    if (this->hasSkybox) {
+        if (!this->createSkyboxDescriptorSets()) return false;
+    }
     if (!this->createDescriptorSets()) return false;
     
     return true;
@@ -1913,6 +2023,91 @@ bool Graphics::createSsboBufferFromModel(VkDeviceSize bufferSize, bool makeHostW
     return true;
 }
 
+void Graphics::drawSkybox(RenderContext & context, int commandBufferIndex) {
+    
+    std::vector<Vertex> skyboxVertices = {
+        Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+        Vertex(glm::vec3(-1.0f, -1.0f, -1.0f)),
+        Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+        Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+        Vertex(glm::vec3(1.0f,  1.0f, -1.0f)),
+        Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+        
+        Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+        Vertex(glm::vec3(-1.0f, -1.0f, -1.0f)),
+        Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+        Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+        Vertex(glm::vec3(-1.0f,  1.0f,  1.0f)),
+        Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+        
+        Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+        Vertex(glm::vec3(1.0f, -1.0f,  1.0f)),
+        Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+        Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+        Vertex(glm::vec3(1.0f,  1.0f, -1.0f)),
+        Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+
+        Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+        Vertex(glm::vec3(-1.0f,  1.0f,  1.0f)),
+        Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+        Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+        Vertex(glm::vec3(1.0f, -1.0f,  1.0f)),
+        Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+
+        Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+        Vertex(glm::vec3(1.0f,  1.0f, -1.0f)),
+        Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+        Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+        Vertex(glm::vec3(-1.0f,  1.0f,  1.0f)),
+        Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+
+        Vertex(glm::vec3(-1.0f, -1.0f, -1.0f)),
+        Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+        Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+        Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+        Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+        Vertex(glm::vec3(1.0f, -1.0f,  1.0f))
+    };
+
+    if (this->skyBoxVertexBuffer != nullptr) vkDestroyBuffer(this->device, this->skyBoxVertexBuffer, nullptr);
+    if (this->skyBoxVertexBufferMemory != nullptr) vkFreeMemory(this->device, this->skyBoxVertexBufferMemory, nullptr);
+
+    VkDeviceSize bufferSize = skyboxVertices.size() * sizeof(class Vertex);
+    
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    if (!this->createBuffer(bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            stagingBuffer, stagingBufferMemory)) {
+        std::cerr << "Failed to get Create Skybox Staging Buffer" << std::endl;
+        return;
+    }
+
+    void* data = nullptr;
+    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, skyboxVertices.data(), bufferSize);
+    vkUnmapMemory(this->device, stagingBufferMemory);
+
+    if (!this->createBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            this->skyBoxVertexBuffer, this->skyBoxVertexBufferMemory)) {
+        std::cerr << "Failed to get Create Skybox Vertex Buffer" << std::endl;
+        return;
+    }
+
+    this->copyBuffer(stagingBuffer,this->skyBoxVertexBuffer, bufferSize);
+
+    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+
+    VkDeviceSize offsets[] = {0};
+    VkBuffer vertexBuffers[] = {this->skyBoxVertexBuffer};
+    vkCmdBindVertexBuffers(this->context.commandBuffers[commandBufferIndex], 0, 1, vertexBuffers, offsets);
+    
+    vkCmdDraw(context.commandBuffers[commandBufferIndex], skyboxVertices.size(), 1, 0, 0);
+}
+
 
 void Graphics::draw(RenderContext & context, int commandBufferIndex, bool useIndices) {
     VkDeviceSize lastVertexOffset = 0;
@@ -2023,7 +2218,7 @@ Component * Graphics::addModelComponent(std::string modelLocation) {
 }
 
 bool Graphics::createImage(
-    int32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
+    int32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory, uint16_t arrayLayers) {
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -2031,14 +2226,17 @@ bool Graphics::createImage(
         imageInfo.extent.height = height;
         imageInfo.extent.depth = 1;
         imageInfo.mipLevels = 1;
-        imageInfo.arrayLayers = 1;
+        imageInfo.arrayLayers = arrayLayers;
         imageInfo.format = format;
         imageInfo.tiling = tiling;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageInfo.usage = usage;
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
+        if (arrayLayers > 1) {
+            imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;    
+        }
+        
         VkResult ret = vkCreateImage(this->device, &imageInfo, nullptr, &image);
         ASSERT_VULKAN(ret);
 
@@ -2168,7 +2366,7 @@ void Graphics::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
     vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
 
-bool Graphics::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+bool Graphics::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint16_t layerCount) {
     VkCommandBuffer commandBuffer = this->beginSingleTimeCommands();
     if (commandBuffer == nullptr) return false;
 
@@ -2183,7 +2381,7 @@ bool Graphics::transitionImageLayout(VkImage image, VkFormat format, VkImageLayo
     barrier.subresourceRange.baseMipLevel = 0;
     barrier.subresourceRange.levelCount = 1;
     barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
+    barrier.subresourceRange.layerCount = layerCount;
 
     VkPipelineStageFlags sourceStage;
     VkPipelineStageFlags destinationStage;
@@ -2244,22 +2442,28 @@ SDL_Window * Graphics::getSdlWindow() {
     return this->sdlWindow;
 }
 
-void Graphics::copyBufferToImage(VkBuffer & buffer, VkImage & image, uint32_t width, uint32_t height) {
+void Graphics::copyBufferToImage(VkBuffer & buffer, VkImage & image, uint32_t width, uint32_t height, uint16_t layerCount) {
     VkCommandBuffer commandBuffer = this->beginSingleTimeCommands();
     if (commandBuffer == nullptr) return;
 
-    VkBufferImageCopy region;
-    region.bufferOffset = 0;
-    region.bufferRowLength = 0;
-    region.bufferImageHeight = 0;
-    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    region.imageSubresource.mipLevel = 0;
-    region.imageSubresource.baseArrayLayer = 0;
-    region.imageSubresource.layerCount = 1;
-    region.imageOffset = {0, 0, 0};
-    region.imageExtent = { width, height, 1};
+    std::vector<VkBufferImageCopy> regions;
+    uint16_t l=0;
+    while (l<layerCount) {
+        VkBufferImageCopy region;
+        region.bufferOffset = layerCount == 1 ? 0 : layerCount * width * height;
+        region.bufferRowLength = 0;
+        region.bufferImageHeight = 0;
+        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.mipLevel = 0;
+        region.imageSubresource.baseArrayLayer = l;
+        region.imageSubresource.layerCount = 1;
+        region.imageOffset = {0, 0, 0};
+        region.imageExtent = { width, height, 1};
+        regions.push_back(region);
+        l++;
+    }    
 
-    vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, regions.size(), regions.data());
 
     endSingleTimeCommands(commandBuffer);    
 }
@@ -2339,7 +2543,23 @@ Graphics::~Graphics() {
     if (this->textureSampler != nullptr) {
         vkDestroySampler(this->device, this->textureSampler, nullptr);
     }
-    
+
+    if (this->skyboxSampler != nullptr) {
+        vkDestroySampler(this->device, this->skyboxSampler, nullptr);
+    }
+
+    if (this->skyboxCubeImage != nullptr) {
+        vkDestroyImage(device, this->skyboxCubeImage, nullptr);        
+    }
+
+    if (this->skyboxCubeImageMemory != nullptr) {
+        vkFreeMemory(device, this->skyboxCubeImageMemory, nullptr);
+    }
+
+    if (this->skyboxImageView != nullptr) {
+        vkDestroyImageView(device, this->skyboxImageView, nullptr);
+    }
+
     this->models.cleanUpTextures(this->device);
     
     if (this->descriptorPool != nullptr) {

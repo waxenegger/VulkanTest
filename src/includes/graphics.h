@@ -33,6 +33,8 @@ class Graphics final {
         VkPhysicalDevice physicalDevice = nullptr;
         VkDevice device = nullptr;
 
+        bool hasSkybox = false;
+        
         uint32_t graphicsQueueIndex = -1;
         VkQueue graphicsQueue = nullptr;
         uint32_t presentQueueIndex = -1;
@@ -79,6 +81,12 @@ class Graphics final {
         VkBuffer vertexBuffer = nullptr;
         VkDeviceMemory vertexBufferMemory = nullptr;
         
+        VkBuffer skyBoxVertexBuffer = nullptr;
+        VkDeviceMemory skyBoxVertexBufferMemory = nullptr;        
+        
+        VkImage skyboxCubeImage = nullptr;
+        VkDeviceMemory skyboxCubeImageMemory = nullptr;
+        VkImageView skyboxImageView = nullptr;
         VkShaderModule skyboxVertShaderModule = nullptr;
         VkShaderModule skyboxFragShaderModule = nullptr;
         VkShaderModule vertShaderModule = nullptr;
@@ -98,6 +106,7 @@ class Graphics final {
         VkImageView depthImageView = nullptr;
         
         VkSampler textureSampler = nullptr;
+        VkSampler skyboxSampler = nullptr;
         
         Models models;
         Components components;
@@ -122,6 +131,7 @@ class Graphics final {
 
         bool createShaderStageInfo();
         bool createSkyboxShaderStageInfo();
+        bool createSkybox();
         
         bool createImageViews();
 
@@ -175,16 +185,17 @@ class Graphics final {
         bool findDepthFormat(VkFormat & supportedFormat);
         bool findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features, VkFormat & supportedFormat);
         bool createImage(
-                int32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+                int32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory, uint16_t arrayLayers = 1);
         
         VkCommandBuffer beginSingleTimeCommands();
         void endSingleTimeCommands(VkCommandBuffer commandBuffer);
-        bool transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+        bool transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint16_t layerCount = 1);
         void prepareModelTextures();
-        void copyBufferToImage(VkBuffer & buffer, VkImage & image, uint32_t width, uint32_t height);
-        bool createTextureSampler();
+        void copyBufferToImage(VkBuffer & buffer, VkImage & image, uint32_t width, uint32_t height, uint16_t layerCount = 1);
+        bool createTextureSampler(VkSampler & sampler);
         void copyModelsContentIntoBuffer(void* data, ModelsContentType modelsContentType, VkDeviceSize maxSize);
         void draw(RenderContext & context, int commandBufferIndex, bool useIndices);
+        void drawSkybox(RenderContext & context, int commandBufferIndex);
         
     public:
         Graphics(const Graphics&) = delete;
