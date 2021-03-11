@@ -75,10 +75,10 @@ bool Game::loadModels() {
     };
     
     this->graphics.addModel(new Model(vertices, indices, "quad"));
-    this->graphics.addModel(new Model("/opt/projects/VulkanTest/res/models/", "teapot.obj"));
-    this->graphics.addModel(new Model("/opt/projects/VulkanTest/res/models/", "nanosuit.obj"));
-    this->graphics.addModel(new Model("/opt/projects/VulkanTest/res/models/", "batman.obj"));
-    this->graphics.addModel(new Model("/opt/projects/VulkanTest/res/models/", "woolly-mammoth-150k.obj"));
+    //this->graphics.addModel(new Model("/opt/projects/VulkanTest/res/models/", "teapot.obj"));
+    //this->graphics.addModel(new Model("/opt/projects/VulkanTest/res/models/", "nanosuit.obj"));
+    //this->graphics.addModel(new Model("/opt/projects/VulkanTest/res/models/", "batman.obj"));
+    //this->graphics.addModel(new Model("/opt/projects/VulkanTest/res/models/", "woolly-mammoth-150k.obj"));
 
     this->graphics.prepareComponents();
     
@@ -96,6 +96,7 @@ bool Game::addComponents() {
     if (quad == nullptr) return false;
     quad->setPosition(glm::vec3(0));
     
+    /*
     for (int x=-100;x<100;x+=2) {
         for (int z=-100;z<100;z+=2) {
             Component * batman = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/batman.obj");
@@ -108,7 +109,7 @@ bool Game::addComponents() {
     if (nanosuit == nullptr) return false;
     nanosuit->setPosition(glm::vec3(0, 2, 0));
     nanosuit->scale(0.5);
-
+    */
     return true;
 }
 

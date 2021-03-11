@@ -254,7 +254,7 @@ void Models::addModel(Model * model) {
     this->models.push_back(std::unique_ptr<Model>(model));    
 }
 
-VkImageView Models::findTextureImageViewById(unsigned int id) {
+VkImageView Models::findTextureImageViewById(int id) {
     for (auto & t : this->textures) {
         if (t.second->getId() == id) return t.second->getTextureImageView();
     }
@@ -437,8 +437,8 @@ Models::~Models() {
     this->clear();
 }
 
-unsigned int Texture::getId() {
-    return  this->id;
+int Texture::getId() {
+    return this->id;
 }
 
 std::string Texture::getType() {
@@ -457,7 +457,7 @@ VkImageView & Texture::getTextureImageView() {
     return this->textureImageView;
 }
 
-void Texture::setId(const unsigned int & id) {
+void Texture::setId(const int & id) {
     this->id = id;
 }
 

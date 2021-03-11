@@ -50,14 +50,21 @@ class Graphics final {
 
         VkCommandPool commandPool = nullptr;
         VkDescriptorPool descriptorPool = nullptr;
+        VkDescriptorPool skyboxDescriptorPool = nullptr;
 
         std::vector<VkDescriptorSet> descriptorSets;
+        std::vector<VkDescriptorSet> skyboxDescriptorSets;
         
         VkRenderPass renderPass = nullptr;
         VkDescriptorSetLayout descriptorSetLayout;
+        VkDescriptorSetLayout skyboxDescriptorSetLayout;
+        
         VkPipeline graphicsPipeline = nullptr;
-
         std::array<VkPipelineShaderStageCreateInfo, 2> shaderStageInfo;
+        
+        VkPipeline skyboxGraphicsPipeline = nullptr;
+        VkPipelineLayout skyboxGraphicsPipelineLayout = nullptr;
+        std::array<VkPipelineShaderStageCreateInfo, 2> skyboxShaderStageInfo;
         
         std::vector<VkFramebuffer> swapChainFramebuffers;
 
@@ -72,6 +79,8 @@ class Graphics final {
         VkBuffer vertexBuffer = nullptr;
         VkDeviceMemory vertexBufferMemory = nullptr;
         
+        VkShaderModule skyboxVertShaderModule = nullptr;
+        VkShaderModule skyboxFragShaderModule = nullptr;
         VkShaderModule vertShaderModule = nullptr;
         VkShaderModule fragShaderModule = nullptr;
 
@@ -112,12 +121,14 @@ class Graphics final {
         VkPresentModeKHR pickBestDeviceSwapMode(const std::vector<VkPresentModeKHR> & availableSwapModes);
 
         bool createShaderStageInfo();
+        bool createSkyboxShaderStageInfo();
         
         bool createImageViews();
 
         void createVkInstance(const std::string & appName, uint32_t version);
 
         bool createGraphicsPipeline();
+        bool createSkyboxGraphicsPipeline();
         VkShaderModule createShaderModule(const std::vector<char> & code);
 
         void queryPhysicalDevices();
@@ -130,8 +141,11 @@ class Graphics final {
         bool getSwapChainExtent(VkSurfaceCapabilitiesKHR & surfaceCapabilities);
         bool createSwapChain();
         bool createDescriptorPool();
+        bool createSkyboxDescriptorPool();
         bool createDescriptorSetLayout();
+        bool createSkyboxDescriptorSetLayout();
         bool createDescriptorSets();
+        bool createSkyboxDescriptorSets();
         
         bool createUniformBuffers();
         void updateUniformBuffer(uint32_t currentImage);

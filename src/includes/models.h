@@ -74,7 +74,7 @@ class Mesh final {
 
 class Texture final {
     private:
-        unsigned int id = 0;
+        int id = 0;
         std::string type;
         std::string path;
         bool loaded = false;
@@ -86,11 +86,11 @@ class Texture final {
         VkImageView textureImageView = nullptr;
         
     public:
-        unsigned int getId();
+        int getId();
         std::string getType();
         bool isValid();
         VkFormat getImageFormat();
-        void setId(const unsigned int & id);
+        void setId(const int & id);
         void setType(const std::string & type);
         void setPath(const std::string & path);
         void load();
@@ -165,7 +165,7 @@ class Models final {
         void processTextures(Mesh & mesh);
         std::map<std::string, std::unique_ptr<Texture>> &  getTextures();
         std::vector<std::string> getModelLocations();
-        VkImageView findTextureImageViewById(unsigned int id); 
+        VkImageView findTextureImageViewById(int id); 
         void cleanUpTextures(const VkDevice & device);
         std::vector<std::unique_ptr<Model>> & getModels();
         Model * findModelByLocation(std::string path);
