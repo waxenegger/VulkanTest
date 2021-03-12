@@ -144,8 +144,6 @@ class Graphics final {
 
         std::vector<VkBuffer> uniformBuffers;
         std::vector<VkDeviceMemory> uniformBuffersMemory;
-        std::vector<VkBuffer> skyboxUniformBuffers;
-        std::vector<VkDeviceMemory> skyboxUniformBuffersMemory;
         
         VkImage depthImage = nullptr;
         VkDeviceMemory depthImageMemory = nullptr;

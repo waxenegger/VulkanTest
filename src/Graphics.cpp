@@ -1404,7 +1404,7 @@ bool Graphics::createSkyboxDescriptorSets() {
 
     for (size_t i = 0; i < this->skyboxDescriptorSets.size(); i++) {
         VkDescriptorBufferInfo uniformBufferInfo{};
-        uniformBufferInfo.buffer = this->skyboxUniformBuffers[i];
+        uniformBufferInfo.buffer = this->uniformBuffers[i];
         uniformBufferInfo.offset = 0;
         uniformBufferInfo.range = sizeof(struct ModelUniforms);
 
@@ -1666,13 +1666,6 @@ void Graphics::updateUniformBuffer(uint32_t currentImage) {
     vkMapMemory(this->device, this->uniformBuffersMemory[currentImage], 0, sizeof(modelUniforms), 0, &data);
     memcpy(data, &modelUniforms, sizeof(modelUniforms));
     vkUnmapMemory(this->device, this->uniformBuffersMemory[currentImage]);
-
-    if (this->hasSkybox) {
-        void* data;
-        vkMapMemory(this->device, this->skyboxUniformBuffersMemory[currentImage], 0, sizeof(modelUniforms), 0, &data);
-        memcpy(data, &modelUniforms, sizeof(modelUniforms));
-        vkUnmapMemory(this->device, this->skyboxUniformBuffersMemory[currentImage]);
-    }
 }
 
 void Graphics::updateSsboBuffer() {
@@ -1883,17 +1876,7 @@ bool Graphics::createUniformBuffers() {
     if (this->hasSkybox) {
         if (!this->createTextureSampler(this->skyboxSampler, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)) return false;
         if (!this->createSkyboxDescriptorSetLayout()) return false;
-    
-        this->skyboxUniformBuffers.resize(this->swapChainImages.size());
-        this->skyboxUniformBuffersMemory.resize(this->swapChainImages.size());
-
-        for (size_t i = 0; i < this->swapChainImages.size(); i++) {
-            this->createBuffer(
-                bufferSize, 
-                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-                this->skyboxUniformBuffers[i], this->skyboxUniformBuffersMemory[i]);
-        }
-                
+                    
         if (!this->createSkyboxDescriptorSets()) return false;
     }
     
@@ -2544,13 +2527,6 @@ Graphics::~Graphics() {
     }
     for (size_t i = 0; i < this->uniformBuffersMemory.size(); i++) {
         if (this->uniformBuffersMemory[i] != nullptr) vkFreeMemory(this->device, this->uniformBuffersMemory[i], nullptr);
-    }
-
-    for (size_t i = 0; i < this->skyboxUniformBuffers.size(); i++) {
-        if (this->skyboxUniformBuffers[i] != nullptr) vkDestroyBuffer(this->device, this->skyboxUniformBuffers[i], nullptr);
-    }
-    for (size_t i = 0; i < this->skyboxUniformBuffersMemory.size(); i++) {
-        if (this->skyboxUniformBuffersMemory[i] != nullptr) vkFreeMemory(this->device, this->skyboxUniformBuffersMemory[i], nullptr);
     }
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
