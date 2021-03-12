@@ -207,11 +207,11 @@ bool Graphics::createSwapChain() {
     return true;
 }
 
-VkImageView Graphics::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
+VkImageView Graphics::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t layerCount) {
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image = image;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.viewType = layerCount > 1 ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format = format;
     viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
     viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -221,7 +221,7 @@ VkImageView Graphics::createImageView(VkImage image, VkFormat format, VkImageAsp
     viewInfo.subresourceRange.baseMipLevel = 0;
     viewInfo.subresourceRange.levelCount = 1;
     viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
+    viewInfo.subresourceRange.layerCount = layerCount;
 
     VkImageView imageView;
     VkResult ret = vkCreateImageView(this->device, &viewInfo, nullptr, &imageView);
@@ -236,11 +236,10 @@ VkImageView Graphics::createImageView(VkImage image, VkFormat format, VkImageAsp
 
 bool Graphics::createSkybox() {
     std::array<std::string, 6> skyboxCubeImageLocations = {
-        "sky_back.png", "sky_bottom.png", "sky_front.png", "sky_left.png", "sky_right.png", "sky_top.png"
+        "sky_right.png", "sky_left.png", "sky_top.png", "sky_bottom.png", "sky_front.png", "sky_back.png" 
     };
-    
     std::vector<std::unique_ptr<Texture>> skyboxCubeTextures;
-    
+
     for (auto & s : skyboxCubeImageLocations) {
         std::unique_ptr<Texture> texture = std::make_unique<Texture>();
         texture->setPath(this->dir + "res/models/" + s);
@@ -251,10 +250,41 @@ bool Graphics::createSkybox() {
     }
     
     if (skyboxCubeTextures.size() != 6) return false;
+
+    if (this->skyBoxVertexBuffer != nullptr) vkDestroyBuffer(this->device, this->skyBoxVertexBuffer, nullptr);
+    if (this->skyBoxVertexBufferMemory != nullptr) vkFreeMemory(this->device, this->skyBoxVertexBufferMemory, nullptr);
+
+    VkDeviceSize bufferSize = SKYBOX_VERTICES.size() * sizeof(class Vertex);
     
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    if (!this->createBuffer(bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            stagingBuffer, stagingBufferMemory)) {
+        std::cerr << "Failed to get Create Skybox Staging Buffer" << std::endl;
+        return false;
+    }
+
+    void* data = nullptr;
+    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, SKYBOX_VERTICES.data(), bufferSize);
+    vkUnmapMemory(this->device, stagingBufferMemory);
+
+    if (!this->createBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            this->skyBoxVertexBuffer, this->skyBoxVertexBufferMemory)) {
+        std::cerr << "Failed to get Create Skybox Vertex Buffer" << std::endl;
+        return false;
+    }
+
+    this->copyBuffer(stagingBuffer,this->skyBoxVertexBuffer, bufferSize);
+
+    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
     
-    VkBuffer stagingBuffer = nullptr;
-    VkDeviceMemory stagingBufferMemory = nullptr;
+    stagingBuffer = nullptr;
+    stagingBufferMemory = nullptr;
     VkDeviceSize skyboxCubeSize = skyboxCubeTextures.size() * skyboxCubeTextures[0]->getSize();
     
     if (!this->createBuffer(
@@ -263,7 +293,7 @@ bool Graphics::createSkybox() {
             return false;
     }
 
-    void* data;
+    data = nullptr;
     VkDeviceSize offset = 0;
     vkMapMemory(device, stagingBufferMemory, 0, skyboxCubeSize, 0, &data);
     for (auto & tex : skyboxCubeTextures) {
@@ -292,24 +322,9 @@ bool Graphics::createSkybox() {
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
     
-    VkImageViewCreateInfo viewInfo{};
-    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = this->skyboxCubeImage;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-    viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-    viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = skyboxCubeTextures.size();
-
-    VkResult ret = vkCreateImageView(this->device, &viewInfo, nullptr, &this->skyboxImageView);
-    ASSERT_VULKAN(ret);
-    if (ret != VK_SUCCESS) {
+    this->skyboxImageView = 
+        this->createImageView(this->skyboxCubeImage, skyboxCubeTextures[0]->getImageFormat(), VK_IMAGE_ASPECT_COLOR_BIT, skyboxCubeTextures.size());
+    if (this->skyboxImageView == nullptr) {
         std::cerr << "Failed to Create Skybox Image View!" << std::endl;
         return false;
     }
@@ -866,8 +881,8 @@ bool Graphics::createSkyboxGraphicsPipeline() {
 
     VkPipelineDepthStencilStateCreateInfo depthStencil{};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depthStencil.depthTestEnable = VK_TRUE;
-    depthStencil.depthWriteEnable = VK_TRUE;
+    depthStencil.depthTestEnable = VK_FALSE;
+    depthStencil.depthWriteEnable = VK_FALSE;
     depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
     depthStencil.depthBoundsTestEnable = VK_FALSE;
     depthStencil.stencilTestEnable = VK_FALSE;
@@ -1389,7 +1404,7 @@ bool Graphics::createSkyboxDescriptorSets() {
 
     for (size_t i = 0; i < this->skyboxDescriptorSets.size(); i++) {
         VkDescriptorBufferInfo uniformBufferInfo{};
-        uniformBufferInfo.buffer = this->uniformBuffers[i];
+        uniformBufferInfo.buffer = this->skyboxUniformBuffers[i];
         uniformBufferInfo.offset = 0;
         uniformBufferInfo.range = sizeof(struct ModelUniforms);
 
@@ -1507,7 +1522,6 @@ bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
         this->drawSkybox(this->context, commandBufferIndex);
     }
 
-    /*
     vkCmdBindDescriptorSets(
         this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, 
         this->context.graphicsPipelineLayout, 0, 1, &this->descriptorSets[commandBufferIndex], 0, nullptr);
@@ -1534,7 +1548,7 @@ bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
     if (ret != VK_SUCCESS) {
         std::cerr << "Failed to end  Recording Command Buffer!" << std::endl;
         return false;
-    }*/
+    }
     
     return true;
 }
@@ -1652,6 +1666,13 @@ void Graphics::updateUniformBuffer(uint32_t currentImage) {
     vkMapMemory(this->device, this->uniformBuffersMemory[currentImage], 0, sizeof(modelUniforms), 0, &data);
     memcpy(data, &modelUniforms, sizeof(modelUniforms));
     vkUnmapMemory(this->device, this->uniformBuffersMemory[currentImage]);
+
+    if (this->hasSkybox) {
+        void* data;
+        vkMapMemory(this->device, this->skyboxUniformBuffersMemory[currentImage], 0, sizeof(modelUniforms), 0, &data);
+        memcpy(data, &modelUniforms, sizeof(modelUniforms));
+        vkUnmapMemory(this->device, this->skyboxUniformBuffersMemory[currentImage]);
+    }
 }
 
 void Graphics::updateSsboBuffer() {
@@ -1842,12 +1863,8 @@ bool Graphics::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags propert
 
 bool Graphics::createUniformBuffers() {
     if (!this->createTextureSampler(this->textureSampler, VK_SAMPLER_ADDRESS_MODE_REPEAT)) return false;
-    if (this->hasSkybox) {
-        if (!this->createTextureSampler(this->skyboxSampler, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)) return false;
-        if (!this->createSkyboxDescriptorSetLayout()) return false;
-    }
+    
     if (!this->createDescriptorSetLayout()) return false;
-
     
     VkDeviceSize bufferSize = sizeof(struct ModelUniforms);
 
@@ -1860,11 +1877,25 @@ bool Graphics::createUniformBuffers() {
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
             this->uniformBuffers[i], this->uniformBuffersMemory[i]);
     }
-
+    
+    if (!this->createDescriptorSets()) return false;
+    
     if (this->hasSkybox) {
+        if (!this->createTextureSampler(this->skyboxSampler, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)) return false;
+        if (!this->createSkyboxDescriptorSetLayout()) return false;
+    
+        this->skyboxUniformBuffers.resize(this->swapChainImages.size());
+        this->skyboxUniformBuffersMemory.resize(this->swapChainImages.size());
+
+        for (size_t i = 0; i < this->swapChainImages.size(); i++) {
+            this->createBuffer(
+                bufferSize, 
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+                this->skyboxUniformBuffers[i], this->skyboxUniformBuffersMemory[i]);
+        }
+                
         if (!this->createSkyboxDescriptorSets()) return false;
     }
-    if (!this->createDescriptorSets()) return false;
     
     return true;
 }
@@ -2023,89 +2054,12 @@ bool Graphics::createSsboBufferFromModel(VkDeviceSize bufferSize, bool makeHostW
     return true;
 }
 
-void Graphics::drawSkybox(RenderContext & context, int commandBufferIndex) {
-    
-    std::vector<Vertex> skyboxVertices = {
-        Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
-        Vertex(glm::vec3(-1.0f, -1.0f, -1.0f)),
-        Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
-        Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
-        Vertex(glm::vec3(1.0f,  1.0f, -1.0f)),
-        Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
-        
-        Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
-        Vertex(glm::vec3(-1.0f, -1.0f, -1.0f)),
-        Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
-        Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
-        Vertex(glm::vec3(-1.0f,  1.0f,  1.0f)),
-        Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
-        
-        Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
-        Vertex(glm::vec3(1.0f, -1.0f,  1.0f)),
-        Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
-        Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
-        Vertex(glm::vec3(1.0f,  1.0f, -1.0f)),
-        Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
-
-        Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
-        Vertex(glm::vec3(-1.0f,  1.0f,  1.0f)),
-        Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
-        Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
-        Vertex(glm::vec3(1.0f, -1.0f,  1.0f)),
-        Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
-
-        Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
-        Vertex(glm::vec3(1.0f,  1.0f, -1.0f)),
-        Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
-        Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
-        Vertex(glm::vec3(-1.0f,  1.0f,  1.0f)),
-        Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
-
-        Vertex(glm::vec3(-1.0f, -1.0f, -1.0f)),
-        Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
-        Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
-        Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
-        Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
-        Vertex(glm::vec3(1.0f, -1.0f,  1.0f))
-    };
-
-    if (this->skyBoxVertexBuffer != nullptr) vkDestroyBuffer(this->device, this->skyBoxVertexBuffer, nullptr);
-    if (this->skyBoxVertexBufferMemory != nullptr) vkFreeMemory(this->device, this->skyBoxVertexBufferMemory, nullptr);
-
-    VkDeviceSize bufferSize = skyboxVertices.size() * sizeof(class Vertex);
-    
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    if (!this->createBuffer(bufferSize,
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            stagingBuffer, stagingBufferMemory)) {
-        std::cerr << "Failed to get Create Skybox Staging Buffer" << std::endl;
-        return;
-    }
-
-    void* data = nullptr;
-    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, skyboxVertices.data(), bufferSize);
-    vkUnmapMemory(this->device, stagingBufferMemory);
-
-    if (!this->createBuffer(
-            bufferSize,
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            this->skyBoxVertexBuffer, this->skyBoxVertexBufferMemory)) {
-        std::cerr << "Failed to get Create Skybox Vertex Buffer" << std::endl;
-        return;
-    }
-
-    this->copyBuffer(stagingBuffer,this->skyBoxVertexBuffer, bufferSize);
-
-    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
-    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
-
+void Graphics::drawSkybox(RenderContext & context, int commandBufferIndex) {    
     VkDeviceSize offsets[] = {0};
     VkBuffer vertexBuffers[] = {this->skyBoxVertexBuffer};
     vkCmdBindVertexBuffers(this->context.commandBuffers[commandBufferIndex], 0, 1, vertexBuffers, offsets);
     
-    vkCmdDraw(context.commandBuffers[commandBufferIndex], skyboxVertices.size(), 1, 0, 0);
+    vkCmdDraw(context.commandBuffers[commandBufferIndex], SKYBOX_VERTICES.size(), 1, 0, 0);
 }
 
 
@@ -2450,7 +2404,7 @@ void Graphics::copyBufferToImage(VkBuffer & buffer, VkImage & image, uint32_t wi
     uint16_t l=0;
     while (l<layerCount) {
         VkBufferImageCopy region;
-        region.bufferOffset = layerCount == 1 ? 0 : layerCount * width * height;
+        region.bufferOffset = layerCount == 1 ? 0 : l * width * height * 4;
         region.bufferRowLength = 0;
         region.bufferImageHeight = 0;
         region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -2591,7 +2545,14 @@ Graphics::~Graphics() {
     for (size_t i = 0; i < this->uniformBuffersMemory.size(); i++) {
         if (this->uniformBuffersMemory[i] != nullptr) vkFreeMemory(this->device, this->uniformBuffersMemory[i], nullptr);
     }
-    
+
+    for (size_t i = 0; i < this->skyboxUniformBuffers.size(); i++) {
+        if (this->skyboxUniformBuffers[i] != nullptr) vkDestroyBuffer(this->device, this->skyboxUniformBuffers[i], nullptr);
+    }
+    for (size_t i = 0; i < this->skyboxUniformBuffersMemory.size(); i++) {
+        if (this->skyboxUniformBuffersMemory[i] != nullptr) vkFreeMemory(this->device, this->skyboxUniformBuffersMemory[i], nullptr);
+    }
+
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         if (this->renderFinishedSemaphores.size() == MAX_FRAMES_IN_FLIGHT &&
             this->renderFinishedSemaphores[i] != nullptr) {

@@ -7,6 +7,50 @@
 const int MAX_FRAMES_IN_FLIGHT = 2;
 const int MAX_TEXTURES = 25;
 
+const std::vector<Vertex> SKYBOX_VERTICES = {
+    Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+    Vertex(glm::vec3(-1.0f, -1.0f, -1.0f)),
+    Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+    Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+    Vertex(glm::vec3(1.0f,  1.0f, -1.0f)),
+    Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+    
+    Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+    Vertex(glm::vec3(-1.0f, -1.0f, -1.0f)),
+    Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+    Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+    Vertex(glm::vec3(-1.0f,  1.0f,  1.0f)),
+    Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+    
+    Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+    Vertex(glm::vec3(1.0f, -1.0f,  1.0f)),
+    Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+    Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+    Vertex(glm::vec3(1.0f,  1.0f, -1.0f)),
+    Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+
+    Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+    Vertex(glm::vec3(-1.0f,  1.0f,  1.0f)),
+    Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+    Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+    Vertex(glm::vec3(1.0f, -1.0f,  1.0f)),
+    Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+
+    Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+    Vertex(glm::vec3(1.0f,  1.0f, -1.0f)),
+    Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+    Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+    Vertex(glm::vec3(-1.0f,  1.0f,  1.0f)),
+    Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+
+    Vertex(glm::vec3(-1.0f, -1.0f, -1.0f)),
+    Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+    Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+    Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+    Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+    Vertex(glm::vec3(1.0f, -1.0f,  1.0f))
+};
+
 struct ModelSummary {
     VkDeviceSize vertexBufferSize = 0;
     VkDeviceSize indexBufferSize = 0;
@@ -100,6 +144,8 @@ class Graphics final {
 
         std::vector<VkBuffer> uniformBuffers;
         std::vector<VkDeviceMemory> uniformBuffersMemory;
+        std::vector<VkBuffer> skyboxUniformBuffers;
+        std::vector<VkDeviceMemory> skyboxUniformBuffersMemory;
         
         VkImage depthImage = nullptr;
         VkDeviceMemory depthImageMemory = nullptr;
@@ -180,7 +226,7 @@ class Graphics final {
         bool createBuffersFromModel(bool makeSsboBufferHostWritable = false);
         bool createSsboBufferFromModel(VkDeviceSize bufferSize, bool makeHostWritable = false);
         
-        VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+        VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t layerCount = 1);
         bool createDepthResources();
         bool findDepthFormat(VkFormat & supportedFormat);
         bool findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features, VkFormat & supportedFormat);
