@@ -149,7 +149,7 @@ bool Graphics::createSwapChain() {
         return false;
     }
 
-    uint32_t imageCount = surfaceCapabilities.minImageCount;
+    uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
     if (surfaceCapabilities.maxImageCount > 0 && imageCount > surfaceCapabilities.maxImageCount) {
         imageCount = surfaceCapabilities.maxImageCount;
     }
@@ -173,7 +173,7 @@ bool Graphics::createSwapChain() {
     const uint32_t queueFamilyIndices[] = { this->graphicsQueueIndex, this->presentQueueIndex };
     if (this->graphicsQueueIndex != this->presentQueueIndex) {
         createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-        createInfo.queueFamilyIndexCount = 2;
+        createInfo.queueFamilyIndexCount = imageCount;
         createInfo.pQueueFamilyIndices = queueFamilyIndices;
     } else {
         createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
