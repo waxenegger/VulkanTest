@@ -72,6 +72,7 @@ class Graphics final {
         };
 
         bool showWireFrame = false;
+        bool requiresUpdateSwapChain = false;
         
         uint16_t frameCount = 0;
         double deltaTime = 1;
@@ -147,9 +148,9 @@ class Graphics final {
         std::vector<VkBuffer> uniformBuffers;
         std::vector<VkDeviceMemory> uniformBuffersMemory;
         
-        VkImage depthImage = nullptr;
-        VkDeviceMemory depthImageMemory = nullptr;
-        VkImageView depthImageView = nullptr;
+        std::vector<VkImage> depthImages;
+        std::vector<VkDeviceMemory> depthImagesMemory;
+        std::vector<VkImageView> depthImagesView;
         
         VkSampler textureSampler = nullptr;
         VkSampler skyboxSampler = nullptr;

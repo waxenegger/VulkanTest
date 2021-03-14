@@ -149,7 +149,7 @@ bool Graphics::createSwapChain() {
         return false;
     }
 
-    uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
+    uint32_t imageCount = 2; //surfaceCapabilities.minImageCount + 1;
     if (surfaceCapabilities.maxImageCount > 0 && imageCount > surfaceCapabilities.maxImageCount) {
         imageCount = surfaceCapabilities.maxImageCount;
     }
@@ -195,6 +195,7 @@ bool Graphics::createSwapChain() {
         return false;
     }
 
+    std::cout << "Buffering: " << imageCount << std::endl;
     this->swapChainImages.resize(imageCount);
 
     ret = vkGetSwapchainImagesKHR(device, swapChain, &imageCount, this->swapChainImages.data());
@@ -382,6 +383,7 @@ bool Graphics::createLogicalDeviceAndQueues() {
     VkPhysicalDeviceFeatures deviceFeatures {};
     deviceFeatures.samplerAnisotropy = VK_TRUE;
     deviceFeatures.multiDrawIndirect = VK_TRUE;
+    deviceFeatures.fillModeNonSolid = VK_TRUE;
 
     VkDeviceCreateInfo createInfo {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -1076,7 +1078,7 @@ bool Graphics::createFramebuffers() {
 
      for (size_t i = 0; i < this->swapChainImageViews.size(); i++) {
          std::array<VkImageView, 2> attachments = {
-             this->swapChainImageViews[i], this->depthImageView
+             this->swapChainImageViews[i], this->depthImagesView[i]
          };
 
          VkFramebufferCreateInfo framebufferInfo{};
@@ -1108,7 +1110,7 @@ bool Graphics::createDescriptorPool() {
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     poolSizes[1].descriptorCount = static_cast<uint32_t>(this->swapChainImages.size());
     poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_TEXTURES * 2);
+    poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_TEXTURES * this->swapChainImages.size());
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1476,7 +1478,7 @@ bool Graphics::createCommandBuffers() {
 
 bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
     if (this->context.commandBuffers[commandBufferIndex] != nullptr) {
-        vkFreeCommandBuffers(this->device, this->commandPool, 1, &this->context.commandBuffers[commandBufferIndex]);
+        vkFreeCommandBuffers(this->device, this->commandPool, 1, &this->context.commandBuffers[commandBufferIndex]);   
         this->context.commandBuffers[commandBufferIndex] = nullptr;
     }
 
@@ -1615,18 +1617,20 @@ void Graphics::cleanupSwapChain() {
     if (this->device == nullptr) return;
     
     vkDeviceWaitIdle(this->device);
-            
-    if (this->depthImageView != nullptr) {
-        vkDestroyImageView(this->device, this->depthImageView, nullptr);
-        this->depthImageView = nullptr;
-    }
-    if (this->depthImage != nullptr) {
-        vkDestroyImage(this->device, this->depthImage, nullptr);
-        this->depthImage = nullptr;
-    }
-    if (this->depthImageMemory != nullptr) {
-        vkFreeMemory(this->device, this->depthImageMemory, nullptr);
-        this->depthImageMemory = nullptr;
+    
+    for (uint16_t j=0;j<this->depthImages.size();j++) {
+        if (this->depthImagesView[j] != nullptr) {
+            vkDestroyImageView(this->device, this->depthImagesView[j], nullptr);
+            this->depthImagesView[j] = nullptr;            
+        }
+        if (this->depthImages[j] != nullptr) {
+            vkDestroyImage(this->device, this->depthImages[j], nullptr);
+            this->depthImages[j] = nullptr;            
+        }
+        if (this->depthImagesMemory[j] != nullptr) {
+            vkFreeMemory(this->device, this->depthImagesMemory[j], nullptr);
+            this->depthImagesMemory[j] = nullptr;            
+        }
     }
 
     for (auto & framebuffer : this->swapChainFramebuffers) {
@@ -1755,7 +1759,7 @@ void Graphics::updateScene(uint16_t commandBufferIndex, bool waitForFences) {
     this->createCommandBuffer(commandBufferIndex);
 }
     
-void Graphics::drawFrame() {
+void Graphics::drawFrame() {    
     std::chrono::high_resolution_clock::time_point frameStart = std::chrono::high_resolution_clock::now();
     
     VkResult ret = vkWaitForFences(device, 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);
@@ -1764,7 +1768,12 @@ void Graphics::drawFrame() {
         std::cerr << "vkWaitForFences Failed" << std::endl;
         return;
     }
-
+    
+    if (this->requiresUpdateSwapChain) {
+        this->updateSwapChain();
+        this->requiresUpdateSwapChain = false;
+    }
+    
     uint32_t imageIndex;
     ret = vkAcquireNextImageKHR(
             this->device, this->swapChain, UINT64_MAX, this->imageAvailableSemaphores[this->currentFrame], VK_NULL_HANDLE, &imageIndex);
@@ -1781,9 +1790,9 @@ void Graphics::drawFrame() {
     // not writable
     //this->updateSsboBuffer();
     if (this->components.isSceneUpdateNeeded()) {
-        this->updateScene(imageIndex, false);
+        this->updateScene(imageIndex);
     }
-    
+        
     if (this->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
         vkWaitForFences(device, 1, &this->imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
     }
@@ -1807,7 +1816,8 @@ void Graphics::drawFrame() {
 
     vkResetFences(this->device, 1, &this->inFlightFences[this->currentFrame]);
 
-    if (vkQueueSubmit(this->graphicsQueue, 1, &submitInfo, this->inFlightFences[this->currentFrame]) != VK_SUCCESS) {
+    ret = vkQueueSubmit(this->graphicsQueue, 1, &submitInfo, this->inFlightFences[this->currentFrame]);
+    if (ret != VK_SUCCESS) {
         std::cerr << "Failed to Submit Draw Command Buffer!" << std::endl;
         return;
     }
@@ -2133,6 +2143,7 @@ void Graphics::draw(RenderContext & context, int commandBufferIndex, bool useInd
             
             for (auto & comp : compsPerModel) {
                 ModelProperties props = { comp->getModelMatrix()};
+                
                 vkCmdPushConstants(
                     context.commandBuffers[commandBufferIndex], context.graphicsPipelineLayout,
                     VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(struct ModelProperties), &props);
@@ -2274,21 +2285,27 @@ bool Graphics::createImage(
 }
 
 bool Graphics::createDepthResources() {
+    this->depthImages.resize(this->swapChainImages.size());
+    this->depthImagesMemory.resize(this->depthImages.size());
+    this->depthImagesView.resize(this->depthImages.size());
+    
     VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
     if (!this->findDepthFormat(depthFormat)) {
     
         return false;
     };
 
-    if (!this->createImage(swapChainExtent.width, swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->depthImage, this->depthImageMemory)) {
-        std::cerr << "Faild to create Depth Image!" << std::endl;
-        return false;
-    }
+    for (uint16_t i=0;i<this->depthImages.size();i++) {
+        if (!this->createImage(swapChainExtent.width, swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->depthImages[i], this->depthImagesMemory[i])) {
+            std::cerr << "Faild to create Depth Image!" << std::endl;
+            return false;
+        }
     
-    this->depthImageView = this->createImageView(this->depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-    if (this->depthImageView == nullptr) {
-        std::cerr << "Faild to create Depth Image View!" << std::endl;
-        return false;        
+        this->depthImagesView[i] = this->createImageView(this->depthImages[i], depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+        if (this->depthImagesView[i] == nullptr) {
+            std::cerr << "Faild to create Depth Image View!" << std::endl;
+            return false;        
+        }
     }
     
     return true;
@@ -2441,8 +2458,7 @@ void Graphics::addModel(const std::string & dir, const std::string & file) {
 
 void Graphics::toggleWireFrame() {
     this->showWireFrame = !this->showWireFrame;
-    
-    this->updateSwapChain();
+    this->requiresUpdateSwapChain = true;
 }
 
 SDL_Window * Graphics::getSdlWindow() {
