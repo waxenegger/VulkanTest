@@ -34,7 +34,6 @@ class Camera
         float aspect = 1.0f;
         float fovy = 45.0f;
         
-        float speed = 1.0f;
         struct
         {
             bool left = false;
@@ -62,7 +61,6 @@ class Camera
             void rotate(glm::vec3 delta);
             void setTranslation(glm::vec3 translation);
             void translate(glm::vec3 delta);
-            void setSpeed(float movementSpeed);
             void update(float deltaTime);
             glm::mat4 getViewMatrix();
             glm::mat4 getProjectionMatrix();

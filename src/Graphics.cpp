@@ -311,13 +311,13 @@ bool Graphics::createSkybox() {
     }
 
     transitionImageLayout(
-        this->skyboxCubeImage, skyboxCubeTextures[0]->getImageFormat(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, skyboxCubeTextures.size());
+        this->skyboxCubeImage, skyboxCubeTextures[0]->getImageFormat(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, skyboxCubeTextures.size());
     
     this->copyBufferToImage(
         stagingBuffer, this->skyboxCubeImage, skyboxCubeTextures[0]->getWidth(), skyboxCubeTextures[0]->getHeight(), skyboxCubeTextures.size());
     
     transitionImageLayout(
-        this->skyboxCubeImage, skyboxCubeTextures[0]->getImageFormat(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        this->skyboxCubeImage, skyboxCubeTextures[0]->getImageFormat(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, skyboxCubeTextures.size());
 
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
@@ -1475,6 +1475,11 @@ bool Graphics::createCommandBuffers() {
 }
 
 bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
+    if (this->context.commandBuffers[commandBufferIndex] != nullptr) {
+        vkFreeCommandBuffers(this->device, this->commandPool, 1, &this->context.commandBuffers[commandBufferIndex]);
+        this->context.commandBuffers[commandBufferIndex] = nullptr;
+    }
+
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.commandPool = this->commandPool;
@@ -1489,6 +1494,7 @@ bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
     ret = vkBeginCommandBuffer(this->context.commandBuffers[commandBufferIndex], &beginInfo);
     if (ret != VK_SUCCESS) {
@@ -1580,9 +1586,9 @@ bool Graphics::updateSwapChain() {
 }
 
 bool Graphics::createSyncObjects() {
-    this->imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-    this->renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-    this->inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+    this->imageAvailableSemaphores.resize(this->swapChainImages.size());
+    this->renderFinishedSemaphores.resize(this->swapChainImages.size());
+    this->inFlightFences.resize(this->swapChainImages.size());
     this->imagesInFlight.resize(this->swapChainImages.size(), VK_NULL_HANDLE);
 
     VkSemaphoreCreateInfo semaphoreInfo{};
@@ -1592,7 +1598,7 @@ bool Graphics::createSyncObjects() {
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    for (size_t i = 0; i < this->swapChainImages.size(); i++) {
 
         if (vkCreateSemaphore(this->device, &semaphoreInfo, nullptr, &this->imageAvailableSemaphores[i]) != VK_SUCCESS ||
             vkCreateSemaphore(this->device, &semaphoreInfo, nullptr, &this->renderFinishedSemaphores[i]) != VK_SUCCESS ||
@@ -1610,31 +1616,68 @@ void Graphics::cleanupSwapChain() {
     
     vkDeviceWaitIdle(this->device);
             
-    if (this->depthImageView != nullptr) vkDestroyImageView(this->device, this->depthImageView, nullptr);
-    if (this->depthImage != nullptr) vkDestroyImage(this->device, this->depthImage, nullptr);
-    if (this->depthImageMemory != nullptr) vkFreeMemory(this->device, this->depthImageMemory, nullptr);
-
-    for (auto framebuffer : this->swapChainFramebuffers) {
-        vkDestroyFramebuffer(this->device, framebuffer, nullptr);
+    if (this->depthImageView != nullptr) {
+        vkDestroyImageView(this->device, this->depthImageView, nullptr);
+        this->depthImageView = nullptr;
+    }
+    if (this->depthImage != nullptr) {
+        vkDestroyImage(this->device, this->depthImage, nullptr);
+        this->depthImage = nullptr;
+    }
+    if (this->depthImageMemory != nullptr) {
+        vkFreeMemory(this->device, this->depthImageMemory, nullptr);
+        this->depthImageMemory = nullptr;
     }
 
-    if (this->commandPool != nullptr) {
-        vkFreeCommandBuffers(
-            this->device, this->commandPool, static_cast<uint32_t>(this->context.commandBuffers.size()), this->context.commandBuffers.data());
+    for (auto & framebuffer : this->swapChainFramebuffers) {
+        if (framebuffer != nullptr) {
+            vkDestroyFramebuffer(this->device, framebuffer, nullptr);
+            framebuffer = nullptr;
+        }
     }
 
-    if (this->graphicsPipeline != nullptr) vkDestroyPipeline(this->device, this->graphicsPipeline, nullptr);
-    if (this->context.graphicsPipelineLayout != nullptr) vkDestroyPipelineLayout(this->device, this->context.graphicsPipelineLayout, nullptr);
-    if (this->renderPass != nullptr) vkDestroyRenderPass(this->device, this->renderPass, nullptr);
+    if (this->commandPool != nullptr && !this->context.commandBuffers.empty()) {
+        for (auto & commandBuffer : this->context.commandBuffers) {
+            if (commandBuffer != nullptr) {
+                vkFreeCommandBuffers(this->device, this->commandPool, 1, &commandBuffer);   
+                commandBuffer = nullptr;
+            }
+        }
+    }
 
-    if (this->skyboxGraphicsPipeline != nullptr) vkDestroyPipeline(this->device, this->skyboxGraphicsPipeline, nullptr);
-    if (this->skyboxGraphicsPipelineLayout != nullptr) vkDestroyPipelineLayout(this->device, this->skyboxGraphicsPipelineLayout, nullptr);
+    if (this->graphicsPipeline != nullptr) {
+        vkDestroyPipeline(this->device, this->graphicsPipeline, nullptr);
+        this->graphicsPipeline = nullptr;
+    }
+    if (this->context.graphicsPipelineLayout != nullptr) {
+        vkDestroyPipelineLayout(this->device, this->context.graphicsPipelineLayout, nullptr);
+        this->context.graphicsPipelineLayout = nullptr;
+    }
+    if (this->renderPass != nullptr) {
+        vkDestroyRenderPass(this->device, this->renderPass, nullptr);
+        this->renderPass = nullptr;
+    }
+
+    if (this->skyboxGraphicsPipeline != nullptr) {
+        vkDestroyPipeline(this->device, this->skyboxGraphicsPipeline, nullptr);
+        this->skyboxGraphicsPipeline = nullptr;
+    }
+    if (this->skyboxGraphicsPipelineLayout != nullptr) {
+        vkDestroyPipelineLayout(this->device, this->skyboxGraphicsPipelineLayout, nullptr);
+        this->skyboxGraphicsPipelineLayout = nullptr;
+    }
     
-    for (auto imageView : this->swapChainImageViews) {
-        vkDestroyImageView(this->device, imageView, nullptr);
+    for (auto & imageView : this->swapChainImageViews) {
+        if (imageView == nullptr) {
+            vkDestroyImageView(this->device, imageView, nullptr);
+            imageView = nullptr;
+        }
     }
 
-    if (this->swapChain != nullptr) vkDestroySwapchainKHR(this->device, this->swapChain, nullptr);
+    if (this->swapChain != nullptr) {
+        vkDestroySwapchainKHR(this->device, this->swapChain, nullptr);
+        this->swapChain = nullptr;
+    }
 }
 
 bool Graphics::createCommandPool() {
@@ -1699,15 +1742,23 @@ void Graphics::updateSsboBuffer() {
     }
 }
 
-void Graphics::updateScene(uint16_t commandBufferIndex) {
-    vkFreeCommandBuffers(this->device, this->commandPool, 1, &this->context.commandBuffers[commandBufferIndex]);
+void Graphics::updateScene(uint16_t commandBufferIndex, bool waitForFences) {
+    if (waitForFences && this->imagesInFlight[commandBufferIndex] != VK_NULL_HANDLE) {
+        VkResult ret = vkWaitForFences(device, 1, &this->inFlightFences[commandBufferIndex], VK_TRUE, UINT64_MAX);
+
+        if (ret != VK_SUCCESS) {
+            std::cerr << "vkWaitForFences Failed" << std::endl;
+            return;
+        }
+    }
+    
     this->createCommandBuffer(commandBufferIndex);
 }
     
 void Graphics::drawFrame() {
-    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-
-    VkResult ret = vkWaitForFences(device, 1, &this->inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+    std::chrono::high_resolution_clock::time_point frameStart = std::chrono::high_resolution_clock::now();
+    
+    VkResult ret = vkWaitForFences(device, 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);
 
     if (ret != VK_SUCCESS) {
         std::cerr << "vkWaitForFences Failed" << std::endl;
@@ -1730,7 +1781,9 @@ void Graphics::drawFrame() {
     // not writable
     //this->updateSsboBuffer();
     if (this->components.isSceneUpdateNeeded()) {
-        this->updateScene(imageIndex);
+        for (uint32_t i=0;i<this->swapChainImages.size();i++) {
+            this->updateScene(i, i != imageIndex);            
+        }
     }
     
     if (this->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
@@ -1775,18 +1828,31 @@ void Graphics::drawFrame() {
 
     ret = vkQueuePresentKHR(presentQueue, &presentInfo);
 
-    if (ret == VK_ERROR_OUT_OF_DATE_KHR || ret == VK_SUBOPTIMAL_KHR || this->framebufferResized) {
-        this->framebufferResized = false;
+    if (ret == VK_ERROR_OUT_OF_DATE_KHR || ret == VK_SUBOPTIMAL_KHR) {
         this->updateSwapChain();
     } else if (ret != VK_SUCCESS) {
        std::cerr << "Failed to Present Swap Chain Image!" << std::endl;
        return;
     }
 
-    this->currentFrame = (this->currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+    ++this->currentFrame;
+    if (this->currentFrame >= this->swapChainImages.size()) {
+        this->currentFrame = 0;
+    }
     
-    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
-    std::cout << "drawFrame: " << time_span.count() <<  std::endl;
+    ++this->frameCount;
+    
+    std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> time_span = now -frameStart;
+    
+    this->setDeltaTime(time_span.count());
+    
+    time_span = now - this->lastTimeMeasure;
+    if (time_span.count() >= 1000) {
+        this->lastTimeMeasure = now;
+        std::cout << "FPS: " << this->frameCount <<  std::endl;
+        this->frameCount = 0;
+    }
 }
 
 void Graphics::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
@@ -2329,6 +2395,12 @@ bool Graphics::transitionImageLayout(VkImage image, VkFormat format, VkImageLayo
 
         sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
         destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    } else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;        
     } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
         barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -2384,21 +2456,17 @@ void Graphics::copyBufferToImage(VkBuffer & buffer, VkImage & image, uint32_t wi
     if (commandBuffer == nullptr) return;
 
     std::vector<VkBufferImageCopy> regions;
-    uint16_t l=0;
-    while (l<layerCount) {
-        VkBufferImageCopy region;
-        region.bufferOffset = layerCount == 1 ? 0 : l * width * height * 4;
-        region.bufferRowLength = 0;
-        region.bufferImageHeight = 0;
-        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        region.imageSubresource.mipLevel = 0;
-        region.imageSubresource.baseArrayLayer = l;
-        region.imageSubresource.layerCount = 1;
-        region.imageOffset = {0, 0, 0};
-        region.imageExtent = { width, height, 1};
-        regions.push_back(region);
-        l++;
-    }    
+    VkBufferImageCopy region;
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = layerCount;
+    region.imageOffset = {0, 0, 0};
+    region.imageExtent = { width, height, 1};
+    regions.push_back(region);
 
     vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, regions.size(), regions.data());
 
@@ -2529,16 +2597,16 @@ Graphics::~Graphics() {
         if (this->uniformBuffersMemory[i] != nullptr) vkFreeMemory(this->device, this->uniformBuffersMemory[i], nullptr);
     }
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        if (this->renderFinishedSemaphores.size() == MAX_FRAMES_IN_FLIGHT &&
+    for (size_t i = 0; i < this->swapChainImages.size(); i++) {
+        if (this->renderFinishedSemaphores.size() == this->swapChainImages.size() &&
             this->renderFinishedSemaphores[i] != nullptr) {
             vkDestroySemaphore(this->device, this->renderFinishedSemaphores[i], nullptr);
         }
-        if (this->imageAvailableSemaphores.size() == MAX_FRAMES_IN_FLIGHT &&
+        if (this->imageAvailableSemaphores.size() == this->swapChainImages.size() &&
             this->imageAvailableSemaphores[i] != nullptr) {
             vkDestroySemaphore(this->device, this->imageAvailableSemaphores[i], nullptr);
         }
-        if (this->inFlightFences.size() == MAX_FRAMES_IN_FLIGHT &&
+        if (this->inFlightFences.size() == this->swapChainImages.size() &&
             this->inFlightFences[i] != nullptr) {
             vkDestroyFence(this->device, this->inFlightFences[i], nullptr);
         }
@@ -2573,4 +2641,16 @@ Components & Graphics::getComponents() {
 
 void Graphics::prepareComponents() {
     this->components.initWithModelLocations(this->models.getModelLocations());
+}
+
+double Graphics::getDeltaTime() {
+    return this->deltaTime;
+}
+
+void Graphics::setDeltaTime(double deltaTime) {
+    this->deltaTime = deltaTime;
+}
+
+void Graphics::setLastTimeMeasure(std::chrono::high_resolution_clock::time_point time) {
+    this->lastTimeMeasure = time;
 }

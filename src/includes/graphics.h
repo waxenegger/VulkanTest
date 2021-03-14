@@ -4,7 +4,6 @@
 #include "components.h"
 #include "utils.h"
 
-const int MAX_FRAMES_IN_FLIGHT = 2;
 const int MAX_TEXTURES = 25;
 
 const std::vector<Vertex> SKYBOX_VERTICES = {
@@ -74,6 +73,10 @@ class Graphics final {
 
         bool showWireFrame = false;
         
+        uint16_t frameCount = 0;
+        double deltaTime = 1;
+        std::chrono::high_resolution_clock::time_point lastTimeMeasure = std::chrono::high_resolution_clock::now();
+        
         VkPhysicalDevice physicalDevice = nullptr;
         VkDevice device = nullptr;
 
@@ -120,7 +123,6 @@ class Graphics final {
         std::vector<VkFence> imagesInFlight;
 
         size_t currentFrame = 0;
-        bool framebufferResized = false;
 
         VkBuffer vertexBuffer = nullptr;
         VkDeviceMemory vertexBufferMemory = nullptr;
@@ -266,7 +268,7 @@ class Graphics final {
         VkExtent2D getWindowExtent();
         
         RenderContext & getRenderContext();
-        void updateScene(uint16_t commandBufferIndex);
+        void updateScene(uint16_t commandBufferIndex, bool waitForFences = false);
         void toggleWireFrame();
         SDL_Window * getSdlWindow();
         
@@ -276,6 +278,10 @@ class Graphics final {
         
         Models & getModels();
         ModelSummary getModelsBufferSizes();
+        
+        double getDeltaTime();
+        void setDeltaTime(double deltaTime);
+        void setLastTimeMeasure(std::chrono::high_resolution_clock::time_point time);
 
         ~Graphics();
 

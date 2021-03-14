@@ -102,11 +102,6 @@ void Camera::translate(glm::vec3 delta) {
     this->updateViewMatrix();
 }
 
-void Camera::setSpeed(float speed) {
-    this->speed = speed;
-    this->updateViewMatrix();
-}
-
 void Camera::update(float deltaTime) {
     if (type == CameraType::firstperson) {
         if (moving()) {
@@ -116,7 +111,7 @@ void Camera::update(float deltaTime) {
             camFront.z = cos(this->rotation.x) * cos(rotation.y);
             camFront = glm::normalize(camFront);
 
-            float moveSpeed = deltaTime * speed;
+            float moveSpeed = deltaTime;
 
             if (this->keys.up) position += camFront * moveSpeed;
             if (this->keys.down) position -= camFront * moveSpeed;
@@ -129,7 +124,7 @@ void Camera::update(float deltaTime) {
 };
 
 void Camera::updateDirection(const float deltaX, const float  deltaY, float deltaTime) {
-    float moveSpeed = deltaTime * speed;
+    float moveSpeed = deltaTime;
     
     glm::vec3 rot(0.0f);
     rot.y = deltaX * moveSpeed;

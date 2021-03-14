@@ -116,127 +116,139 @@ bool Game::addComponents() {
 void Game::loop() {
     if (!this->initialized) return;
     
-    SDL_Event e;
     SDL_StartTextInput();
 
     bool quit = false;
-    bool isFullScreen = false;
-    bool needsRestoreAfterFullScreen = false;
     
-       std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+    this->graphics.setLastTimeMeasure(start);
 
-    while(!quit) {
-        while (SDL_PollEvent(&e) != 0) {
-            switch(e.type) {
-                case SDL_WINDOWEVENT:
-                    if (e.window.event == SDL_WINDOWEVENT_RESIZED ||
-                        e.window.event == SDL_WINDOWEVENT_MAXIMIZED ||
-                        e.window.event == SDL_WINDOWEVENT_MINIMIZED ||
-                        e.window.event == SDL_WINDOWEVENT_RESTORED) {
-                            if (isFullScreen) SDL_SetWindowFullscreen(this->graphics.getSdlWindow(), SDL_TRUE);
-                            this->graphics.updateSwapChain();
-                            VkExtent2D windowSize = this->graphics.getWindowExtent();
-                            Camera::instance()->setAspectRatio(windowSize.width/windowSize.height);
+    std::thread rotationThread([this, &quit]() {
+        std::chrono::high_resolution_clock::time_point rotationStart = std::chrono::high_resolution_clock::now();
+        while(!quit) {
+            std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - rotationStart;
+            if (time_span.count() >= 100) {
+                auto & components = this->graphics.getComponents().getComponents();
+                for (auto & c : components) {
+                    auto & allCompsPerModel =  c.second;
+                    for (auto & cp : allCompsPerModel) {
+                        cp->rotate(0,1,0);
                     }
-                    break;
-                case SDL_KEYDOWN:
-                    switch (e.key.keysym.scancode) {
-                        case SDL_SCANCODE_W:                                    
-                            Camera::instance()->move(Camera::KeyPress::UP, true, 0.5f);
-                            break;
-                        case SDL_SCANCODE_S:
-                            Camera::instance()->move(Camera::KeyPress::DOWN, true, 0.5f);
-                            break;
-                        case SDL_SCANCODE_A:
-                            Camera::instance()->move(Camera::KeyPress::LEFT, true, 0.5f);
-                            break;
-                        case SDL_SCANCODE_D:
-                            Camera::instance()->move(Camera::KeyPress::RIGHT, true, 0.5f);
-                            break;
-                        case SDL_SCANCODE_F:
-                            this->graphics.toggleWireFrame();
-                            break;                                
-                        case SDL_SCANCODE_F12:
-                            isFullScreen = !isFullScreen;
-                            if (isFullScreen) {
-                                if (SDL_GetWindowFlags(this->graphics.getSdlWindow()) & SDL_WINDOW_MAXIMIZED) {
-                                    SDL_SetWindowFullscreen(this->graphics.getSdlWindow(), SDL_TRUE);
-                                } else {
-                                    needsRestoreAfterFullScreen = true;
-                                    SDL_MaximizeWindow(this->graphics.getSdlWindow());
-                                }
-                            } else {
-                                SDL_SetWindowFullscreen(this->graphics.getSdlWindow(), SDL_FALSE);
-                                if (needsRestoreAfterFullScreen) {
-                                    SDL_RestoreWindow(this->graphics.getSdlWindow());
-                                    needsRestoreAfterFullScreen = false;
-                                }
-                            }
-                            break;
-                        case SDL_SCANCODE_Q:
-                            quit = true;
-                            break;
-                        default:
-                            break;
-                    };
-                    break;
-                case SDL_KEYUP:
-                    switch (e.key.keysym.scancode) {
-                        case SDL_SCANCODE_W:
-                            Camera::instance()->move(Camera::KeyPress::UP);
-                            break;
-                        case SDL_SCANCODE_S:
-                            Camera::instance()->move(Camera::KeyPress::DOWN);
-                            break;
-                        case SDL_SCANCODE_A:
-                            Camera::instance()->move(Camera::KeyPress::LEFT);
-                            break;
-                        case SDL_SCANCODE_D:
-                            Camera::instance()->move(Camera::KeyPress::RIGHT);
-                            break;
-                        default:
-                            break;
-                    };
-                    break;
-                case SDL_MOUSEMOTION:
-                    if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
-                        Camera::instance()->updateDirection(
-                                static_cast<float>(e.motion.xrel),
-                                static_cast<float>(e.motion.yrel), 0.005f);
-                    }
-                    break;
-                case SDL_MOUSEWHEEL:
-                {
-                    const Sint32 delta = e.wheel.y * (e.wheel.direction == SDL_MOUSEWHEEL_NORMAL ? 1 : -1);
-                    float newFovy = Camera::instance()->getFovY() - delta * 2;
-                    if (newFovy < 1) newFovy = 1;
-                    else if (newFovy > 45) newFovy = 45;
-                    Camera::instance()->setFovY(newFovy);
-                    break;
-                }                            
-                case SDL_MOUSEBUTTONUP:
-                    SDL_SetRelativeMouseMode(SDL_GetRelativeMouseMode() == SDL_TRUE ? SDL_FALSE : SDL_TRUE);
-                    break;
-                case SDL_QUIT:
-                    quit = true;
-                    break;
+                }
+                rotationStart = std::chrono::high_resolution_clock::now();
             }
         }
-        
-        std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
-        if (time_span.count() > 25) {
-            auto & components = this->graphics.getComponents().getComponents();
-            for (auto & c : components) {
-                auto & allCompsPerModel =  c.second;
-                for (auto & cp : allCompsPerModel) {
-                    cp->rotate(0,10,0);
+    });
+    rotationThread.detach();
+    
+
+    std::thread inputThread([this, &quit]() {
+        SDL_Event e;
+        bool isFullScreen = false;
+        bool needsRestoreAfterFullScreen = false;
+
+        while(!quit) {
+            while (SDL_PollEvent(&e) != 0) {
+                switch(e.type) {
+                    case SDL_WINDOWEVENT:
+                        if (e.window.event == SDL_WINDOWEVENT_RESIZED ||
+                            e.window.event == SDL_WINDOWEVENT_MAXIMIZED ||
+                            e.window.event == SDL_WINDOWEVENT_MINIMIZED ||
+                            e.window.event == SDL_WINDOWEVENT_RESTORED) {
+                                if (isFullScreen) SDL_SetWindowFullscreen(this->graphics.getSdlWindow(), SDL_TRUE);
+                                VkExtent2D windowSize = this->graphics.getWindowExtent();
+                                Camera::instance()->setAspectRatio(windowSize.width/windowSize.height);
+                        }
+                        break;
+                    case SDL_KEYDOWN:
+                        switch (e.key.keysym.scancode) {
+                            case SDL_SCANCODE_W:                                    
+                                Camera::instance()->move(Camera::KeyPress::UP, true, 0.5f);
+                                break;
+                            case SDL_SCANCODE_S:
+                                Camera::instance()->move(Camera::KeyPress::DOWN, true, 0.5f);
+                                break;
+                            case SDL_SCANCODE_A:
+                                Camera::instance()->move(Camera::KeyPress::LEFT, true, 0.5f);
+                                break;
+                            case SDL_SCANCODE_D:
+                                Camera::instance()->move(Camera::KeyPress::RIGHT, true, 0.5f);
+                                break;
+                            case SDL_SCANCODE_F:
+                                this->graphics.toggleWireFrame();
+                                break;                                
+                            case SDL_SCANCODE_F12:
+                                isFullScreen = !isFullScreen;
+                                if (isFullScreen) {
+                                    if (SDL_GetWindowFlags(this->graphics.getSdlWindow()) & SDL_WINDOW_MAXIMIZED) {
+                                        SDL_SetWindowFullscreen(this->graphics.getSdlWindow(), SDL_TRUE);
+                                    } else {
+                                        needsRestoreAfterFullScreen = true;
+                                        SDL_MaximizeWindow(this->graphics.getSdlWindow());
+                                    }
+                                } else {
+                                    SDL_SetWindowFullscreen(this->graphics.getSdlWindow(), SDL_FALSE);
+                                    if (needsRestoreAfterFullScreen) {
+                                        SDL_RestoreWindow(this->graphics.getSdlWindow());
+                                        needsRestoreAfterFullScreen = false;
+                                    }
+                                }
+                                break;
+                            case SDL_SCANCODE_Q:
+                                quit = true;
+                                break;
+                            default:
+                                break;
+                        };
+                        break;
+                    case SDL_KEYUP:
+                        switch (e.key.keysym.scancode) {
+                            case SDL_SCANCODE_W:
+                                Camera::instance()->move(Camera::KeyPress::UP);
+                                break;
+                            case SDL_SCANCODE_S:
+                                Camera::instance()->move(Camera::KeyPress::DOWN);
+                                break;
+                            case SDL_SCANCODE_A:
+                                Camera::instance()->move(Camera::KeyPress::LEFT);
+                                break;
+                            case SDL_SCANCODE_D:
+                                Camera::instance()->move(Camera::KeyPress::RIGHT);
+                                break;
+                            default:
+                                break;
+                        };
+                        break;
+                    case SDL_MOUSEMOTION:
+                        if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
+                            Camera::instance()->updateDirection(
+                                    static_cast<float>(e.motion.xrel),
+                                    static_cast<float>(e.motion.yrel), 0.005f);
+                        }
+                        break;
+                    case SDL_MOUSEWHEEL:
+                    {
+                        const Sint32 delta = e.wheel.y * (e.wheel.direction == SDL_MOUSEWHEEL_NORMAL ? 1 : -1);
+                        float newFovy = Camera::instance()->getFovY() - delta * 2;
+                        if (newFovy < 1) newFovy = 1;
+                        else if (newFovy > 45) newFovy = 45;
+                        Camera::instance()->setFovY(newFovy);
+                        break;
+                    }                            
+                    case SDL_MOUSEBUTTONUP:
+                        SDL_SetRelativeMouseMode(SDL_GetRelativeMouseMode() == SDL_TRUE ? SDL_FALSE : SDL_TRUE);
+                        break;
+                    case SDL_QUIT:
+                        quit = true;
+                        break;
                 }
             }
-            start = std::chrono::high_resolution_clock::now();
         }
-        
-        this->graphics.drawFrame();
-
+    });
+    inputThread.detach();
+    
+    while(!quit) {
+        this->graphics.drawFrame();        
     }
 
     SDL_StopTextInput();
