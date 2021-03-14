@@ -127,12 +127,12 @@ void Game::loop() {
         std::chrono::high_resolution_clock::time_point rotationStart = std::chrono::high_resolution_clock::now();
         while(!quit) {
             std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - rotationStart;
-            if (time_span.count() >= 100) {
+            if (time_span.count() >= 25) {
                 auto & components = this->graphics.getComponents().getComponents();
                 for (auto & c : components) {
                     auto & allCompsPerModel =  c.second;
                     for (auto & cp : allCompsPerModel) {
-                        cp->rotate(0,1,0);
+                        cp->rotate(0,5,0);
                     }
                 }
                 rotationStart = std::chrono::high_resolution_clock::now();

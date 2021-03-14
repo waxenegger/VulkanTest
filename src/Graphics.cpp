@@ -1781,9 +1781,7 @@ void Graphics::drawFrame() {
     // not writable
     //this->updateSsboBuffer();
     if (this->components.isSceneUpdateNeeded()) {
-        for (uint32_t i=0;i<this->swapChainImages.size();i++) {
-            this->updateScene(i, i != imageIndex);            
-        }
+        this->updateScene(imageIndex, false);
     }
     
     if (this->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
