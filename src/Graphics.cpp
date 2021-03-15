@@ -1477,21 +1477,19 @@ bool Graphics::createCommandBuffers() {
 }
 
 bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
-    if (this->context.commandBuffers[commandBufferIndex] != nullptr) {
-        vkFreeCommandBuffers(this->device, this->commandPool, 1, &this->context.commandBuffers[commandBufferIndex]);   
-        this->context.commandBuffers[commandBufferIndex] = nullptr;
-    }
+    VkResult ret;
+    if (this->context.commandBuffers[commandBufferIndex] == nullptr) {
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.commandPool = this->commandPool;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandBufferCount = 1;
 
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = this->commandPool;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandBufferCount = 1;
-
-    VkResult ret = vkAllocateCommandBuffers(device, &allocInfo, &this->context.commandBuffers[commandBufferIndex]);
-    if (ret != VK_SUCCESS) {
-        std::cerr << "Failed to Allocate Command Buffer!" << std::endl;
-        return false;
+        ret = vkAllocateCommandBuffers(device, &allocInfo, &this->context.commandBuffers[commandBufferIndex]);
+        if (ret != VK_SUCCESS) {
+            std::cerr << "Failed to Allocate Command Buffer!" << std::endl;
+            return false;
+        }
     }
 
     VkCommandBufferBeginInfo beginInfo{};
@@ -1689,6 +1687,7 @@ bool Graphics::createCommandPool() {
     
     VkCommandPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     poolInfo.queueFamilyIndex = this->graphicsQueueIndex;
 
     VkResult ret = vkCreateCommandPool(this->device, &poolInfo, nullptr, &this->commandPool);
