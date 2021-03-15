@@ -20,7 +20,7 @@ void Game::init() {
     this->camera = Camera::instance(glm::vec3(0.0f, 4.0f, -10.0f));
 
     VkExtent2D windowSize = this->graphics.getWindowExtent();
-    this->camera->setAspectRatio(windowSize.width/windowSize.height);
+    Camera::instance()->setAspectRatio(static_cast<float>(windowSize.width) / windowSize.height);
     
     if (!this->loadModels()) {
          std::cerr << "Failed to Create Models" << std::endl;
@@ -157,7 +157,7 @@ void Game::loop() {
                             e.window.event == SDL_WINDOWEVENT_RESTORED) {
                                 if (isFullScreen) SDL_SetWindowFullscreen(this->graphics.getSdlWindow(), SDL_TRUE);
                                 VkExtent2D windowSize = this->graphics.getWindowExtent();
-                                Camera::instance()->setAspectRatio(windowSize.width/windowSize.height);
+                                Camera::instance()->setAspectRatio(static_cast<float>(windowSize.width) / windowSize.height);
                         }
                         break;
                     case SDL_KEYDOWN:
