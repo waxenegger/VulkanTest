@@ -1807,6 +1807,7 @@ void Graphics::drawFrame() {
     //this->updateSsboBuffer();
     if (this->components.isSceneUpdateNeeded(false)) {
         //this->updateScene(imageIndex);
+        //std::cout << "update" << std::endl;
         this->updateModelVertexBuffer();
     }
         
@@ -2049,15 +2050,15 @@ bool Graphics::createBuffersFromModel() {
         if (!this->createBuffer(
                 bufferSizes.modelBufferSize,
                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                this->modelVertexBuffer, this->modelVertexBufferMemory)) {
-            std::cerr << "Failed to get Create Model Vertex Buffer" << std::endl;
+                modelVertexBuffer, modelVertexBufferMemory)) {
+            std::cerr << "Failed to get Create Staging Buffer" << std::endl;
             return false;
         }
 
         data = nullptr;
-        vkMapMemory(this->device, this->modelVertexBufferMemory, 0, bufferSizes.modelBufferSize, 0, &data);
+        vkMapMemory(this->device, modelVertexBufferMemory, 0, bufferSizes.modelBufferSize, 0, &data);
         this->copyModelsContentIntoBuffer(data, MODEL_BUFFER, bufferSizes.modelBufferSize);
-        vkUnmapMemory(this->device, this->modelVertexBufferMemory);        
+        vkUnmapMemory(this->device, modelVertexBufferMemory);
     };    
     
     // meshes (SSBOs)

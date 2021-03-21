@@ -108,7 +108,7 @@ bool Game::addComponents() {
     quad->scale(500);
     */
     int count = 0;
-    for (int x=-100;x<100;x+=2) {
+    for (int x=-10;x<10;x+=2) {
         for (int z=-100;z<100;z+=2) {
             Component * batman = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/batman.obj");
             count++;
@@ -156,7 +156,6 @@ void Game::loop() {
         }
     });
     rotationThread.detach();
-    
 
     std::thread inputThread([this, &quit]() {
         SDL_Event e;
