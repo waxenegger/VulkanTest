@@ -121,7 +121,7 @@ bool Graphics::getSwapChainExtent(VkSurfaceCapabilitiesKHR & surfaceCapabilities
             surfaceCapabilities.minImageExtent.height,
             std::min(surfaceCapabilities.maxImageExtent.height,
             static_cast<uint32_t>(height)));
-
+        
         return true;
     }
 }
@@ -312,13 +312,13 @@ bool Graphics::createSkybox() {
     }
 
     transitionImageLayout(
-        this->skyboxCubeImage, skyboxCubeTextures[0]->getImageFormat(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, skyboxCubeTextures.size());
+        this->skyboxCubeImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, skyboxCubeTextures.size());
     
     this->copyBufferToImage(
         stagingBuffer, this->skyboxCubeImage, skyboxCubeTextures[0]->getWidth(), skyboxCubeTextures[0]->getHeight(), skyboxCubeTextures.size());
     
     transitionImageLayout(
-        this->skyboxCubeImage, skyboxCubeTextures[0]->getImageFormat(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, skyboxCubeTextures.size());
+        this->skyboxCubeImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, skyboxCubeTextures.size());
 
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
@@ -1577,6 +1577,9 @@ bool Graphics::updateSwapChain() {
     if (!this->createGraphicsPipeline()) return false;
     if (!this->createDepthResources()) return false;
     if (!this->createFramebuffers()) return false;
+
+    Camera::instance()->setAspectRatio(static_cast<float>(this->swapChainExtent.width) / this->swapChainExtent.height);
+    
     if (!this->createCommandBuffers()) return false;
 
     std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
@@ -1786,8 +1789,6 @@ void Graphics::drawFrame() {
     }
     
     this->updateUniformBuffer(imageIndex);
-    // not writable
-    //this->updateSsboBuffer();
     if (this->components.isSceneUpdateNeeded()) {
         this->updateScene(imageIndex);
     }
@@ -2383,7 +2384,7 @@ void Graphics::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
     vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
 
-bool Graphics::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint16_t layerCount) {
+bool Graphics::transitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, uint16_t layerCount) {
     VkCommandBuffer commandBuffer = this->beginSingleTimeCommands();
     if (commandBuffer == nullptr) return false;
 
@@ -2416,12 +2417,15 @@ bool Graphics::transitionImageLayout(VkImage image, VkFormat format, VkImageLayo
         sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
         destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;        
     } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.srcAccessMask = 0;
         barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
         sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
         destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    } else {
+    } else if (oldLayout == newLayout) {
+        return true;
+    } else
+    {
         std::cerr << "Unsupported Layout Transition" << std::endl;
         return false;
     }
@@ -2527,11 +2531,11 @@ void Graphics::prepareModelTextures() {
                 return;
         }
 
-        transitionImageLayout(textureImage, texture.second->getImageFormat(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        transitionImageLayout(textureImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         this->copyBufferToImage(
             stagingBuffer, textureImage, static_cast<uint32_t>(texture.second->getWidth()), static_cast<uint32_t>(texture.second->getHeight()));
         transitionImageLayout(
-            textureImage, texture.second->getImageFormat(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         vkDestroyBuffer(this->device, stagingBuffer, nullptr);
         vkFreeMemory(this->device, stagingBufferMemory, nullptr);

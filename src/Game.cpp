@@ -156,8 +156,6 @@ void Game::loop() {
                             e.window.event == SDL_WINDOWEVENT_MINIMIZED ||
                             e.window.event == SDL_WINDOWEVENT_RESTORED) {
                                 if (isFullScreen) SDL_SetWindowFullscreen(this->graphics.getSdlWindow(), SDL_TRUE);
-                                VkExtent2D windowSize = this->graphics.getWindowExtent();
-                                Camera::instance()->setAspectRatio(static_cast<float>(windowSize.width) / windowSize.height);
                         }
                         break;
                     case SDL_KEYDOWN:

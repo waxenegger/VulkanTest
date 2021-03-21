@@ -236,7 +236,7 @@ class Graphics final {
         
         VkCommandBuffer beginSingleTimeCommands();
         void endSingleTimeCommands(VkCommandBuffer commandBuffer);
-        bool transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint16_t layerCount = 1);
+        bool transitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, uint16_t layerCount = 1);
         void prepareModelTextures();
         void copyBufferToImage(VkBuffer & buffer, VkImage & image, uint32_t width, uint32_t height, uint16_t layerCount = 1);
         bool createTextureSampler(VkSampler & sampler, VkSamplerAddressMode addressMode);
