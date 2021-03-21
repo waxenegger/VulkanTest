@@ -8,7 +8,7 @@ Game::Game(std::string root) {
 void Game::init() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
     
-    this->graphics.init(this->APP_NAME, VK_MAKE_VERSION(1,1,0), this->root);
+    this->graphics.init(this->APP_NAME, VK_MAKE_VERSION(1,0,0), this->root);
     
     if (!this->graphics.isActive()) return;
     
@@ -139,6 +139,7 @@ void Game::loop() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
     this->graphics.setLastTimeMeasure(start);
 
+    /*
     std::thread rotationThread([this, &quit]() {
         std::chrono::high_resolution_clock::time_point rotationStart = std::chrono::high_resolution_clock::now();
         while(!quit) {
@@ -156,7 +157,8 @@ void Game::loop() {
         }
     });
     rotationThread.detach();
-
+    */
+    
     std::thread inputThread([this, &quit]() {
         SDL_Event e;
         bool isFullScreen = false;

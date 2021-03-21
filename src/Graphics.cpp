@@ -1778,12 +1778,13 @@ void Graphics::updateScene(uint16_t commandBufferIndex, bool waitForFences) {
 void Graphics::drawFrame() {    
     std::chrono::high_resolution_clock::time_point frameStart = std::chrono::high_resolution_clock::now();
     
-    VkResult ret = vkWaitForFences(device, 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);
+    VkResult ret; // = vkWaitForFences(device, 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);
 
+    /*
     if (ret != VK_SUCCESS) {
         std::cerr << "vkWaitForFences Failed" << std::endl;
         return;
-    }
+    }*/
     
     if (this->requiresUpdateSwapChain) {
         this->updateSwapChain();
@@ -1807,12 +1808,12 @@ void Graphics::drawFrame() {
     //this->updateSsboBuffer();
     if (this->components.isSceneUpdateNeeded(false)) {
         //this->updateScene(imageIndex);
-        //std::cout << "update" << std::endl;
+        std::cout << "update" << std::endl;
         this->updateModelVertexBuffer();
     }
         
     if (this->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
-        vkWaitForFences(device, 1, &this->imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+        //vkWaitForFences(device, 1, &this->imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
     }
     this->imagesInFlight[imageIndex] = this->inFlightFences[this->currentFrame];
 
@@ -1832,7 +1833,7 @@ void Graphics::drawFrame() {
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    vkResetFences(this->device, 1, &this->inFlightFences[this->currentFrame]);
+    //vkResetFences(this->device, 1, &this->inFlightFences[this->currentFrame]);
 
     ret = vkQueueSubmit(this->graphicsQueue, 1, &submitInfo, this->inFlightFences[this->currentFrame]);
     if (ret != VK_SUCCESS) {
@@ -2166,6 +2167,8 @@ void Graphics::draw(RenderContext & context, int commandBufferIndex, bool useInd
     std::map<std::string, std::vector<std::unique_ptr<Component>>> & allComponents = this->components.getComponents();
     int c = 0;
     
+    std::vector<VkDrawIndexedIndirectCommand> indirectDrawCommands;
+    
     for (auto & comps : allComponents) {
 
         auto & compsPerModel = comps.second;
@@ -2185,8 +2188,18 @@ void Graphics::draw(RenderContext & context, int commandBufferIndex, bool useInd
             VkDeviceSize indexSize = mesh.getIndices().size();
             
             if (useIndices) {
-                vkCmdDrawIndexed(
-                    context.commandBuffers[commandBufferIndex], indexSize , compCount, lastIndexOffset, lastVertexOffset, c);
+                if (this->indirectCommandBuffer == nullptr) {
+                    VkDrawIndexedIndirectCommand indirectCmd {};
+                    indirectCmd.instanceCount = compCount;
+                    indirectCmd.vertexOffset = lastVertexOffset;
+                    indirectCmd.firstInstance = c;
+                    indirectCmd.firstIndex = lastIndexOffset;
+                    indirectCmd.indexCount = indexSize;
+                    indirectDrawCommands.push_back(indirectCmd);
+                }
+
+                //vkCmdDrawIndexed(
+                //    context.commandBuffers[commandBufferIndex], indexSize , compCount, lastIndexOffset, lastVertexOffset, c);
             } else {
                 vkCmdDraw(context.commandBuffers[commandBufferIndex], vertexSize, compCount, 0, 0);
             }
@@ -2195,6 +2208,40 @@ void Graphics::draw(RenderContext & context, int commandBufferIndex, bool useInd
             lastIndexOffset += indexSize;
             lastVertexOffset += vertexSize;
         }
+        
+        std::cout << indirectDrawCommands.size() << std::endl;
+        
+        if (this->indirectCommandBuffer == nullptr) {
+            VkDeviceSize bufferSize = indirectDrawCommands.size() * sizeof(VkDrawIndexedIndirectCommand);
+
+            VkBuffer stagingBuffer;
+            VkDeviceMemory stagingBufferMemory;
+            if (!this->createBuffer(
+                    bufferSize,
+                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                    stagingBuffer, stagingBufferMemory)) {
+                std::cerr << "Failed to get Create Staging Buffer" << std::endl;
+            }
+
+            void* data = nullptr;
+            vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+            memcpy(data, indirectDrawCommands.data(), bufferSize);
+            vkUnmapMemory(this->device, stagingBufferMemory);
+
+            if (!this->createBuffer(
+                    bufferSize,
+                    VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                    this->indirectCommandBuffer, this->indirectCommandBufferMemory)) {
+                std::cerr << "Failed to get Create Vertex Buffer" << std::endl;
+            }
+
+            this->copyBuffer(stagingBuffer, this->indirectCommandBuffer, bufferSize);
+
+            vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+            vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+        }
+        vkCmdDrawIndexedIndirect(context.commandBuffers[commandBufferIndex], this->indirectCommandBuffer, 0, 5, sizeof(VkDrawIndexedIndirectCommand));        
+
     }
 }
 

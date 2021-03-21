@@ -149,6 +149,9 @@ class Graphics final {
         VkBuffer modelVertexBuffer = nullptr;
         VkDeviceMemory modelVertexBufferMemory = nullptr;
 
+        VkBuffer indirectCommandBuffer = nullptr;
+        VkDeviceMemory indirectCommandBufferMemory = nullptr;
+
         std::vector<VkBuffer> uniformBuffers;
         std::vector<VkDeviceMemory> uniformBuffersMemory;
         
