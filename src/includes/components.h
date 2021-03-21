@@ -12,12 +12,11 @@ class Component final {
         float scaleFactor = 1.0f;
         
         bool sceneUpdate = false;
-        bool ssboUpdate = false;
-        int ssboIndex = -1;
+        VkDeviceSize componentOffset;
+        bool componentOffsetHasBeenSet = false;
     public:
         Component();
         Component(Model * model);
-        MeshProperties & getModelProperties();
         bool hasModel();
         Model * getModel();
         void setPosition(float x, float y, float z);
@@ -28,14 +27,11 @@ class Component final {
         void move(float xAxis, float yAxis, float zAxis);
         void scale(float factor);
         glm::mat4 getModelMatrix();
-        bool needsSsboUpdate();
         bool needsSceneUpdate();
-        void markSsboAsNotDirty();
         void markSceneAsUpdated();
-        void setSsboIndex(int index);
-        int getSsboIndex();
         glm::vec3 getRotation();
-
+        void setComponentOffset(VkDeviceSize offset);
+        VkDeviceSize getComponentOffset();
 };
 
 class Components final {
@@ -44,11 +40,11 @@ class Components final {
 
     public:
         Component * addComponent(Component * component);
-        std::vector<Component *> getAllComponentsForModel(std::string model, bool hasModel = false);
+        std::vector<Component *> getAllComponentsForModel(std::string model);
         void initWithModelLocations(std::vector<std::string> modelLocations);
         std::map<std::string, std::vector<std::unique_ptr<Component>>> & getComponents();
         ~Components();
-        std::vector<Component *> getSsboComponentsThatNeedUpdate();
+        std::vector<Component *> getComponentsThatNeedUpdate();
         bool isSceneUpdateNeeded(bool reset = true);
 };
 

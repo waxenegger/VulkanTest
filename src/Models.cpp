@@ -607,6 +607,50 @@ bool Texture::readImageFormat() {
     return true;
 }
 
+VkVertexInputBindingDescription ModelProperties::getBindingDescription() {
+    VkVertexInputBindingDescription bindingDescription{};
+    bindingDescription.binding = 1;
+    bindingDescription.stride = sizeof(struct ModelProperties);
+    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+
+    return bindingDescription;
+}
+
+std::array<VkVertexInputAttributeDescription, 4> ModelProperties::getAttributeDescriptions() {
+    std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
+
+    uint32_t modelPropsOffset = offsetof(ModelProperties, matrix);
+    uint32_t matrixSizeChunk = sizeof(glm::vec4);
+    uint32_t precedingAttributeCount = Vertex::getAttributeDescriptions().size();
+    
+    uint32_t slot = 0;
+    attributeDescriptions[slot].binding = 1;
+    attributeDescriptions[slot].location = precedingAttributeCount + slot;
+    attributeDescriptions[slot].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[slot].offset = modelPropsOffset + (matrixSizeChunk * slot);
+    ++slot;
+    
+    attributeDescriptions[slot].binding = 1;
+    attributeDescriptions[slot].location = precedingAttributeCount + slot;
+    attributeDescriptions[slot].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[slot].offset = modelPropsOffset + (matrixSizeChunk * slot);
+    ++slot;
+
+    attributeDescriptions[slot].binding = 1;
+    attributeDescriptions[slot].location = precedingAttributeCount + slot;
+    attributeDescriptions[slot].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[slot].offset = modelPropsOffset + (matrixSizeChunk * slot);
+    ++slot;
+
+    attributeDescriptions[slot].binding = 1;
+    attributeDescriptions[slot].location = precedingAttributeCount + slot;
+    attributeDescriptions[slot].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[slot].offset = modelPropsOffset + (matrixSizeChunk * slot);
+
+    return attributeDescriptions;
+}
+
+
 const std::string Models::AMBIENT_TEXTURE = "ambient";
 const std::string Models::DIFFUSE_TEXTURE = "diffuse";
 const std::string Models::SPECULAR_TEXTURE = "specular";

@@ -53,7 +53,8 @@ const std::vector<Vertex> SKYBOX_VERTICES = {
 struct ModelSummary {
     VkDeviceSize vertexBufferSize = 0;
     VkDeviceSize indexBufferSize = 0;
-    VkDeviceSize ssboBufferSize = 0;
+    VkDeviceSize meshSsboBufferSize = 0;
+    VkDeviceSize modelBufferSize = 0;
 };
 
 class Graphics final {
@@ -142,8 +143,11 @@ class Graphics final {
         VkBuffer indexBuffer = nullptr;
         VkDeviceMemory indexBufferMemory = nullptr;
 
-        VkBuffer ssboBuffer = nullptr;
-        VkDeviceMemory ssboBufferMemory = nullptr;
+        VkBuffer meshSsboBuffer = nullptr;
+        VkDeviceMemory meshSsboBufferMemory = nullptr;
+
+        VkBuffer modelVertexBuffer = nullptr;
+        VkDeviceMemory modelVertexBufferMemory = nullptr;
 
         std::vector<VkBuffer> uniformBuffers;
         std::vector<VkDeviceMemory> uniformBuffersMemory;
@@ -206,7 +210,7 @@ class Graphics final {
         
         bool createUniformBuffers();
         void updateUniformBuffer(uint32_t currentImage);
-        void updateSsboBuffer();
+        void updateModelVertexBuffer();
 
         void listVkPhysicalDeviceQueueFamilyProperties(const VkPhysicalDevice & device);
 
@@ -224,7 +228,7 @@ class Graphics final {
         bool findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, uint32_t & memoryType);
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-        bool createBuffersFromModel(bool makeSsboBufferHostWritable = false);
+        bool createBuffersFromModel();
         bool createSsboBufferFromModel(VkDeviceSize bufferSize, bool makeHostWritable = false);
         
         VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t layerCount = 1);

@@ -115,20 +115,20 @@ bool Components::isSceneUpdateNeeded(bool reset)
 }
 
 
-std::vector<Component *> Components::getSsboComponentsThatNeedUpdate() {
+std::vector<Component *> Components::getComponentsThatNeedUpdate() {
     std::vector<Component *> dirtyComponents;
     
     for (auto & entry : this->components) {
         auto & comps = entry.second;
         for (auto & c : comps) {
-            if (c->needsSsboUpdate()) dirtyComponents.push_back(c.get());
+            if (c->needsSceneUpdate()) dirtyComponents.push_back(c.get());
         }
     }
     
     return dirtyComponents;
 }
 
-std::vector<Component *> Components::getAllComponentsForModel(std::string model, bool hasModel) {
+std::vector<Component *> Components::getAllComponentsForModel(std::string model) {
     std::vector<Component *> allMeshProperties;
     
     std::map<std::string, std::vector<std::unique_ptr<Component>>>::iterator it = this->components.find(model);
@@ -142,14 +142,6 @@ std::vector<Component *> Components::getAllComponentsForModel(std::string model,
     return allMeshProperties;
 }
 
-bool Component::needsSsboUpdate() {
-    return this->ssboUpdate;
-}
-
-void Component::markSsboAsNotDirty() {
-    this->ssboUpdate = false;
-}
-
 void Component::markSceneAsUpdated()
 {
     this->sceneUpdate = false;
@@ -160,16 +152,17 @@ bool Component::needsSceneUpdate()
     return this->sceneUpdate;
 }
 
-
-void Component::setSsboIndex(int index)
-{
-    this->ssboIndex = index;
-}
-
-int Component::getSsboIndex() {
-    return this->ssboIndex;
-}
-
 glm::vec3 Component::getRotation() {
     return this->rotation;
 }
+
+void Component::setComponentOffset(VkDeviceSize offset) {
+    if (this->componentOffsetHasBeenSet) return;
+    this->componentOffset = offset;
+    this->componentOffsetHasBeenSet = true;
+}
+
+VkDeviceSize Component::getComponentOffset() {
+    return this->componentOffset;
+}
+

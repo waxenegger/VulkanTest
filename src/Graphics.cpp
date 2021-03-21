@@ -149,7 +149,7 @@ bool Graphics::createSwapChain() {
         return false;
     }
 
-    uint32_t imageCount = 2; //surfaceCapabilities.minImageCount + 1;
+    uint32_t imageCount = 3; //surfaceCapabilities.minImageCount + 1;
     if (surfaceCapabilities.maxImageCount > 0 && imageCount > surfaceCapabilities.maxImageCount) {
         imageCount = surfaceCapabilities.maxImageCount;
     }
@@ -377,7 +377,8 @@ bool Graphics::createLogicalDeviceAndQueues() {
     queueCreateInfos.push_back(queueCreateInfo);
 
     const std::vector<const char * > extensionsToEnable = { 
-        "VK_KHR_swapchain"
+        "VK_KHR_swapchain",
+        "VK_KHR_shader_draw_parameters"
     };
 
     VkPhysicalDeviceFeatures deviceFeatures {};
@@ -825,18 +826,22 @@ bool Graphics::createSkyboxGraphicsPipeline() {
     VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {};
     vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
+    std::vector<VkVertexInputAttributeDescription> pVertexAttributeDescriptions;
+    std::vector<VkVertexInputBindingDescription> pVertexBindingDescriptions;
+    
     if (this->vertexBuffer != nullptr) {
         const VkVertexInputBindingDescription bindingDescription = Vertex::getBindingDescription();
+        pVertexBindingDescriptions.push_back(bindingDescription);        
+        
         const std::array<VkVertexInputAttributeDescription, 6> attributeDescriptions = Vertex::getAttributeDescriptions();
-
-        vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
-        vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-        vertexInputCreateInfo.pVertexBindingDescriptions = &bindingDescription;
-        vertexInputCreateInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-    } else {
-        vertexInputCreateInfo.vertexBindingDescriptionCount = 0;
-        vertexInputCreateInfo.vertexAttributeDescriptionCount = 0;
+        pVertexAttributeDescriptions.insert( 
+            pVertexAttributeDescriptions.end(), std::begin(attributeDescriptions), std::end(attributeDescriptions) );
     }
+    
+    vertexInputCreateInfo.pVertexBindingDescriptions = pVertexBindingDescriptions.data();
+    vertexInputCreateInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(pVertexBindingDescriptions.size());
+    vertexInputCreateInfo.pVertexAttributeDescriptions = pVertexAttributeDescriptions.data();
+    vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(pVertexAttributeDescriptions.size());
     
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -948,18 +953,31 @@ bool Graphics::createGraphicsPipeline() {
     VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {};
     vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
+    std::vector<VkVertexInputAttributeDescription> pVertexAttributeDescriptions;
+    std::vector<VkVertexInputBindingDescription> pVertexBindingDescriptions;
+    
     if (this->vertexBuffer != nullptr) {
         const VkVertexInputBindingDescription bindingDescription = Vertex::getBindingDescription();
+        pVertexBindingDescriptions.push_back(bindingDescription);        
+        
         const std::array<VkVertexInputAttributeDescription, 6> attributeDescriptions = Vertex::getAttributeDescriptions();
-
-        vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
-        vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-        vertexInputCreateInfo.pVertexBindingDescriptions = &bindingDescription;
-        vertexInputCreateInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-    } else {
-        vertexInputCreateInfo.vertexBindingDescriptionCount = 0;
-        vertexInputCreateInfo.vertexAttributeDescriptionCount = 0;
+        pVertexAttributeDescriptions.insert( 
+            pVertexAttributeDescriptions.end(), std::begin(attributeDescriptions), std::end(attributeDescriptions) );
     }
+    
+    if (this->modelVertexBuffer != nullptr) {
+        const VkVertexInputBindingDescription bindingDescription = ModelProperties::getBindingDescription();
+        pVertexBindingDescriptions.push_back(bindingDescription);        
+
+        const std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions = ModelProperties::getAttributeDescriptions();
+        pVertexAttributeDescriptions.insert( 
+            pVertexAttributeDescriptions.end(), std::begin(attributeDescriptions), std::end(attributeDescriptions) );
+    }
+    
+    vertexInputCreateInfo.pVertexBindingDescriptions = pVertexBindingDescriptions.data();
+    vertexInputCreateInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(pVertexBindingDescriptions.size());
+    vertexInputCreateInfo.pVertexAttributeDescriptions = pVertexAttributeDescriptions.data();
+    vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(pVertexAttributeDescriptions.size());
     
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -1023,17 +1041,19 @@ bool Graphics::createGraphicsPipeline() {
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
 
+    /*
     VkPushConstantRange pushConstantRange{};
     pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     pushConstantRange.offset = 0;
     pushConstantRange.size = sizeof(struct ModelProperties);
+    */
     
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.pSetLayouts = &this->descriptorSetLayout;
     pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pushConstantRangeCount = 1;
-    pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    //pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
     VkResult ret = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->context.graphicsPipelineLayout);
     ASSERT_VULKAN(ret);
@@ -1234,13 +1254,13 @@ bool Graphics::createDescriptorSetLayout() {
     modelUniformLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     layoutBindings.push_back(modelUniformLayoutBinding);
 
-    VkDescriptorSetLayoutBinding ssboLayoutBinding{};
-    ssboLayoutBinding.binding = 1;
-    ssboLayoutBinding.descriptorCount = 1;
-    ssboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    ssboLayoutBinding.pImmutableSamplers = nullptr;
-    ssboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    layoutBindings.push_back(ssboLayoutBinding);
+    VkDescriptorSetLayoutBinding meshSsboLayoutBinding{};
+    meshSsboLayoutBinding.binding = 1;
+    meshSsboLayoutBinding.descriptorCount = 1;
+    meshSsboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    meshSsboLayoutBinding.pImmutableSamplers = nullptr;
+    meshSsboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    layoutBindings.push_back(meshSsboLayoutBinding);
 
     uint32_t numberOfTextures = this->models.getTextures().size();
     VkDescriptorSetLayoutBinding samplersLayoutBinding{};
@@ -1335,10 +1355,10 @@ bool Graphics::createDescriptorSets() {
             descriptorImageInfos.push_back(texureDescriptorInfo);        
     }
 
-    VkDescriptorBufferInfo ssboBufferInfo{};
-    ssboBufferInfo.buffer = this->ssboBuffer;
-    ssboBufferInfo.offset = 0;
-    ssboBufferInfo.range = this->getModelsBufferSizes().ssboBufferSize;
+    VkDescriptorBufferInfo meshSsboBufferInfo{};
+    meshSsboBufferInfo.buffer = this->meshSsboBuffer;
+    meshSsboBufferInfo.offset = 0;
+    meshSsboBufferInfo.range = this->getModelsBufferSizes().meshSsboBufferSize;
 
     for (size_t i = 0; i < this->descriptorSets.size(); i++) {
         VkDescriptorBufferInfo uniformBufferInfo{};
@@ -1358,15 +1378,15 @@ bool Graphics::createDescriptorSets() {
         uniformDescriptorSet.pBufferInfo = &uniformBufferInfo;
         descriptorWrites.push_back(uniformDescriptorSet);
 
-        VkWriteDescriptorSet ssboDescriptorSet = {};
-        ssboDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        ssboDescriptorSet.dstSet = this->descriptorSets[i];
-        ssboDescriptorSet.dstBinding = 1;
-        ssboDescriptorSet.dstArrayElement = 0;
-        ssboDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        ssboDescriptorSet.descriptorCount = 1;
-        ssboDescriptorSet.pBufferInfo = &ssboBufferInfo;
-        descriptorWrites.push_back(ssboDescriptorSet);
+        VkWriteDescriptorSet meshSsboDescriptorSet = {};
+        meshSsboDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        meshSsboDescriptorSet.dstSet = this->descriptorSets[i];
+        meshSsboDescriptorSet.dstBinding = 1;
+        meshSsboDescriptorSet.dstArrayElement = 0;
+        meshSsboDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        meshSsboDescriptorSet.descriptorCount = 1;
+        meshSsboDescriptorSet.pBufferInfo = &meshSsboBufferInfo;
+        descriptorWrites.push_back(meshSsboDescriptorSet);
 
         VkWriteDescriptorSet samplerDescriptorSet = {};
         samplerDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1540,9 +1560,14 @@ bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(this->context.commandBuffers[commandBufferIndex], 0, 1, vertexBuffers, offsets);
     }
-        
+
     if (this->indexBuffer != nullptr) {
         vkCmdBindIndexBuffer(this->context.commandBuffers[commandBufferIndex], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        if (this->modelVertexBuffer != nullptr) {
+            VkBuffer vertexBuffers[] = {this->modelVertexBuffer};
+            VkDeviceSize offsets[] = { 0 };
+            vkCmdBindVertexBuffers(this->context.commandBuffers[commandBufferIndex], 1, 1, vertexBuffers, offsets);
+        }
         this->draw(this->context, commandBufferIndex, true);
     } else {
         this->draw(this->context, commandBufferIndex, false);                
@@ -1714,34 +1739,26 @@ void Graphics::updateUniformBuffer(uint32_t currentImage) {
     vkUnmapMemory(this->device, this->uniformBuffersMemory[currentImage]);
 }
 
-void Graphics::updateSsboBuffer() {
-    auto dirtyComponents = this->components.getSsboComponentsThatNeedUpdate();
+void Graphics::updateModelVertexBuffer() {
+    auto dirtyComponents = this->components.getComponentsThatNeedUpdate();
     
     for (auto & c : dirtyComponents) {
         void* data;
         auto model = c->getModel();
+        auto componentsPerModel = this->components.getAllComponentsForModel(model->getPath()).size();
         if (model != nullptr) {
-            auto numberOfCompsForModel = this->components.getAllComponentsForModel(model->getPath(), true).size();
             auto meshes = model->getMeshes();
-            uint32_t m=0;
-            for (auto & mesh : meshes) {
+            for (uint32_t m=0;m<meshes.size();m++) {
                 vkMapMemory(this->device, 
-                            this->ssboBufferMemory, model->getSsboOffset() + numberOfCompsForModel * m * sizeof(struct MeshProperties) +
-                            c->getSsboIndex() * sizeof(struct MeshProperties), 
-                            sizeof(struct MeshProperties), 0, &data);
-                TextureInformation textureInfo = mesh.getTextureInformation();
-                MeshProperties props = {
-                    textureInfo.ambientTexture,
-                    textureInfo.diffuseTexture,
-                    textureInfo.specularTexture,
-                    textureInfo.normalTexture
-                };
-                memcpy(data, &props, sizeof(struct MeshProperties));
-                vkUnmapMemory(this->device, this->ssboBufferMemory);
-                m++;
+                            this->modelVertexBufferMemory, 
+                            c->getComponentOffset() + (m * sizeof(struct ModelProperties) * componentsPerModel), 
+                            sizeof(struct ModelProperties), 0, &data);
+                ModelProperties modelProps = { c->getModelMatrix() };
+                memcpy(data, &modelProps, sizeof(struct ModelProperties));
+                vkUnmapMemory(this->device, this->modelVertexBufferMemory);
             }
         }
-        c->markSsboAsNotDirty();
+        c->markSceneAsUpdated();
     }
 }
 
@@ -1788,8 +1805,9 @@ void Graphics::drawFrame() {
     this->updateUniformBuffer(imageIndex);
     // not writable
     //this->updateSsboBuffer();
-    if (this->components.isSceneUpdateNeeded()) {
-        this->updateScene(imageIndex);
+    if (this->components.isSceneUpdateNeeded(false)) {
+        //this->updateScene(imageIndex);
+        this->updateModelVertexBuffer();
     }
         
     if (this->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
@@ -1974,18 +1992,20 @@ ModelSummary Graphics::getModelsBufferSizes() {
 
             bufferSizes.vertexBufferSize += vertexSize * sizeof(class Vertex);
             bufferSizes.indexBufferSize += indexSize * sizeof(uint32_t);
-            bufferSizes.ssboBufferSize += meshes.size() * compCount * sizeof(struct MeshProperties);
         }
+        bufferSizes.meshSsboBufferSize += meshes.size() * sizeof(struct MeshProperties);
+        bufferSizes.modelBufferSize += meshes.size() * compCount * sizeof(struct ModelProperties);
     }
     
     std::cout << "Vertex Buffer Size: " << bufferSizes.vertexBufferSize << std::endl;
     std::cout << "Index Buffer Size: " << bufferSizes.indexBufferSize << std::endl;
-    std::cout << "SSBO Buffer Size: " << bufferSizes.ssboBufferSize << std::endl;
+    std::cout << "SSBO Mesh Buffer Size: " << bufferSizes.meshSsboBufferSize << std::endl;
+    std::cout << "Model Vertex Buffer Size: " << bufferSizes.modelBufferSize << std::endl;
     
     return bufferSizes;
 }
 
-bool Graphics::createBuffersFromModel(bool makeSsboBufferHostWritable) {
+bool Graphics::createBuffersFromModel() {
     ModelSummary bufferSizes = this->getModelsBufferSizes();
      
     if (bufferSizes.vertexBufferSize == 0) return true;
@@ -2021,8 +2041,27 @@ bool Graphics::createBuffersFromModel(bool makeSsboBufferHostWritable) {
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
     
+    // model instances
+    if (bufferSizes.modelBufferSize > 0) {
+        if (this->modelVertexBuffer != nullptr) vkDestroyBuffer(this->device, this->modelVertexBuffer, nullptr);
+        if (this->modelVertexBufferMemory != nullptr) vkFreeMemory(this->device, this->modelVertexBufferMemory, nullptr);
+
+        if (!this->createBuffer(
+                bufferSizes.modelBufferSize,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                this->modelVertexBuffer, this->modelVertexBufferMemory)) {
+            std::cerr << "Failed to get Create Model Vertex Buffer" << std::endl;
+            return false;
+        }
+
+        data = nullptr;
+        vkMapMemory(this->device, this->modelVertexBufferMemory, 0, bufferSizes.modelBufferSize, 0, &data);
+        this->copyModelsContentIntoBuffer(data, MODEL_BUFFER, bufferSizes.modelBufferSize);
+        vkUnmapMemory(this->device, this->modelVertexBufferMemory);        
+    };    
+    
     // meshes (SSBOs)
-    if (!this->createSsboBufferFromModel(bufferSizes.ssboBufferSize, makeSsboBufferHostWritable)) return false;
+    if (!this->createSsboBufferFromModel(bufferSizes.meshSsboBufferSize, false)) return false;
         
     // indices
     if (bufferSizes.indexBufferSize == 0) return true;
@@ -2063,8 +2102,8 @@ bool Graphics::createSsboBufferFromModel(VkDeviceSize bufferSize, bool makeHostW
 {
     if (bufferSize == 0) return true;
 
-    if (this->ssboBuffer != nullptr) vkDestroyBuffer(this->device, this->ssboBuffer, nullptr);
-    if (this->ssboBufferMemory != nullptr) vkFreeMemory(this->device, this->ssboBufferMemory, nullptr);
+    if (this->meshSsboBuffer != nullptr) vkDestroyBuffer(this->device, this->meshSsboBuffer, nullptr);
+    if (this->meshSsboBufferMemory != nullptr) vkFreeMemory(this->device, this->meshSsboBufferMemory, nullptr);
 
     if (!makeHostWritable) {
         VkBuffer stagingBuffer;
@@ -2078,17 +2117,17 @@ bool Graphics::createSsboBufferFromModel(VkDeviceSize bufferSize, bool makeHostW
 
         void* data = nullptr;
         vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-        this->copyModelsContentIntoBuffer(data, SSBO, bufferSize);
+        this->copyModelsContentIntoBuffer(data, MESH_SSBO, bufferSize);
         vkUnmapMemory(this->device, stagingBufferMemory);
 
         if (!this->createBuffer(bufferSize,
                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                this->ssboBuffer, this->ssboBufferMemory)) {
+                this->meshSsboBuffer, this->meshSsboBufferMemory)) {
             std::cerr << "Failed to get Create SSBO Buffer" << std::endl;
             return false;
         }
 
-        this->copyBuffer(stagingBuffer,this->ssboBuffer, bufferSize);
+        this->copyBuffer(stagingBuffer,this->meshSsboBuffer, bufferSize);
 
         vkDestroyBuffer(this->device, stagingBuffer, nullptr);
         vkFreeMemory(this->device, stagingBufferMemory, nullptr);        
@@ -2096,15 +2135,15 @@ bool Graphics::createSsboBufferFromModel(VkDeviceSize bufferSize, bool makeHostW
         if (!this->createBuffer(
                 bufferSize,
                 VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                this->ssboBuffer, this->ssboBufferMemory)) {
+                this->meshSsboBuffer, this->meshSsboBufferMemory)) {
             std::cerr << "Failed to get Create Vertex Buffer" << std::endl;
             return false;
         }
 
         void * data = nullptr;
-        vkMapMemory(this->device, ssboBufferMemory, 0, bufferSize, 0, &data);
-        this->copyModelsContentIntoBuffer(data, SSBO, bufferSize);
-        vkUnmapMemory(this->device, ssboBufferMemory);        
+        vkMapMemory(this->device, this->meshSsboBufferMemory, 0, bufferSize, 0, &data);
+        this->copyModelsContentIntoBuffer(data, MESH_SSBO, bufferSize);
+        vkUnmapMemory(this->device, this->meshSsboBufferMemory);        
     }
     
     return true;
@@ -2127,33 +2166,30 @@ void Graphics::draw(RenderContext & context, int commandBufferIndex, bool useInd
     int c = 0;
     
     for (auto & comps : allComponents) {
+
         auto & compsPerModel = comps.second;
         
         uint32_t compCount = compsPerModel.size();
+
+        std::cout << "COMPONENT DRAW for: " << comps.first  << "[" << compCount << "]" << std::endl;
         if (compCount == 0) continue;
         
         auto model = compsPerModel[0]->getModel();
         if (model == nullptr) continue;
-        
+                
         auto meshes = model->getMeshes();
+        std::cout << "COMPONENT DRAW MESHES: " << meshes.size() << std::endl;
         for (Mesh & mesh : meshes) {
             VkDeviceSize vertexSize = mesh.getVertices().size();
             VkDeviceSize indexSize = mesh.getIndices().size();
             
-            for (auto & comp : compsPerModel) {
-                ModelProperties props = { comp->getModelMatrix()};
-                
-                vkCmdPushConstants(
-                    context.commandBuffers[commandBufferIndex], context.graphicsPipelineLayout,
-                    VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(struct ModelProperties), &props);
-
-                if (useIndices) {                
-                    vkCmdDrawIndexed(context.commandBuffers[commandBufferIndex], indexSize , 1, lastIndexOffset, lastVertexOffset, c);
-                } else {
-                    vkCmdDraw(context.commandBuffers[commandBufferIndex], vertexSize, 1, 0, 0);
-                }
-                c++;
+            if (useIndices) {
+                vkCmdDrawIndexed(
+                    context.commandBuffers[commandBufferIndex], indexSize , compCount, lastIndexOffset, lastVertexOffset, c);
+            } else {
+                vkCmdDraw(context.commandBuffers[commandBufferIndex], vertexSize, compCount, 0, 0);
             }
+            c++;
                         
             lastIndexOffset += indexSize;
             lastVertexOffset += vertexSize;
@@ -2167,19 +2203,33 @@ void Graphics::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsC
     std::map<std::string, std::vector<std::unique_ptr<Component>>> & allComponents = this->components.getComponents();
     for (auto & comps : allComponents) {
         auto & compsPerModel = comps.second;
-        
+
         uint32_t compCount = compsPerModel.size();
+        std::cout << "COMPONENT COPY for: " << comps.first << "[" << modelsContentType << "|" << compCount << "]" << std::endl;
+
         if (compCount == 0) continue;
         
         auto model = compsPerModel[0]->getModel();
         
-        if (modelsContentType == SSBO) {
+        if (modelsContentType == MESH_SSBO) {
             model->setSsboOffset(overallSize);
         }
+
 
         for (Mesh & mesh : model->getMeshes()) {            
             VkDeviceSize dataSize = 0;
             switch(modelsContentType) {
+                case MODEL_BUFFER:
+                    dataSize = sizeof(struct ModelProperties);
+                    for (auto & c : compsPerModel) {
+                        c->setComponentOffset(overallSize);
+                        if (overallSize + dataSize <= maxSize) {
+                            ModelProperties m = { c->getModelMatrix() };
+                            memcpy(static_cast<char *>(data)+overallSize, &m, dataSize);
+                            overallSize += dataSize;
+                        }
+                    }
+                    break;
                 case INDEX:
                     dataSize = mesh.getIndices().size() * sizeof(uint32_t);
                     if (overallSize + dataSize <= maxSize) {
@@ -2194,26 +2244,18 @@ void Graphics::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsC
                         overallSize += dataSize;
                     }
                     break;
-                case SSBO:
+                case MESH_SSBO:
                     TextureInformation textureInfo = mesh.getTextureInformation();
-                    int i=0;
-                    for (auto & c : compsPerModel) {
-                        MeshProperties modelProps = { 
-                            textureInfo.ambientTexture,
-                            textureInfo.diffuseTexture,
-                            textureInfo.specularTexture,
-                            textureInfo.normalTexture
-                        };
-                        dataSize = sizeof(struct MeshProperties);             
-                        if (overallSize + dataSize <= maxSize) {
-                            memcpy(static_cast<char *>(data)+overallSize, &modelProps, dataSize);
-                            overallSize += dataSize;
-                        }
-                        if (c->getSsboIndex() == -1) {
-                            c->setSsboIndex(i);
-                        }
-                        c->markSsboAsNotDirty();
-                        i++;
+                    MeshProperties modelProps = { 
+                        textureInfo.ambientTexture,
+                        textureInfo.diffuseTexture,
+                        textureInfo.specularTexture,
+                        textureInfo.normalTexture
+                    };
+                    dataSize = sizeof(struct MeshProperties);             
+                    if (overallSize + dataSize <= maxSize) {
+                        memcpy(static_cast<char *>(data)+overallSize, &modelProps, dataSize);
+                        overallSize += dataSize;
                     }
                     break;
             }
@@ -2600,8 +2642,11 @@ Graphics::~Graphics() {
     if (this->indexBuffer != nullptr) vkDestroyBuffer(this->device, this->indexBuffer, nullptr);
     if (this->indexBufferMemory != nullptr) vkFreeMemory(this->device, this->indexBufferMemory, nullptr);
 
-    if (this->ssboBuffer != nullptr) vkDestroyBuffer(this->device, this->ssboBuffer, nullptr);
-    if (this->ssboBufferMemory != nullptr) vkFreeMemory(this->device, this->ssboBufferMemory, nullptr);
+    if (this->meshSsboBuffer != nullptr) vkDestroyBuffer(this->device, this->meshSsboBuffer, nullptr);
+    if (this->meshSsboBufferMemory != nullptr) vkFreeMemory(this->device, this->meshSsboBufferMemory, nullptr);
+
+    if (this->modelVertexBuffer != nullptr) vkDestroyBuffer(this->device, this->modelVertexBuffer, nullptr);
+    if (this->modelVertexBufferMemory != nullptr) vkFreeMemory(this->device, this->modelVertexBufferMemory, nullptr);
     
     for (size_t i = 0; i < this->uniformBuffers.size(); i++) {
         if (this->uniformBuffers[i] != nullptr) vkDestroyBuffer(this->device, this->uniformBuffers[i], nullptr);

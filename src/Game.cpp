@@ -91,24 +91,40 @@ bool Game::loadModels() {
 bool Game::addComponents() {
     if (!this->graphics.isActive()) return false;
     
-    
-    Component * quad = this->graphics.addModelComponent("quad");
-    if (quad == nullptr) return false;
-    quad->setPosition(glm::vec3(0));
-    
-    for (int x=-100;x<100;x+=2) {
-        for (int z=-100;z<100;z+=2) {
+    /*
+    for (int x=-40;x<0;x+=8) {
+        for (int z=-40;z<0;z+=8) {
             Component * batman = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/batman.obj");
             if (batman == nullptr) return false;
             batman->setPosition(glm::vec3(x,0,z));
+             batman->scale(5);
+        }        
+    }*/
+
+    /*
+    Component * quad = this->graphics.addModelComponent("quad");
+    if (quad == nullptr) return false;
+    quad->setPosition(glm::vec3(0,10, 0));
+    quad->scale(500);
+    */
+    int count = 0;
+    for (int x=-100;x<100;x+=2) {
+        for (int z=-100;z<100;z+=2) {
+            Component * batman = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/batman.obj");
+            count++;
+            if (batman == nullptr) return false;
+            batman->setPosition(glm::vec3(x,0,z));
+            batman->scale(1);
         }        
     }
+    std::cout << "BATS: " << count << std::endl; 
 
+    /*
     Component * nanosuit = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/nanosuit.obj");
     if (nanosuit == nullptr) return false;
-    nanosuit->setPosition(glm::vec3(0, 2, 0));
-    nanosuit->scale(0.5);
-
+    nanosuit->setPosition(glm::vec3(0, 20, 0));
+    nanosuit->scale(1);
+    */
     return true;
 }
 

@@ -1,4 +1,4 @@
-#version 450
+#version 460
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(location = 0) in vec3 inPosition;
@@ -7,6 +7,8 @@ layout(location = 2) in vec3 inNormal;
 layout(location = 3) in vec2 inUV;
 layout(location = 4) in vec3 inTangent;
 layout(location = 5) in vec3 inBitangent;
+
+layout(location = 6) in mat4 inModelMatrix;
 
 layout(binding = 0) uniform UniformBufferObject {
     mat4 view;
@@ -22,10 +24,6 @@ struct MeshProperties {
     int normalTexture;
 };
 
-layout(push_constant) uniform PushConstants {
-    mat4 matrix;
-} modelProperties;
-
 layout(std430, binding = 1) readonly buffer SSBO {
     MeshProperties props[];
 } meshPropertiesSSBO;
@@ -39,14 +37,14 @@ layout(location = 5) out vec4 light;
 layout(location = 6) out MeshProperties meshProperties;
 
 void main() {
-    MeshProperties meshProps = meshPropertiesSSBO.props[gl_InstanceIndex];
-
-    vec4 pos = modelProperties.matrix * vec4(inPosition, 1.0);
+    MeshProperties meshProps = meshPropertiesSSBO.props[gl_BaseInstance];
+ 
+    vec4 pos = inModelMatrix * vec4(inPosition, 1.0);
     fragPosition = vec3(pos);
     fragColor = inColor;
     fragTexCoord = inUV;
     
-    mat3 invertTransposeModel = mat3(transpose(inverse(modelProperties.matrix)));
+    mat3 invertTransposeModel = mat3(transpose(inverse(inModelMatrix)));
     
     fragNormals = normalize(invertTransposeModel * inNormal);
     eye = modelUniforms.camera;

@@ -14,6 +14,9 @@ struct MeshProperties final {
 struct ModelProperties final {
     public:
         glm::mat4 matrix = glm::mat4(1);
+        
+        static VkVertexInputBindingDescription getBindingDescription();
+        static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions();
 };
 
 class Vertex final {
@@ -146,7 +149,7 @@ class Model final {
 };
 
 enum ModelsContentType {
-    VERTEX, INDEX, SSBO
+    VERTEX, INDEX, MESH_SSBO, MODEL_BUFFER
 };
 
 class Models final {
