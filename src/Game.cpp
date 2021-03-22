@@ -23,20 +23,16 @@ void Game::init() {
     Camera::instance()->setAspectRatio(static_cast<float>(windowSize.width) / windowSize.height);
     
     if (!this->loadModels()) {
-         std::cerr << "Failed to Create Models" << std::endl;
-         return;
+         std::cerr << "Failed to Create All Models" << std::endl;
     }
 
     if (!this->addComponents()) {
-         std::cerr << "Failed to Create Components" << std::endl;
-         return;        
+         std::cerr << "Failed to Create All Components" << std::endl;
     }
 
     if (!this->graphics.prepareModels()) {
          std::cerr << "Failed to Prepare Models" << std::endl;
-        return;
-    }
-    
+    }    
     
     if (!this->graphics.updateSwapChain()) {
         return;
@@ -58,6 +54,8 @@ bool Game::loadModels() {
 
     if (!this->graphics.isActive()) return false;
 
+    bool ret = false; 
+    
     const std::vector<Vertex> vertices = {
         Vertex(glm::vec3(-0.5f, -0.5f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
         Vertex(glm::vec3(0.5f, -0.5f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
@@ -70,46 +68,79 @@ bool Game::loadModels() {
 
     };
     const std::vector<uint32_t> indices = {
-        0, 1, 2, 2, 3, 0,
-        4, 7, 6, 6, 5, 4
+        0, 3, 2, 2, 1, 0,
+        4, 5, 6, 6, 7, 4
     };
     
-    this->graphics.addModel(new Model(vertices, indices, "quad"));
-    this->graphics.addModel(new Model("/opt/projects/VulkanTest/res/models/", "teapot.obj"));
-    this->graphics.addModel(new Model("/opt/projects/VulkanTest/res/models/", "nanosuit.obj"));
-    this->graphics.addModel(new Model("/opt/projects/VulkanTest/res/models/", "batman.obj"));
-    this->graphics.addModel(new Model("/opt/projects/VulkanTest/res/models/", "woolly-mammoth-150k.obj"));
+    std::array<Model *, 5> models = {
+        new Model(vertices, indices, "quad"),
+        new Model("/opt/projects/VulkanTest/res/models/", "teapot.obj"),
+        new Model("/opt/projects/VulkanTest/res/models/", "nanosuit.obj"),
+        new Model("/opt/projects/VulkanTest/res/models/", "batman.obj"),
+        new Model("/opt/projects/VulkanTest/res/models/", "woolly-mammoth-150k.obj")
+    };
+    
+    for (auto * m : models) {
+        if (m == nullptr) continue;
+        
+        if (m->hasBeenLoaded()) {
+            this->graphics.addModel(m);
+        } else {
+            ret = false;
+            delete m;
+        }
+    };
 
     this->graphics.prepareComponents();
     
     std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
     std::cout << "loaded models: " << time_span.count() <<  std::endl;
     
-    return true;
+    return ret;
 }
 
 bool Game::addComponents() {
     if (!this->graphics.isActive()) return false;
     
-    
+    bool ret = true;
     Component * quad = this->graphics.addModelComponent("quad");
-    if (quad == nullptr) return false;
-    quad->setPosition(glm::vec3(0));
-    
-    for (int x=-100;x<100;x+=2) {
-        for (int z=-100;z<100;z+=2) {
+    if (quad == nullptr) ret = false;
+    else {
+        quad->setPosition(glm::vec3(0, 4, 0));
+        quad->scale(10);
+    }
+
+    Component * teapot = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/teapot.obj");
+    if (teapot == nullptr) ret = false;
+    else {
+        teapot->setPosition(glm::vec3(0, 4, 0));
+        teapot->scale(1);
+    }
+
+    for (int x=-10;x<10;x+=2) {
+        for (int z=-10;z<10;z+=2) {
             Component * batman = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/batman.obj");
-            if (batman == nullptr) return false;
-            batman->setPosition(glm::vec3(x,0,z));
+            if (batman == nullptr) ret = false;
+            else batman->setPosition(glm::vec3(x,0,z));
         }        
     }
 
     Component * nanosuit = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/nanosuit.obj");
-    if (nanosuit == nullptr) return false;
-    nanosuit->setPosition(glm::vec3(0, 2, 0));
-    nanosuit->scale(0.5);
+    if (nanosuit == nullptr) ret = false;
+    else {
+        nanosuit->setPosition(glm::vec3(0, 10, 0));
+        nanosuit->scale(0.5);
+    }
 
-    return true;
+    Component * mammoth = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/woolly-mammoth-150k.obj");
+    if (mammoth == nullptr) ret = false;
+    else {
+        mammoth->setPosition(glm::vec3(-7, 4, 0));
+        mammoth->rotate(0, 60, 0);
+        mammoth->scale(2);
+    }
+
+    return ret;
 }
 
 
@@ -127,7 +158,7 @@ void Game::loop() {
         std::chrono::high_resolution_clock::time_point rotationStart = std::chrono::high_resolution_clock::now();
         while(!quit) {
             std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - rotationStart;
-            if (time_span.count() >= 25) {
+            if (time_span.count() >= 125) {
                 auto & components = this->graphics.getComponents().getComponents();
                 for (auto & c : components) {
                     auto & allCompsPerModel =  c.second;
@@ -140,7 +171,6 @@ void Game::loop() {
         }
     });
     rotationThread.detach();
-    
 
     std::thread inputThread([this, &quit]() {
         SDL_Event e;

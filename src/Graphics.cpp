@@ -825,7 +825,7 @@ bool Graphics::createSkyboxGraphicsPipeline() {
     VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {};
     vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-    if (this->vertexBuffer != nullptr) {
+    if (this->skyBoxVertexBuffer != nullptr) {
         const VkVertexInputBindingDescription bindingDescription = Vertex::getBindingDescription();
         const std::array<VkVertexInputAttributeDescription, 6> attributeDescriptions = Vertex::getAttributeDescriptions();
 
@@ -943,23 +943,20 @@ bool Graphics::createSkyboxGraphicsPipeline() {
 }
 
 bool Graphics::createGraphicsPipeline() {
+    if (this->vertexBuffer == nullptr) return true;
+    
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
     
     VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {};
     vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-    if (this->vertexBuffer != nullptr) {
-        const VkVertexInputBindingDescription bindingDescription = Vertex::getBindingDescription();
-        const std::array<VkVertexInputAttributeDescription, 6> attributeDescriptions = Vertex::getAttributeDescriptions();
+    const VkVertexInputBindingDescription bindingDescription = Vertex::getBindingDescription();
+    const std::array<VkVertexInputAttributeDescription, 6> attributeDescriptions = Vertex::getAttributeDescriptions();
 
-        vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
-        vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-        vertexInputCreateInfo.pVertexBindingDescriptions = &bindingDescription;
-        vertexInputCreateInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-    } else {
-        vertexInputCreateInfo.vertexBindingDescriptionCount = 0;
-        vertexInputCreateInfo.vertexAttributeDescriptionCount = 0;
-    }
+    vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
+    vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+    vertexInputCreateInfo.pVertexBindingDescriptions = &bindingDescription;
+    vertexInputCreateInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
     
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -1224,6 +1221,8 @@ bool Graphics::createRenderPass() {
 }
 
 bool Graphics::createDescriptorSetLayout() {
+    if (this->vertexBuffer == nullptr) return true;
+    
     std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
 
     VkDescriptorSetLayoutBinding modelUniformLayoutBinding{};
@@ -1301,6 +1300,8 @@ bool Graphics::createSkyboxDescriptorSetLayout() {
 }
 
 bool Graphics::createDescriptorSets() {
+    if (this->vertexBuffer == nullptr) return true;
+    
     std::vector<VkDescriptorSetLayout> layouts(this->swapChainImages.size(), this->descriptorSetLayout);
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1386,6 +1387,7 @@ bool Graphics::createDescriptorSets() {
 
 bool Graphics::createSkyboxDescriptorSets() {
     std::vector<VkDescriptorSetLayout> layouts(this->swapChainImages.size(), this->skyboxDescriptorSetLayout);
+    
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = this->skyboxDescriptorPool;
@@ -1527,25 +1529,26 @@ bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
 
         this->drawSkybox(this->context, commandBufferIndex);
     }
-
-    vkCmdBindDescriptorSets(
-        this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, 
-        this->context.graphicsPipelineLayout, 0, 1, &this->descriptorSets[commandBufferIndex], 0, nullptr);
-
     
-    vkCmdBindPipeline(this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphicsPipeline);
-    
-    if (this->vertexBuffer != nullptr) {
-        VkBuffer vertexBuffers[] = {this->vertexBuffer};
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(this->context.commandBuffers[commandBufferIndex], 0, 1, vertexBuffers, offsets);
-    }
-        
-    if (this->indexBuffer != nullptr) {
-        vkCmdBindIndexBuffer(this->context.commandBuffers[commandBufferIndex], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-        this->draw(this->context, commandBufferIndex, true);
-    } else {
-        this->draw(this->context, commandBufferIndex, false);                
+    if (this->graphicsPipeline != nullptr) {
+        if (this->vertexBuffer != nullptr) {
+            vkCmdBindDescriptorSets(
+                this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, 
+                this->context.graphicsPipelineLayout, 0, 1, &this->descriptorSets[commandBufferIndex], 0, nullptr);
+            
+            vkCmdBindPipeline(this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphicsPipeline);
+
+            VkBuffer vertexBuffers[] = {this->vertexBuffer};
+            VkDeviceSize offsets[] = {0};
+            vkCmdBindVertexBuffers(this->context.commandBuffers[commandBufferIndex], 0, 1, vertexBuffers, offsets);
+        }
+            
+        if (this->indexBuffer != nullptr) {
+            vkCmdBindIndexBuffer(this->context.commandBuffers[commandBufferIndex], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+            this->draw(this->context, commandBufferIndex, true);
+        } else {
+            this->draw(this->context, commandBufferIndex, false);                
+        }
     }
 
     vkCmdEndRenderPass(this->context.commandBuffers[commandBufferIndex]);
@@ -1555,7 +1558,7 @@ bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
         std::cerr << "Failed to end  Recording Command Buffer!" << std::endl;
         return false;
     }
-    
+
     return true;
 }
 
@@ -1787,12 +1790,17 @@ void Graphics::drawFrame() {
         std::cerr << "Failed to Acquire Swap Chain Image" << std::endl;
         return;
     }
-    
-    this->updateUniformBuffer(imageIndex);
+
     if (this->components.isSceneUpdateNeeded()) {
-        this->updateScene(imageIndex);
+        // TODO: revisit
+        for (uint16_t k=0;k<this->swapChainImages.size();k++) {
+            this->updateScene(k, imageIndex != k);
+        }
+        //this->updateScene(imageIndex);
     }
-        
+
+    this->updateUniformBuffer(imageIndex);
+
     if (this->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
         vkWaitForFences(device, 1, &this->imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
     }

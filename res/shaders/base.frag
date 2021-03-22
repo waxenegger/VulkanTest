@@ -84,6 +84,6 @@ void main() {
         diffuseContribution *= vec4(fragColor * diffuse,1.0) ;
         specularContribution *= vec4(fragColor * specular, 1.0);
 
-        outColor = normalize(ambientContribution + diffuseContribution + specularContribution);
+        outColor = ambientContribution + diffuseContribution + specularContribution;
     }
 }
