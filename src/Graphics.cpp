@@ -1611,9 +1611,9 @@ bool Graphics::updateSwapChain() {
 }
 
 bool Graphics::createSyncObjects() {
-    this->imageAvailableSemaphores.resize(this->swapChainImages.size());
-    this->renderFinishedSemaphores.resize(this->swapChainImages.size());
-    this->inFlightFences.resize(this->swapChainImages.size());
+    this->imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    this->renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    this->inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
     this->imagesInFlight.resize(this->swapChainImages.size(), VK_NULL_HANDLE);
 
     VkSemaphoreCreateInfo semaphoreInfo{};
@@ -1623,7 +1623,7 @@ bool Graphics::createSyncObjects() {
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    for (size_t i = 0; i < this->swapChainImages.size(); i++) {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 
         if (vkCreateSemaphore(this->device, &semaphoreInfo, nullptr, &this->imageAvailableSemaphores[i]) != VK_SUCCESS ||
             vkCreateSemaphore(this->device, &semaphoreInfo, nullptr, &this->renderFinishedSemaphores[i]) != VK_SUCCESS ||
@@ -1778,13 +1778,10 @@ void Graphics::updateScene(uint16_t commandBufferIndex, bool waitForFences) {
 void Graphics::drawFrame() {    
     std::chrono::high_resolution_clock::time_point frameStart = std::chrono::high_resolution_clock::now();
     
-    VkResult ret; // = vkWaitForFences(device, 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);
-
-    /*
+    VkResult ret = vkWaitForFences(device, 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);
     if (ret != VK_SUCCESS) {
         std::cerr << "vkWaitForFences Failed" << std::endl;
-        return;
-    }*/
+    }
     
     if (this->requiresUpdateSwapChain) {
         this->updateSwapChain();
@@ -1806,16 +1803,17 @@ void Graphics::drawFrame() {
     this->updateUniformBuffer(imageIndex);
     // not writable
     //this->updateSsboBuffer();
+        
+    if (this->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
+        vkWaitForFences(device, 1, &this->imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+    }
+    this->imagesInFlight[imageIndex] = this->inFlightFences[this->currentFrame];
+
     if (this->components.isSceneUpdateNeeded(false)) {
         //this->updateScene(imageIndex);
         std::cout << "update" << std::endl;
         this->updateModelVertexBuffer();
     }
-        
-    if (this->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
-        //vkWaitForFences(device, 1, &this->imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-    }
-    this->imagesInFlight[imageIndex] = this->inFlightFences[this->currentFrame];
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1833,7 +1831,7 @@ void Graphics::drawFrame() {
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    //vkResetFences(this->device, 1, &this->inFlightFences[this->currentFrame]);
+    vkResetFences(this->device, 1, &this->inFlightFences[this->currentFrame]);
 
     ret = vkQueueSubmit(this->graphicsQueue, 1, &submitInfo, this->inFlightFences[this->currentFrame]);
     if (ret != VK_SUCCESS) {
@@ -1862,10 +1860,7 @@ void Graphics::drawFrame() {
        return;
     }
 
-    ++this->currentFrame;
-    if (this->currentFrame >= this->swapChainImages.size()) {
-        this->currentFrame = 0;
-    }
+   currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     
     ++this->frameCount;
     
@@ -2703,17 +2698,14 @@ Graphics::~Graphics() {
         if (this->uniformBuffersMemory[i] != nullptr) vkFreeMemory(this->device, this->uniformBuffersMemory[i], nullptr);
     }
 
-    for (size_t i = 0; i < this->swapChainImages.size(); i++) {
-        if (this->renderFinishedSemaphores.size() == this->swapChainImages.size() &&
-            this->renderFinishedSemaphores[i] != nullptr) {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        if (this->renderFinishedSemaphores[i] != nullptr) {
             vkDestroySemaphore(this->device, this->renderFinishedSemaphores[i], nullptr);
         }
-        if (this->imageAvailableSemaphores.size() == this->swapChainImages.size() &&
-            this->imageAvailableSemaphores[i] != nullptr) {
+        if (this->imageAvailableSemaphores[i] != nullptr) {
             vkDestroySemaphore(this->device, this->imageAvailableSemaphores[i], nullptr);
         }
-        if (this->inFlightFences.size() == this->swapChainImages.size() &&
-            this->inFlightFences[i] != nullptr) {
+        if (this->inFlightFences[i] != nullptr) {
             vkDestroyFence(this->device, this->inFlightFences[i], nullptr);
         }
     }

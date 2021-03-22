@@ -5,6 +5,7 @@
 #include "utils.h"
 
 const int MAX_TEXTURES = 25;
+const int MAX_FRAMES_IN_FLIGHT = 5;
 
 const std::vector<Vertex> SKYBOX_VERTICES = {
     Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),

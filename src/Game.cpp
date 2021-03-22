@@ -139,7 +139,6 @@ void Game::loop() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
     this->graphics.setLastTimeMeasure(start);
 
-    /*
     std::thread rotationThread([this, &quit]() {
         std::chrono::high_resolution_clock::time_point rotationStart = std::chrono::high_resolution_clock::now();
         while(!quit) {
@@ -157,7 +156,6 @@ void Game::loop() {
         }
     });
     rotationThread.detach();
-    */
     
     std::thread inputThread([this, &quit]() {
         SDL_Event e;
