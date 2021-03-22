@@ -54,7 +54,7 @@ bool Game::loadModels() {
 
     if (!this->graphics.isActive()) return false;
 
-    bool ret = false; 
+    bool ret = true; 
     
     const std::vector<Vertex> vertices = {
         Vertex(glm::vec3(-0.5f, -0.5f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
@@ -117,8 +117,8 @@ bool Game::addComponents() {
         teapot->scale(1);
     }
 
-    for (int x=-10;x<10;x+=2) {
-        for (int z=-10;z<10;z+=2) {
+    for (int x=-100;x<100;x+=2) {
+        for (int z=-100;z<100;z+=2) {
             Component * batman = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/batman.obj");
             if (batman == nullptr) ret = false;
             else batman->setPosition(glm::vec3(x,0,z));
@@ -154,6 +154,7 @@ void Game::loop() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
     this->graphics.setLastTimeMeasure(start);
 
+    /*
     std::thread rotationThread([this, &quit]() {
         std::chrono::high_resolution_clock::time_point rotationStart = std::chrono::high_resolution_clock::now();
         while(!quit) {
@@ -171,7 +172,8 @@ void Game::loop() {
         }
     });
     rotationThread.detach();
-
+    */
+    
     std::thread inputThread([this, &quit]() {
         SDL_Event e;
         bool isFullScreen = false;
