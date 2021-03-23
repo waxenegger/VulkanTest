@@ -1032,7 +1032,7 @@ bool Graphics::createGraphicsPipeline() {
     pipelineLayoutInfo.pushConstantRangeCount = 1;
     pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
-    VkResult ret = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->context.graphicsPipelineLayout);
+    VkResult ret = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->graphicsPipelineLayout);
     ASSERT_VULKAN(ret);
     if (ret != VK_SUCCESS) {
         std::cerr << "Failed to Create Pipeline Layout!" << std::endl;
@@ -1050,7 +1050,7 @@ bool Graphics::createGraphicsPipeline() {
     pipelineInfo.pMultisampleState = &multisampling;
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDepthStencilState = &depthStencil;
-    pipelineInfo.layout = this->context.graphicsPipelineLayout;
+    pipelineInfo.layout = this->graphicsPipelineLayout;
     pipelineInfo.renderPass = this->renderPass;
     pipelineInfo.subpass = 0;
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -1469,41 +1469,42 @@ bool Graphics::createTextureSampler(VkSampler & sampler, VkSamplerAddressMode ad
 }
 
 bool Graphics::createCommandBuffers() {
-    this->context.commandBuffers.resize(this->swapChainFramebuffers.size());
-
-    for (uint16_t i=0; i<this->context.commandBuffers.size();i++) {
-        if (!this->createCommandBuffer(i)) return false;
-    }
+    this->commandBuffers.resize(this->swapChainFramebuffers.size());
+    
+    this->startCommandBufferQueue();
 
     return true;
 }
 
-bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
-    VkResult ret;
-    if (this->context.commandBuffers[commandBufferIndex] == nullptr) {
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = this->commandPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = 1;
+VkCommandBuffer Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
+    if (this->requiresUpdateSwapChain) return nullptr;
+    
+    VkCommandBuffer commandBuffer = nullptr;
+    
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = this->commandPool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = 1;
 
-        ret = vkAllocateCommandBuffers(device, &allocInfo, &this->context.commandBuffers[commandBufferIndex]);
-        if (ret != VK_SUCCESS) {
-            std::cerr << "Failed to Allocate Command Buffer!" << std::endl;
-            return false;
-        }
+    VkResult ret = vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+    if (ret != VK_SUCCESS) {
+        std::cerr << "Failed to Allocate Command Buffer!" << std::endl;
+        return nullptr;
     }
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-    ret = vkBeginCommandBuffer(this->context.commandBuffers[commandBufferIndex], &beginInfo);
+    ret = vkBeginCommandBuffer(commandBuffer, &beginInfo);
     if (ret != VK_SUCCESS) {
         std::cerr << "Failed to begin Recording Command Buffer!" << std::endl;
-        return false;
+        return nullptr;
     }
 
+    if (this->requiresUpdateSwapChain) return nullptr;
+    
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = this->renderPass;
@@ -1518,48 +1519,54 @@ bool Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
     renderPassInfo.pClearValues = clearValues.data();
     
-    vkCmdBeginRenderPass(this->context.commandBuffers[commandBufferIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    if (this->requiresUpdateSwapChain) return nullptr;
+    
+    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     
     if (this->hasSkybox) {
         vkCmdBindDescriptorSets(
-            this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, 
+            commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
             this->skyboxGraphicsPipelineLayout, 0, 1, &this->skyboxDescriptorSets[commandBufferIndex], 0, nullptr);
     
-        vkCmdBindPipeline(this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, this->skyboxGraphicsPipeline);
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->skyboxGraphicsPipeline);
 
-        this->drawSkybox(this->context, commandBufferIndex);
+        VkDeviceSize offsets[] = {0};
+        VkBuffer vertexBuffers[] = {this->skyBoxVertexBuffer};
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        
+        vkCmdDraw(commandBuffer, SKYBOX_VERTICES.size(), 1, 0, 0);
     }
     
-    if (this->graphicsPipeline != nullptr) {
+    if (this->graphicsPipeline != nullptr && !this->requiresUpdateSwapChain) {
         if (this->vertexBuffer != nullptr) {
             vkCmdBindDescriptorSets(
-                this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, 
-                this->context.graphicsPipelineLayout, 0, 1, &this->descriptorSets[commandBufferIndex], 0, nullptr);
+                commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+                this->graphicsPipelineLayout, 0, 1, &this->descriptorSets[commandBufferIndex], 0, nullptr);
             
-            vkCmdBindPipeline(this->context.commandBuffers[commandBufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphicsPipeline);
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphicsPipeline);
 
             VkBuffer vertexBuffers[] = {this->vertexBuffer};
             VkDeviceSize offsets[] = {0};
-            vkCmdBindVertexBuffers(this->context.commandBuffers[commandBufferIndex], 0, 1, vertexBuffers, offsets);
+            vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
         }
             
         if (this->indexBuffer != nullptr) {
-            vkCmdBindIndexBuffer(this->context.commandBuffers[commandBufferIndex], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-            this->draw(this->context, commandBufferIndex, true);
+            vkCmdBindIndexBuffer(commandBuffer, this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+            this->draw(commandBuffer, true);
         } else {
-            this->draw(this->context, commandBufferIndex, false);                
+            this->draw(commandBuffer, false);       
         }
     }
 
-    vkCmdEndRenderPass(this->context.commandBuffers[commandBufferIndex]);
+    vkCmdEndRenderPass(commandBuffer);
 
-    ret = vkEndCommandBuffer(this->context.commandBuffers[commandBufferIndex]);
+    ret = vkEndCommandBuffer(commandBuffer);
     if (ret != VK_SUCCESS) {
         std::cerr << "Failed to end  Recording Command Buffer!" << std::endl;
-        return false;
+        return nullptr;
     }
 
-    return true;
+    return commandBuffer;
 }
 
 bool Graphics::updateSwapChain() {
@@ -1567,7 +1574,11 @@ bool Graphics::updateSwapChain() {
     
     if (this->device == nullptr) return false;
 
+    this->stopCommandBufferQueue();
+
     this->cleanupSwapChain();
+    
+    this->requiresUpdateSwapChain = false;
 
     if (!this->createSwapChain()) return false;
     if (!this->createImageViews()) return false;
@@ -1584,7 +1595,9 @@ bool Graphics::updateSwapChain() {
     Camera::instance()->setAspectRatio(static_cast<float>(this->swapChainExtent.width) / this->swapChainExtent.height);
     
     if (!this->createCommandBuffers()) return false;
-
+    
+    if (!this->createSyncObjects()) return false;
+    
     std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
     std::cout << "updateSwapChain: " << time_span.count() <<  std::endl;
 
@@ -1644,22 +1657,17 @@ void Graphics::cleanupSwapChain() {
         }
     }
 
-    if (this->commandPool != nullptr && !this->context.commandBuffers.empty()) {
-        for (auto & commandBuffer : this->context.commandBuffers) {
-            if (commandBuffer != nullptr) {
-                vkFreeCommandBuffers(this->device, this->commandPool, 1, &commandBuffer);   
-                commandBuffer = nullptr;
-            }
-        }
+    if (this->commandPool != nullptr) {
+        vkResetCommandPool(this->device, this->commandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
     }
 
     if (this->graphicsPipeline != nullptr) {
         vkDestroyPipeline(this->device, this->graphicsPipeline, nullptr);
         this->graphicsPipeline = nullptr;
     }
-    if (this->context.graphicsPipelineLayout != nullptr) {
-        vkDestroyPipelineLayout(this->device, this->context.graphicsPipelineLayout, nullptr);
-        this->context.graphicsPipelineLayout = nullptr;
+    if (this->graphicsPipelineLayout != nullptr) {
+        vkDestroyPipelineLayout(this->device, this->graphicsPipelineLayout, nullptr);
+        this->graphicsPipelineLayout = nullptr;
     }
     if (this->renderPass != nullptr) {
         vkDestroyRenderPass(this->device, this->renderPass, nullptr);
@@ -1686,6 +1694,23 @@ void Graphics::cleanupSwapChain() {
         vkDestroySwapchainKHR(this->device, this->swapChain, nullptr);
         this->swapChain = nullptr;
     }
+    
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        if (this->renderFinishedSemaphores[i] != nullptr) {
+            vkDestroySemaphore(this->device, this->renderFinishedSemaphores[i], nullptr);
+        }
+        this->renderFinishedSemaphores.clear();
+        if (this->imageAvailableSemaphores[i] != nullptr) {
+            vkDestroySemaphore(this->device, this->imageAvailableSemaphores[i], nullptr);
+        }
+        this->imageAvailableSemaphores.clear();
+        this->imagesInFlight.clear();
+        if (this->inFlightFences[i] != nullptr) {
+            vkDestroyFence(this->device, this->inFlightFences[i], nullptr);
+        }
+        this->inFlightFences.clear();
+    }
+
 }
 
 bool Graphics::createCommandPool() {
@@ -1719,95 +1744,63 @@ void Graphics::updateUniformBuffer(uint32_t currentImage) {
     memcpy(data, &modelUniforms, sizeof(modelUniforms));
     vkUnmapMemory(this->device, this->uniformBuffersMemory[currentImage]);
 }
-
-void Graphics::updateSsboBuffer() {
-    auto dirtyComponents = this->components.getSsboComponentsThatNeedUpdate();
-    
-    for (auto & c : dirtyComponents) {
-        void* data;
-        auto model = c->getModel();
-        if (model != nullptr) {
-            auto numberOfCompsForModel = this->components.getAllComponentsForModel(model->getPath(), true).size();
-            auto meshes = model->getMeshes();
-            uint32_t m=0;
-            for (auto & mesh : meshes) {
-                vkMapMemory(this->device, 
-                            this->ssboBufferMemory, model->getSsboOffset() + numberOfCompsForModel * m * sizeof(struct MeshProperties) +
-                            c->getSsboIndex() * sizeof(struct MeshProperties), 
-                            sizeof(struct MeshProperties), 0, &data);
-                TextureInformation textureInfo = mesh.getTextureInformation();
-                MeshProperties props = {
-                    textureInfo.ambientTexture,
-                    textureInfo.diffuseTexture,
-                    textureInfo.specularTexture,
-                    textureInfo.normalTexture
-                };
-                memcpy(data, &props, sizeof(struct MeshProperties));
-                vkUnmapMemory(this->device, this->ssboBufferMemory);
-                m++;
-            }
-        }
-        c->markSsboAsNotDirty();
-    }
-}
-
-void Graphics::updateScene(uint16_t commandBufferIndex, bool waitForFences) {
-    VkResult ret;
-    if (waitForFences && this->imagesInFlight[commandBufferIndex] != VK_NULL_HANDLE) {
-        ret = vkWaitForFences(device, 1, &this->inFlightFences[commandBufferIndex], VK_TRUE, UINT64_MAX);
-        if (ret != VK_SUCCESS) {
-            std::cerr << "vkWaitForFences Failed" << std::endl;
-        }
-    }
-    
-    this->createCommandBuffer(commandBufferIndex);
-    
-    if (waitForFences && this->imagesInFlight[commandBufferIndex] != VK_NULL_HANDLE) {
-        ret = vkResetFences(this->device, 1, &this->inFlightFences[this->currentFrame]);
-        if (ret != VK_SUCCESS) {
-            std::cerr << "Failed to Reset Fence!" << std::endl;
-        }
-    }
-}
     
 void Graphics::drawFrame() {    
+    if (this->requiresUpdateSwapChain) {
+        this->updateSwapChain();
+        return;
+    }
+
     std::chrono::high_resolution_clock::time_point frameStart = std::chrono::high_resolution_clock::now();
     
     VkResult ret = vkWaitForFences(device, 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);
     if (ret != VK_SUCCESS) {
         std::cerr << "vkWaitForFences Failed" << std::endl;
     }
-    
-    if (this->requiresUpdateSwapChain) {
-        this->updateSwapChain();
-        this->requiresUpdateSwapChain = false;
-    }
-    
+
     uint32_t imageIndex;
     ret = vkAcquireNextImageKHR(
-            this->device, this->swapChain, UINT64_MAX, this->imageAvailableSemaphores[this->currentFrame], VK_NULL_HANDLE, &imageIndex);
+        this->device, this->swapChain, UINT64_MAX, this->imageAvailableSemaphores[this->currentFrame], VK_NULL_HANDLE, &imageIndex);
     
-
     if (ret == VK_ERROR_OUT_OF_DATE_KHR) {
         this->updateSwapChain();
         return;
-    } else if (ret != VK_SUCCESS && ret != VK_SUBOPTIMAL_KHR) {
-        std::cerr << "Failed to Acquire Swap Chain Image" << std::endl;
-        this->currentFrame = (this->currentFrame + 1) % this->swapChainImages.size();
-        return;
     }
 
-    this->updateUniformBuffer(imageIndex);
+    if (this->commandBuffers[imageIndex] != nullptr) {
+        vkFreeCommandBuffers(this->device, this->commandPool, 1, &this->commandBuffers[imageIndex]);
+    }
+    VkCommandBuffer latestCommandBuffer = this->workerQueue.getNextCommandBuffer(imageIndex);
+    std::chrono::high_resolution_clock::time_point nextBufferFetchStart = std::chrono::high_resolution_clock::now();
+    while (latestCommandBuffer == nullptr) {
+        std::chrono::duration<double, std::milli> fetchPeriod = std::chrono::high_resolution_clock::now() - nextBufferFetchStart;
+        if (fetchPeriod.count() > 2000) {
+            std::cout << "Could not get new buffer for quite a while!" << std::endl;
+            break;
+        }
+        latestCommandBuffer = this->workerQueue.getNextCommandBuffer(imageIndex);
+    }
+    std::chrono::duration<double, std::milli> timer = std::chrono::high_resolution_clock::now() - nextBufferFetchStart;
+    //if (timer.count() < 50) {
+    //    std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(50 - timer.count()));
+    //}
+    //timer = std::chrono::high_resolution_clock::now() - nextBufferFetchStart;
+    //std::cout << "Fetch Time: " << timer.count() << " | " << this->workerQueue.getNumberOfItems(imageIndex) << std::endl;
+    
+    
+    if (latestCommandBuffer == nullptr) return;
+    this->commandBuffers[imageIndex] = latestCommandBuffer;
 
+    this->updateUniformBuffer(imageIndex);
+        
     if (this->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
-        vkWaitForFences(device, 1, &this->imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+        ret = vkWaitForFences(device, 1, &this->imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+        if (ret != VK_SUCCESS) {
+             std::cerr << "vkWaitForFences 2 Failed" << std::endl;
+        }
     }
     this->imagesInFlight[imageIndex] = this->inFlightFences[this->currentFrame];
 
-    if (this->components.isSceneUpdateNeeded()) {
-        this->updateScene(imageIndex);
-    }
-        
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -1817,8 +1810,8 @@ void Graphics::drawFrame() {
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
 
-    submitInfo.commandBufferCount = this->context.commandBuffers.empty() ? 0 : 1;
-    submitInfo.pCommandBuffers = &this->context.commandBuffers[imageIndex];
+    submitInfo.commandBufferCount = this->commandBuffers.empty() ? 0 : 1;
+    submitInfo.pCommandBuffers = &this->commandBuffers[imageIndex];
 
     VkSemaphore signalSemaphores[] = {this->renderFinishedSemaphores[this->currentFrame]};
     submitInfo.signalSemaphoreCount = 1;
@@ -1833,7 +1826,7 @@ void Graphics::drawFrame() {
     if (ret != VK_SUCCESS) {
         std::cerr << "Failed to Submit Draw Command Buffer!" << std::endl;
     }
-
+    
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
@@ -1853,10 +1846,10 @@ void Graphics::drawFrame() {
     } else if (ret != VK_SUCCESS) {
        std::cerr << "Failed to Present Swap Chain Image!" << std::endl;
     }
-
+    
     this->currentFrame = (this->currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     ++this->frameCount;
-    
+
     std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> time_span = now -frameStart;
     
@@ -1982,7 +1975,7 @@ ModelSummary Graphics::getModelsBufferSizes() {
 
             bufferSizes.vertexBufferSize += vertexSize * sizeof(class Vertex);
             bufferSizes.indexBufferSize += indexSize * sizeof(uint32_t);
-            bufferSizes.ssboBufferSize += meshes.size() * compCount * sizeof(struct MeshProperties);
+            bufferSizes.ssboBufferSize += sizeof(struct MeshProperties);
         }
     }
     
@@ -1993,7 +1986,7 @@ ModelSummary Graphics::getModelsBufferSizes() {
     return bufferSizes;
 }
 
-bool Graphics::createBuffersFromModel(bool makeSsboBufferHostWritable) {
+bool Graphics::createBuffersFromModel() {
     ModelSummary bufferSizes = this->getModelsBufferSizes();
      
     if (bufferSizes.vertexBufferSize == 0) return true;
@@ -2030,7 +2023,7 @@ bool Graphics::createBuffersFromModel(bool makeSsboBufferHostWritable) {
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
     
     // meshes (SSBOs)
-    if (!this->createSsboBufferFromModel(bufferSizes.ssboBufferSize, makeSsboBufferHostWritable)) return false;
+    if (!this->createSsboBufferFromModel(bufferSizes.ssboBufferSize, false)) return false;
         
     // indices
     if (bufferSizes.indexBufferSize == 0) return true;
@@ -2118,21 +2111,12 @@ bool Graphics::createSsboBufferFromModel(VkDeviceSize bufferSize, bool makeHostW
     return true;
 }
 
-void Graphics::drawSkybox(RenderContext & context, int commandBufferIndex) {    
-    VkDeviceSize offsets[] = {0};
-    VkBuffer vertexBuffers[] = {this->skyBoxVertexBuffer};
-    vkCmdBindVertexBuffers(this->context.commandBuffers[commandBufferIndex], 0, 1, vertexBuffers, offsets);
-    
-    vkCmdDraw(context.commandBuffers[commandBufferIndex], SKYBOX_VERTICES.size(), 1, 0, 0);
-}
-
-
-void Graphics::draw(RenderContext & context, int commandBufferIndex, bool useIndices) {
+void Graphics::draw(VkCommandBuffer & commandBuffer, bool useIndices) {
     VkDeviceSize lastVertexOffset = 0;
     VkDeviceSize lastIndexOffset = 0;
 
     std::map<std::string, std::vector<std::unique_ptr<Component>>> & allComponents = this->components.getComponents();
-    int c = 0;
+    uint32_t firstInstanceOverall = 0;
     
     for (auto & comps : allComponents) {
         auto & compsPerModel = comps.second;
@@ -2144,28 +2128,36 @@ void Graphics::draw(RenderContext & context, int commandBufferIndex, bool useInd
         if (model == nullptr) continue;
         
         auto meshes = model->getMeshes();
+        
+        uint32_t firstInstanceMesh = firstInstanceOverall;
         for (Mesh & mesh : meshes) {
             VkDeviceSize vertexSize = mesh.getVertices().size();
             VkDeviceSize indexSize = mesh.getIndices().size();
             
+            if (this->requiresUpdateSwapChain) return;
+            
             for (auto & comp : compsPerModel) {
+                if (!Camera::instance()->isInFrustum(comp->getPosition())) continue;
+                
                 ModelProperties props = { comp->getModelMatrix()};
                 
                 vkCmdPushConstants(
-                    context.commandBuffers[commandBufferIndex], context.graphicsPipelineLayout,
+                    commandBuffer, this->graphicsPipelineLayout,
                     VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(struct ModelProperties), &props);
 
                 if (useIndices) {                
-                    vkCmdDrawIndexed(context.commandBuffers[commandBufferIndex], indexSize , 1, lastIndexOffset, lastVertexOffset, c);
+                    vkCmdDrawIndexed(commandBuffer, indexSize , 1, lastIndexOffset, lastVertexOffset, firstInstanceMesh);
                 } else {
-                    vkCmdDraw(context.commandBuffers[commandBufferIndex], vertexSize, 1, 0, 0);
+                    vkCmdDraw(commandBuffer, vertexSize, 1, 0, firstInstanceMesh);
                 }
-                c++;
             }
                         
             lastIndexOffset += indexSize;
             lastVertexOffset += vertexSize;
+            firstInstanceMesh++;
         }
+        
+        firstInstanceOverall = firstInstanceMesh;
     }
 }
 
@@ -2204,24 +2196,16 @@ void Graphics::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsC
                     break;
                 case SSBO:
                     TextureInformation textureInfo = mesh.getTextureInformation();
-                    int i=0;
-                    for (auto & c : compsPerModel) {
-                        MeshProperties modelProps = { 
-                            textureInfo.ambientTexture,
-                            textureInfo.diffuseTexture,
-                            textureInfo.specularTexture,
-                            textureInfo.normalTexture
-                        };
-                        dataSize = sizeof(struct MeshProperties);             
-                        if (overallSize + dataSize <= maxSize) {
-                            memcpy(static_cast<char *>(data)+overallSize, &modelProps, dataSize);
-                            overallSize += dataSize;
-                        }
-                        if (c->getSsboIndex() == -1) {
-                            c->setSsboIndex(i);
-                        }
-                        c->markSsboAsNotDirty();
-                        i++;
+                    MeshProperties modelProps = { 
+                        textureInfo.ambientTexture,
+                        textureInfo.diffuseTexture,
+                        textureInfo.specularTexture,
+                        textureInfo.normalTexture
+                    };
+                    dataSize = sizeof(struct MeshProperties);             
+                    if (overallSize + dataSize <= maxSize) {
+                        memcpy(static_cast<char *>(data)+overallSize, &modelProps, dataSize);
+                        overallSize += dataSize;
                     }
                     break;
             }
@@ -2562,8 +2546,10 @@ void Graphics::prepareModelTextures() {
 
 
 Graphics::~Graphics() {
-    this->cleanupSwapChain();
+    this->stopCommandBufferQueue();
 
+    this->cleanupSwapChain();
+    
     if (this->fragShaderModule != nullptr) vkDestroyShaderModule(this->device, this->fragShaderModule, nullptr);
     if (this->vertShaderModule != nullptr) vkDestroyShaderModule(this->device, this->vertShaderModule, nullptr);
     if (this->skyboxFragShaderModule != nullptr) vkDestroyShaderModule(this->device, this->skyboxFragShaderModule, nullptr);
@@ -2621,18 +2607,6 @@ Graphics::~Graphics() {
         if (this->uniformBuffersMemory[i] != nullptr) vkFreeMemory(this->device, this->uniformBuffersMemory[i], nullptr);
     }
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        if (this->renderFinishedSemaphores[i] != nullptr) {
-            vkDestroySemaphore(this->device, this->renderFinishedSemaphores[i], nullptr);
-        }
-        if (this->imageAvailableSemaphores[i] != nullptr) {
-            vkDestroySemaphore(this->device, this->imageAvailableSemaphores[i], nullptr);
-        }
-        if (this->inFlightFences[i] != nullptr) {
-            vkDestroyFence(this->device, this->inFlightFences[i], nullptr);
-        }
-    }
-
     if (this->device != nullptr && this->commandPool != nullptr) {
         vkDestroyCommandPool(this->device, this->commandPool, nullptr);
     }
@@ -2646,10 +2620,6 @@ Graphics::~Graphics() {
     if (this->sdlWindow != nullptr) SDL_DestroyWindow(this->sdlWindow);
 
     SDL_Quit();
-}
-
-RenderContext & Graphics::getRenderContext() {
-    return this->context;
 }
 
 Models & Graphics::getModels() {
@@ -2674,4 +2644,14 @@ void Graphics::setDeltaTime(double deltaTime) {
 
 void Graphics::setLastTimeMeasure(std::chrono::high_resolution_clock::time_point time) {
     this->lastTimeMeasure = time;
+}
+
+void Graphics::startCommandBufferQueue() {
+    if (!this->isActive() || this->workerQueue.isRunning()) return;
+    
+    this->workerQueue.startQueue(std::bind(&Graphics::createCommandBuffer, this, std::placeholders::_1), this->swapChainFramebuffers.size());
+}
+
+void Graphics::stopCommandBufferQueue() {
+    this->workerQueue.stopQueue();
 }

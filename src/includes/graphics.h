@@ -88,6 +88,8 @@ class Graphics final {
         VkQueue graphicsQueue = nullptr;
         uint32_t presentQueueIndex = -1;
         VkQueue presentQueue = nullptr;
+        
+        CommandBufferQueue workerQueue;
 
         VkSwapchainKHR swapChain = nullptr;
         std::vector<VkImage> swapChainImages;
@@ -102,6 +104,9 @@ class Graphics final {
         VkCommandPool commandPool = nullptr;
         VkDescriptorPool descriptorPool = nullptr;
         VkDescriptorPool skyboxDescriptorPool = nullptr;
+
+        std::vector<VkCommandBuffer> commandBuffers;
+        VkPipelineLayout graphicsPipelineLayout = nullptr;
 
         std::vector<VkDescriptorSet> descriptorSets;
         std::vector<VkDescriptorSet> skyboxDescriptorSets;
@@ -158,8 +163,6 @@ class Graphics final {
         
         Models models;
         Components components;
-        
-        RenderContext context;
 
         Graphics();
         bool initSDL();
@@ -214,7 +217,7 @@ class Graphics final {
         bool createCommandPool();
         bool createFramebuffers();
         bool createCommandBuffers();
-        bool createCommandBuffer(uint16_t commandBufferIndex);
+        VkCommandBuffer createCommandBuffer(uint16_t commandBufferIndex);
         bool createRenderPass();
 
         bool createSyncObjects();
@@ -225,7 +228,7 @@ class Graphics final {
         bool findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, uint32_t & memoryType);
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-        bool createBuffersFromModel(bool makeSsboBufferHostWritable = false);
+        bool createBuffersFromModel();
         bool createSsboBufferFromModel(VkDeviceSize bufferSize, bool makeHostWritable = false);
         
         VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t layerCount = 1);
@@ -242,8 +245,7 @@ class Graphics final {
         void copyBufferToImage(VkBuffer & buffer, VkImage & image, uint32_t width, uint32_t height, uint16_t layerCount = 1);
         bool createTextureSampler(VkSampler & sampler, VkSamplerAddressMode addressMode);
         void copyModelsContentIntoBuffer(void* data, ModelsContentType modelsContentType, VkDeviceSize maxSize);
-        void draw(RenderContext & context, int commandBufferIndex, bool useIndices);
-        void drawSkybox(RenderContext & context, int commandBufferIndex);
+        void draw(VkCommandBuffer & commandBuffer, bool useIndices);
         
     public:
         Graphics(const Graphics&) = delete;
@@ -269,8 +271,6 @@ class Graphics final {
 
         VkExtent2D getWindowExtent();
         
-        RenderContext & getRenderContext();
-        void updateScene(uint16_t commandBufferIndex, bool waitForFences = false);
         void toggleWireFrame();
         SDL_Window * getSdlWindow();
         
@@ -285,6 +285,8 @@ class Graphics final {
         void setDeltaTime(double deltaTime);
         void setLastTimeMeasure(std::chrono::high_resolution_clock::time_point time);
 
+        void startCommandBufferQueue();
+        void stopCommandBufferQueue();
         ~Graphics();
 
 };

@@ -10,6 +10,9 @@
 #include <map>
 #include <functional>
 #include <algorithm>
+#include <queue>
+#include <mutex>
+#include <condition_variable>
 
 #include <tuple>
 

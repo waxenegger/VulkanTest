@@ -114,20 +114,6 @@ bool Components::isSceneUpdateNeeded(bool reset)
     return ret;
 }
 
-
-std::vector<Component *> Components::getSsboComponentsThatNeedUpdate() {
-    std::vector<Component *> dirtyComponents;
-    
-    for (auto & entry : this->components) {
-        auto & comps = entry.second;
-        for (auto & c : comps) {
-            if (c->needsSsboUpdate()) dirtyComponents.push_back(c.get());
-        }
-    }
-    
-    return dirtyComponents;
-}
-
 std::vector<Component *> Components::getAllComponentsForModel(std::string model, bool hasModel) {
     std::vector<Component *> allMeshProperties;
     
@@ -142,14 +128,6 @@ std::vector<Component *> Components::getAllComponentsForModel(std::string model,
     return allMeshProperties;
 }
 
-bool Component::needsSsboUpdate() {
-    return this->ssboUpdate;
-}
-
-void Component::markSsboAsNotDirty() {
-    this->ssboUpdate = false;
-}
-
 void Component::markSceneAsUpdated()
 {
     this->sceneUpdate = false;
@@ -158,16 +136,6 @@ void Component::markSceneAsUpdated()
 bool Component::needsSceneUpdate()
 {
     return this->sceneUpdate;
-}
-
-
-void Component::setSsboIndex(int index)
-{
-    this->ssboIndex = index;
-}
-
-int Component::getSsboIndex() {
-    return this->ssboIndex;
 }
 
 glm::vec3 Component::getRotation() {

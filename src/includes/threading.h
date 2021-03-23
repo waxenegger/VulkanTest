@@ -1,0 +1,84 @@
+#ifndef SRC_INCLUDES_THREADING_H_
+#define SRC_INCLUDES_THREADING_H_
+
+class CommandBufferQueue final {
+    private:
+        std::unique_ptr<std::thread> queueThread = nullptr;
+        bool isStopping = true;
+        bool hasStopped = true;
+        std::mutex lock;
+        std::vector<std::queue<VkCommandBuffer>> commmandBuffers;
+        uint16_t maxItems = 10;
+    public:
+        VkCommandBuffer getNextCommandBuffer(uint16_t frameIndex) {            
+            if (this->isStopping || this->commmandBuffers[frameIndex].empty()) return nullptr;
+            
+            VkCommandBuffer ret = nullptr;
+            {
+                std::lock_guard<std::mutex> lock(this->lock);
+
+                ret = this->commmandBuffers[frameIndex].front();
+                this->commmandBuffers[frameIndex].pop();
+            }
+            
+            return ret;
+        }
+        
+        uint16_t getNumberOfItems(uint16_t frameIndex) {
+            if (this->isStopping) return 0;
+            
+            return this->commmandBuffers[frameIndex].size();
+        }
+        
+        void startQueue(std::function<VkCommandBuffer(uint16_t)> commandBufferCreation, uint16_t numberOfFrames) {
+            this->commmandBuffers.resize(numberOfFrames);
+            
+             std::cout << "before start up" << std::endl;
+
+            this->queueThread = std::make_unique<std::thread>([this, commandBufferCreation]() {
+                this->isStopping = false;
+                this->hasStopped = false;
+                std::cout << "started up" << std::endl;
+                while(!this->isStopping) {
+                    for (uint16_t i=0;i<this->commmandBuffers.size();i++) {
+                        if (this->isStopping) break;
+                                              
+                                                              
+                        if (this->getNumberOfItems(i) < maxItems) {
+                            VkCommandBuffer buf = commandBufferCreation(i);
+                            if (buf != nullptr) {
+                                
+                                {
+                                    std::lock_guard<std::mutex> lock(this->lock);
+                                    this->commmandBuffers[i].push(std::move(buf));
+                                }
+                            }
+                        }
+                    }
+                }
+                this->hasStopped = true;
+            });
+            
+            this->queueThread->detach();
+        }
+        
+        void stopQueue() {
+            if (this->isStopping || this->hasStopped) return;
+            
+            this->isStopping = true;
+            
+            std::chrono::high_resolution_clock::time_point shutdownStart = std::chrono::high_resolution_clock::now();
+            while (!this->hasStopped) {
+                std::chrono::duration<double, std::milli> shutdownPeriod = std::chrono::high_resolution_clock::now() - shutdownStart;
+                if (shutdownPeriod.count() > 5000) break;
+            }
+            
+            this->commmandBuffers.clear();            
+        }
+        
+        bool isRunning() {
+            return !this->isStopping && !this->hasStopped;
+        }
+};
+
+#endif

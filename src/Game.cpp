@@ -154,11 +154,12 @@ void Game::loop() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
     this->graphics.setLastTimeMeasure(start);
 
+    /*
     std::thread rotationThread([this, &quit]() {
         std::chrono::high_resolution_clock::time_point rotationStart = std::chrono::high_resolution_clock::now();
         while(!quit) {
             std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - rotationStart;
-            if (time_span.count() >= 75) {
+            if (time_span.count() >= 25) {
                 auto & components = this->graphics.getComponents().getComponents();
                 for (auto & c : components) {
                     auto & allCompsPerModel =  c.second;
@@ -171,6 +172,7 @@ void Game::loop() {
         }
     });
     rotationThread.detach();
+    */
     
     std::thread inputThread([this, &quit]() {
         SDL_Event e;
@@ -278,7 +280,7 @@ void Game::loop() {
     while(!quit) {
         this->graphics.drawFrame();        
     }
-
+    
     SDL_StopTextInput();
 }
 

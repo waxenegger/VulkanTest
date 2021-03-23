@@ -109,12 +109,6 @@ class Texture final {
         VkImageView & getTextureImageView();
 };
 
-struct RenderContext {
-    std::vector<VkCommandBuffer> commandBuffers;
-    VkPipelineLayout graphicsPipelineLayout = nullptr;
-};
-
-
 class Model final {
     private:
         std::string file;

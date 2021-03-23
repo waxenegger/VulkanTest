@@ -2,6 +2,8 @@
 #define SRC_INCLUDES_CAMERA_H_
 
 #include "shared.h"
+#include "threading.h"
+#include "frustum.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -33,6 +35,8 @@ class Camera
 
         float aspect = 1.0f;
         float fovy = 45.0f;
+        
+        Frustum frustum;
         
         struct
         {
@@ -70,6 +74,8 @@ class Camera
             void move(KeyPress key, bool isPressed = false, float deltaTime = 1.0f);
             void updateDirection(const float deltaX, const float  deltaY, float deltaTime = 1.0f);
             void destroy();
+            
+            bool isInFrustum(glm::vec3 pos);
 };
 
 #endif

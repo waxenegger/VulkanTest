@@ -20,6 +20,8 @@ void Camera::updateViewMatrix() {
     } else {
         this->view = transM * rotM;
     }
+    
+    this->frustum.update(this->perspective * this->view);
 };
 
 glm::vec3 Camera::getPosition() {
@@ -165,6 +167,10 @@ void Camera::destroy() {
         delete Camera::singleton;
         Camera::singleton = nullptr;
     }
+}
+
+bool Camera::isInFrustum(glm::vec3 pos) {
+    return this->frustum.checkSphere(pos, 1.5f);
 }
 
 Camera * Camera::singleton = nullptr;

@@ -12,8 +12,6 @@ class Component final {
         float scaleFactor = 1.0f;
         
         bool sceneUpdate = false;
-        bool ssboUpdate = false;
-        int ssboIndex = -1;
     public:
         Component();
         Component(Model * model);
@@ -28,12 +26,8 @@ class Component final {
         void move(float xAxis, float yAxis, float zAxis);
         void scale(float factor);
         glm::mat4 getModelMatrix();
-        bool needsSsboUpdate();
         bool needsSceneUpdate();
-        void markSsboAsNotDirty();
         void markSceneAsUpdated();
-        void setSsboIndex(int index);
-        int getSsboIndex();
         glm::vec3 getRotation();
 
 };
