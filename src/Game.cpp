@@ -72,11 +72,12 @@ bool Game::loadModels() {
         4, 5, 6, 6, 7, 4
     };
     
-    std::array<Model *, 5> models = {
+    std::array<Model *, 6> models = {
         new Model(vertices, indices, "quad"),
         new Model("/opt/projects/VulkanTest/res/models/", "teapot.obj"),
         new Model("/opt/projects/VulkanTest/res/models/", "nanosuit.obj"),
         new Model("/opt/projects/VulkanTest/res/models/", "batman.obj"),
+        new Model("/opt/projects/VulkanTest/res/models/", "cyborg.obj"),
         new Model("/opt/projects/VulkanTest/res/models/", "woolly-mammoth-150k.obj")
     };
     
@@ -119,7 +120,7 @@ bool Game::addComponents() {
 
     for (int x=-100;x<100;x+=2) {
         for (int z=-100;z<100;z+=2) {
-            Component * batman = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/batman.obj");
+            Component * batman = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/cyborg.obj");
             if (batman == nullptr) ret = false;
             else batman->setPosition(glm::vec3(x,0,z));
         }        
@@ -154,7 +155,6 @@ void Game::loop() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
     this->graphics.setLastTimeMeasure(start);
 
-    /*
     std::thread rotationThread([this, &quit]() {
         std::chrono::high_resolution_clock::time_point rotationStart = std::chrono::high_resolution_clock::now();
         while(!quit) {
@@ -172,7 +172,6 @@ void Game::loop() {
         }
     });
     rotationThread.detach();
-    */
     
     std::thread inputThread([this, &quit]() {
         SDL_Event e;

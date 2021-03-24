@@ -8,18 +8,15 @@ class CommandBufferQueue final {
         bool hasStopped = true;
         std::mutex lock;
         std::vector<std::queue<VkCommandBuffer>> commmandBuffers;
-        uint16_t maxItems = 10;
+        uint16_t maxItems = 3;
     public:
         VkCommandBuffer getNextCommandBuffer(uint16_t frameIndex) {            
+            std::lock_guard<std::mutex> lock(this->lock);
+
             if (this->isStopping || this->commmandBuffers[frameIndex].empty()) return nullptr;
             
-            VkCommandBuffer ret = nullptr;
-            {
-                std::lock_guard<std::mutex> lock(this->lock);
-
-                ret = this->commmandBuffers[frameIndex].front();
-                this->commmandBuffers[frameIndex].pop();
-            }
+            VkCommandBuffer ret = this->commmandBuffers[frameIndex].front();
+            this->commmandBuffers[frameIndex].pop();
             
             return ret;
         }
@@ -32,24 +29,22 @@ class CommandBufferQueue final {
         
         void startQueue(std::function<VkCommandBuffer(uint16_t)> commandBufferCreation, uint16_t numberOfFrames) {
             this->commmandBuffers.resize(numberOfFrames);
-            
-             std::cout << "before start up" << std::endl;
 
             this->queueThread = std::make_unique<std::thread>([this, commandBufferCreation]() {
                 this->isStopping = false;
                 this->hasStopped = false;
-                std::cout << "started up" << std::endl;
+
                 while(!this->isStopping) {
                     for (uint16_t i=0;i<this->commmandBuffers.size();i++) {
                         if (this->isStopping) break;
-                                              
-                                                              
-                        if (this->getNumberOfItems(i) < maxItems) {
-                            VkCommandBuffer buf = commandBufferCreation(i);
-                            if (buf != nullptr) {
-                                
-                                {
-                                    std::lock_guard<std::mutex> lock(this->lock);
+
+                        {
+                            std::lock_guard<std::mutex> lock(this->lock);
+
+                            uint16_t numberOfCommandBuffers = this->commmandBuffers[i].size();
+                            if (numberOfCommandBuffers < maxItems) {
+                                VkCommandBuffer buf = commandBufferCreation(i);
+                                if (buf != nullptr) {
                                     this->commmandBuffers[i].push(std::move(buf));
                                 }
                             }

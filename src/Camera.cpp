@@ -170,7 +170,7 @@ void Camera::destroy() {
 }
 
 bool Camera::isInFrustum(glm::vec3 pos) {
-    return this->frustum.checkSphere(pos, 1.5f);
+    return this->frustum.checkSphere(pos, 5.0f);
 }
 
 Camera * Camera::singleton = nullptr;

@@ -149,7 +149,7 @@ bool Graphics::createSwapChain() {
         return false;
     }
 
-    uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
+    uint32_t imageCount = 3;
     if (surfaceCapabilities.maxImageCount > 0 && imageCount > surfaceCapabilities.maxImageCount) {
         imageCount = surfaceCapabilities.maxImageCount;
     }
@@ -1755,15 +1755,17 @@ void Graphics::drawFrame() {
     
     VkResult ret = vkWaitForFences(device, 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);
     if (ret != VK_SUCCESS) {
-        std::cerr << "vkWaitForFences Failed" << std::endl;
+        this->requiresUpdateSwapChain = true;
+        return;
     }
 
     uint32_t imageIndex;
     ret = vkAcquireNextImageKHR(
         this->device, this->swapChain, UINT64_MAX, this->imageAvailableSemaphores[this->currentFrame], VK_NULL_HANDLE, &imageIndex);
     
-    if (ret == VK_ERROR_OUT_OF_DATE_KHR) {
-        this->updateSwapChain();
+    if (ret != VK_SUCCESS) {
+        std::cerr << "Failed to Acquire Next Image" << std::endl;
+        this->requiresUpdateSwapChain = true;
         return;
     }
 
@@ -1841,10 +1843,9 @@ void Graphics::drawFrame() {
 
     ret = vkQueuePresentKHR(presentQueue, &presentInfo);
 
-    if (ret == VK_ERROR_OUT_OF_DATE_KHR || ret == VK_SUBOPTIMAL_KHR) {
-        this->updateSwapChain();
-    } else if (ret != VK_SUCCESS) {
-       std::cerr << "Failed to Present Swap Chain Image!" << std::endl;
+    if (ret != VK_SUCCESS) {
+        std::cerr << "Failed to Present Swap Chain Image!" << std::endl;
+        return;
     }
     
     this->currentFrame = (this->currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
