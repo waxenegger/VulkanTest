@@ -2138,7 +2138,7 @@ void Graphics::draw(VkCommandBuffer & commandBuffer, bool useIndices) {
             if (this->requiresUpdateSwapChain) return;
             
             for (auto & comp : compsPerModel) {
-                if (!Camera::instance()->isInFrustum(comp->getPosition())) continue;
+                if (!comp->isVisible() || !Camera::instance()->isInFrustum(comp->getPosition())) continue;
                 
                 ModelProperties props = { comp->getModelMatrix()};
                 
