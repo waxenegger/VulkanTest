@@ -21,6 +21,7 @@
 #include <chrono>
 
 #include <string.h>
+#include <filesystem>
 
 #include <SDL.h>
  #include <SDL_image.h>

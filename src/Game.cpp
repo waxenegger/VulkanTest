@@ -1,8 +1,10 @@
 #include "includes/game.h"
 
-Game::Game(std::string root) {
+Game::Game(std::filesystem::path root) {
+    if (!std::filesystem::exists(root)) {
+        std::cerr << "Root Directory " << root << " does not exist!" << std::endl;
+    }
     this->root = root;
-    if (this->root[static_cast<int>(root.length())-1] != '/') this->root.append("/");
 }
 
 void Game::init() {
@@ -44,11 +46,6 @@ void Game::init() {
     this->initialized = true;
 }
 
-std::string Game::getRoot() { 
-    return this->root; 
-}
-
-
 bool Game::loadModels() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
 
@@ -74,11 +71,11 @@ bool Game::loadModels() {
     
     std::array<Model *, 6> models = {
         new Model(vertices, indices, "quad"),
-        new Model("/opt/projects/VulkanTest/res/models/", "teapot.obj"),
-        new Model("/opt/projects/VulkanTest/res/models/", "nanosuit.obj"),
-        new Model("/opt/projects/VulkanTest/res/models/", "batman.obj"),
-        new Model("/opt/projects/VulkanTest/res/models/", "cyborg.obj"),
-        new Model("/opt/projects/VulkanTest/res/models/", "woolly-mammoth-150k.obj")
+        new Model("teapot", this->graphics.getAppPath(MODELS) / "teapot.obj"),
+        new Model("nanosuit", this->graphics.getAppPath(MODELS) / "nanosuit.obj"),
+        new Model("batman", this->graphics.getAppPath(MODELS) / "batman.obj"),
+        new Model("cyborg", this->graphics.getAppPath(MODELS) / "cyborg.obj"),
+        new Model("mammoth", this->graphics.getAppPath(MODELS) / "woolly-mammoth-150k.obj")
     };
     
     for (auto * m : models) {
@@ -104,14 +101,14 @@ bool Game::addComponents() {
     if (!this->graphics.isActive()) return false;
     
     bool ret = true;
-    Component * quad = this->graphics.addModelComponent("quad");
+    Component * quad = this->graphics.addComponentWithModel("quad1", "quad");
     if (quad == nullptr) ret = false;
     else {
         quad->setPosition(glm::vec3(0, 4, 0));
         quad->scale(10);
     }
 
-    Component * teapot = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/teapot.obj");
+    Component * teapot = this->graphics.addComponentWithModel("teatpot1", "teapot");
     if (teapot == nullptr) ret = false;
     else {
         teapot->setPosition(glm::vec3(0, 4, 0));
@@ -120,20 +117,21 @@ bool Game::addComponents() {
 
     for (int x=-100;x<100;x+=2) {
         for (int z=-100;z<100;z+=2) {
-            Component * batman = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/cyborg.obj");
+            Component * batman = this->graphics.addComponentWithModel(
+                std::string("teatpot" + std::to_string(x) + "_" + std::to_string(z)), "cyborg");
             if (batman == nullptr) ret = false;
             else batman->setPosition(glm::vec3(x,0,z));
         }        
     }
 
-    Component * nanosuit = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/nanosuit.obj");
+    Component * nanosuit = this->graphics.addComponentWithModel("nanosuit1", "nanosuit");
     if (nanosuit == nullptr) ret = false;
     else {
         nanosuit->setPosition(glm::vec3(0, 10, 0));
         nanosuit->scale(0.5);
     }
 
-    Component * mammoth = this->graphics.addModelComponent("/opt/projects/VulkanTest/res/models/woolly-mammoth-150k.obj");
+    Component * mammoth = this->graphics.addComponentWithModel("mammoth1", "mammoth");
     if (mammoth == nullptr) ret = false;
     else {
         mammoth->setPosition(glm::vec3(-7, 4, 0));

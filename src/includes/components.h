@@ -7,14 +7,17 @@ class Component final {
     private:
         Model * model = nullptr;
         
+        std::string id = "";
+        
         glm::vec3 position = glm::vec3(0.0f);
         glm::vec3 rotation = glm::vec3(0.0f);
         float scaleFactor = 1.0f;
         
+        bool visible = true;
         bool sceneUpdate = false;
     public:
-        Component();
-        Component(Model * model);
+        Component(std::string id);
+        Component(std::string id, Model * model);
         MeshProperties & getModelProperties();
         bool hasModel();
         Model * getModel();
@@ -29,7 +32,8 @@ class Component final {
         bool needsSceneUpdate();
         void markSceneAsUpdated();
         glm::vec3 getRotation();
-
+        bool isVisible();
+        void setVisible(bool visible);
 };
 
 class Components final {
@@ -38,7 +42,7 @@ class Components final {
 
     public:
         Component * addComponent(Component * component);
-        std::vector<Component *> getAllComponentsForModel(std::string model, bool hasModel = false);
+        std::vector<Component *> getAllComponentsForModel(std::string model);
         void initWithModelLocations(std::vector<std::string> modelLocations);
         std::map<std::string, std::vector<std::unique_ptr<Component>>> & getComponents();
         ~Components();

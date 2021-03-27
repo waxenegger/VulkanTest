@@ -76,7 +76,7 @@ class Texture final {
     private:
         int id = 0;
         std::string type;
-        std::string path;
+        std::filesystem::path path;
         bool loaded = false;
         bool valid = false;
         VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
@@ -92,7 +92,7 @@ class Texture final {
         VkFormat getImageFormat();
         void setId(const int & id);
         void setType(const std::string & type);
-        void setPath(const std::string & path);
+        void setPath(const std::filesystem::path & path);
         void load();
         uint32_t getWidth();
         uint32_t getHeight();
@@ -111,11 +111,10 @@ class Texture final {
 
 class Model final {
     private:
-        std::string file;
-        std::string dir;
+        std::string id;
+        std::filesystem::path file;
         std::vector<Mesh> meshes;
         bool loaded = false;
-        bool visible = true;
         VkDeviceSize ssboOffset = 0;
 
 
@@ -125,12 +124,12 @@ class Model final {
     public:
         ~Model();
         Model() {};
-        Model(const std::string & dir, const std::string & file);
-        Model(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, std::string name);
+        Model(const std::string id, const std::filesystem::path file);
+        Model(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, std::string id);
         void init();
         bool hasBeenLoaded();
-        bool isVisible();
-        std::string getPath();
+        std::filesystem::path getPath();
+        std::string getId();
         std::vector<Mesh> & getMeshes();
         void setColor(glm::vec3 color);
         TextureInformation addTextures(const aiMaterial * mat);
@@ -162,7 +161,7 @@ class Models final {
         VkImageView findTextureImageViewById(int id); 
         void cleanUpTextures(const VkDevice & device);
         std::vector<std::unique_ptr<Model>> & getModels();
-        Model * findModelByLocation(std::string path);
+        Model * findModel(std::string id);
         ~Models();
 
 };

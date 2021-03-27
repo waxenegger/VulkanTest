@@ -112,18 +112,18 @@ void Mesh::setTextureInformation(TextureInformation & textures) {
     this->textures = textures;
 }
 
-Model::Model(const std::vector< Vertex >& vertices, const std::vector< uint32_t > indices, std::string name)
+Model::Model(const std::vector< Vertex >& vertices, const std::vector< uint32_t > indices, std::string id)
 {
-    this->file = name;
-    this->dir = "";
+    this->id = id;
+    this->file = "";
     this->meshes = { Mesh(vertices, indices) };
     this->calculateNormals();
     this->loaded = true;
 }
 
-Model::Model(const std::string & dir, const std::string & file) {
-    this->file = std::string(dir + file);
-    this->dir = dir;
+Model::Model(const std::string id, const  std::filesystem::path file) {
+    this->id = id;
+    this->file = file;
     Assimp::Importer importer;
 
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
@@ -169,12 +169,12 @@ bool Model::hasBeenLoaded() {
     return this->loaded;
 };
 
-bool Model::isVisible() {
-    return this->visible;
-};
-
-std::string Model::getPath() {
+std::filesystem::path Model::getPath() {
     return this->file;
+}
+
+std::string Model::getId() {
+    return this->id;
 }
 
 void Model::calculateNormals() {
@@ -330,9 +330,9 @@ std::vector<std::unique_ptr<Model>> & Models::getModels() {
     return this->models;
 }
 
-Model * Models::findModelByLocation(std::string path) {
+Model * Models::findModel(std::string id) {
     for (auto & m : this->models) {
-        if (m->getPath().compare(path) == 0) return m.get();
+        if (m->getId().compare(id) == 0) return m.get();
     }
     return nullptr;
 }
@@ -354,7 +354,7 @@ TextureInformation Model::addTextures(const aiMaterial * mat) {
         mat->GetTexture(aiTextureType_AMBIENT, 0, &str);
         
         if (str.length > 0) this->correctTexturePath(str.data);
-        textureInfo.ambientTextureLocation = std::string(this->dir + std::string(str.C_Str()));
+        textureInfo.ambientTextureLocation = this->file.parent_path() / std::filesystem::path(str.C_Str());
     }
 
     if (mat->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
@@ -362,7 +362,7 @@ TextureInformation Model::addTextures(const aiMaterial * mat) {
         mat->GetTexture(aiTextureType_DIFFUSE, 0, &str);
 
         if (str.length > 0) this->correctTexturePath(str.data);
-        textureInfo.diffuseTextureLocation = std::string(this->dir + std::string(str.C_Str()));
+        textureInfo.diffuseTextureLocation = this->file.parent_path() / std::filesystem::path(str.C_Str());
     }
 
     if (mat->GetTextureCount(aiTextureType_SPECULAR) > 0) {
@@ -370,7 +370,7 @@ TextureInformation Model::addTextures(const aiMaterial * mat) {
         mat->GetTexture(aiTextureType_SPECULAR, 0, &str);
 
         if (str.length > 0) this->correctTexturePath(str.data);
-        textureInfo.specularTextureLocation = std::string(this->dir + std::string(str.C_Str()));
+        textureInfo.specularTextureLocation = this->file.parent_path() / std::filesystem::path(str.C_Str());
     }
     
     if (mat->GetTextureCount(aiTextureType_NORMALS) > 0) {
@@ -378,7 +378,7 @@ TextureInformation Model::addTextures(const aiMaterial * mat) {
         mat->GetTexture(aiTextureType_NORMALS, 0, &str);
 
         if (str.length > 0) this->correctTexturePath(str.data);
-        textureInfo.normalTextureLocation = std::string(this->dir + std::string(str.C_Str()));
+        textureInfo.normalTextureLocation = this->file.parent_path() / std::filesystem::path(str.C_Str());
     }
 
     return textureInfo;
@@ -465,7 +465,7 @@ void Texture::setType(const std::string & type) {
     this->type = type;
 }
 
-void Texture::setPath(const std::string & path) {
+void Texture::setPath(const std::filesystem::path & path) {
     this->path = path;
 }
 

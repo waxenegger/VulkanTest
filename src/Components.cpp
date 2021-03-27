@@ -1,8 +1,10 @@
 #include "includes/components.h"
 
-Component::Component() {}
+Component::Component(std::string id) {
+    this->id = id;
+}
 
-Component::Component(Model * model) {
+Component::Component(std::string id, Model * model) : Component(id) {
     this->model = model;
 }
 
@@ -114,7 +116,7 @@ bool Components::isSceneUpdateNeeded(bool reset)
     return ret;
 }
 
-std::vector<Component *> Components::getAllComponentsForModel(std::string model, bool hasModel) {
+std::vector<Component *> Components::getAllComponentsForModel(std::string model) {
     std::vector<Component *> allMeshProperties;
     
     std::map<std::string, std::vector<std::unique_ptr<Component>>>::iterator it = this->components.find(model);
@@ -132,6 +134,14 @@ void Component::markSceneAsUpdated()
 {
     this->sceneUpdate = false;
 }
+
+bool Component::isVisible() {
+    return this->visible;
+};
+
+void Component::setVisible(bool visible) {
+    this->visible = visible;
+};
 
 bool Component::needsSceneUpdate()
 {

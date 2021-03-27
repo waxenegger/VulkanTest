@@ -18,7 +18,7 @@ bool Graphics::initSDL() {
     return true;
 }
 
-void Graphics::init(const std::string & appName, uint32_t version, const std::string & dir) {
+void Graphics::init(const std::string & appName, uint32_t version, const std::filesystem::path & dir) {
     this->dir = dir;
     if (!this->initSDL()) return;
 
@@ -243,7 +243,7 @@ bool Graphics::createSkybox() {
 
     for (auto & s : skyboxCubeImageLocations) {
         std::unique_ptr<Texture> texture = std::make_unique<Texture>();
-        texture->setPath(this->dir + "res/models/" + s);
+        texture->setPath(this->getAppPath(MODELS) / s);
         texture->load();
         if (texture->isValid()) {
             skyboxCubeTextures.push_back(std::move(texture));
@@ -758,9 +758,9 @@ VkShaderModule Graphics::createShaderModule(const std::vector<char> & code) {
 bool Graphics::createShaderStageInfo() {
     std::vector<char> vertShaderCode;
     std::vector<char> fragShaderCode;
-    if (!Utils::readFile(this->dir + "/res/shaders/vert.spv", vertShaderCode) ||
-            !Utils::readFile(this->dir + "/res/shaders/frag.spv", fragShaderCode)) {
-        std::cerr << "Failed to read shader files: " << (this->dir + "/res/shaders/") << std::endl;
+    if (!Utils::readFile(this->getAppPath(SHADERS) / "vert.spv", vertShaderCode) ||
+            !Utils::readFile(this->getAppPath(SHADERS) / "frag.spv", fragShaderCode)) {
+        std::cerr << "Failed to read shader files: " << this->getAppPath(SHADERS) << std::endl;
         return false;
     }
 
@@ -790,9 +790,9 @@ bool Graphics::createShaderStageInfo() {
 bool Graphics::createSkyboxShaderStageInfo() {
     std::vector<char> vertShaderCode;
     std::vector<char> fragShaderCode;
-    if (!Utils::readFile(this->dir + "/res/shaders/skybox_vert.spv", vertShaderCode) ||
-            !Utils::readFile(this->dir + "/res/shaders/skybox_frag.spv", fragShaderCode)) {
-        std::cerr << "Failed to read shader files: " << (this->dir + "/res/shaders/") << std::endl;
+    if (!Utils::readFile(this->getAppPath(SHADERS) / "skybox_vert.spv", vertShaderCode) ||
+            !Utils::readFile(this->getAppPath(SHADERS) / "skybox_frag.spv", fragShaderCode)) {
+        std::cerr << "Failed to read shader files: " << this->getAppPath(SHADERS) << std::endl;
         return false;
     }
 
@@ -1746,12 +1746,12 @@ void Graphics::updateUniformBuffer(uint32_t currentImage) {
 }
     
 void Graphics::drawFrame() {    
+    std::chrono::high_resolution_clock::time_point frameStart = std::chrono::high_resolution_clock::now();
+
     if (this->requiresUpdateSwapChain) {
         this->updateSwapChain();
         return;
     }
-
-    std::chrono::high_resolution_clock::time_point frameStart = std::chrono::high_resolution_clock::now();
     
     VkResult ret = vkWaitForFences(device, 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);
     if (ret != VK_SUCCESS) {
@@ -2214,11 +2214,11 @@ void Graphics::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsC
     }
 }
 
-Component * Graphics::addModelComponent(std::string modelLocation) {
-    Model * model = this->models.findModelByLocation(modelLocation);
+Component * Graphics::addComponentWithModel(std::string id, std::string modelId) {
+    Model * model = this->models.findModel(modelId);
     if (model == nullptr) return nullptr;
     
-    return this->components.addComponent(new Component(model));
+    return this->components.addComponent(new Component(id, model));
 }
 
 bool Graphics::createImage(
@@ -2655,4 +2655,18 @@ void Graphics::startCommandBufferQueue() {
 
 void Graphics::stopCommandBufferQueue() {
     this->workerQueue.stopQueue();
+}
+
+std::filesystem::path Graphics::getAppPath(APP_PATHS appPath) {
+    switch(appPath) {
+        case SHADERS:
+            return this->dir / "res/shaders";
+        case MODELS:
+            return this->dir / "res/models";
+        case FONTS:
+            return this->dir / "res/fonts";
+        case ROOT:
+        default:
+            return this->dir;
+    }
 }

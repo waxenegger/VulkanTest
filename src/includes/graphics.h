@@ -7,6 +7,10 @@
 const int MAX_TEXTURES = 25;
 const int MAX_FRAMES_IN_FLIGHT = 3;
 
+enum APP_PATHS {
+    ROOT, SHADERS, MODELS, FONTS
+};
+
 const std::vector<Vertex> SKYBOX_VERTICES = {
     Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
     Vertex(glm::vec3(-1.0f, -1.0f, -1.0f)),
@@ -64,7 +68,7 @@ class Graphics final {
         VkSurfaceKHR vkSurface = nullptr;
         bool active = false;
         
-        std::string dir = "./";
+        std::filesystem::path dir = "./";
 
         std::vector<const char *> vkExtensionNames;
         std::vector<VkPhysicalDevice> vkPhysicalDevices;
@@ -255,7 +259,7 @@ class Graphics final {
 
         static Graphics & instance();
         bool isActive();
-        void init(const std::string & appName, uint32_t version, const std::string & dir);
+        void init(const std::string & appName, uint32_t version, const std::filesystem::path & dir);
 
         void listVkExtensions();
         void listPhysicalDeviceExtensions();
@@ -275,7 +279,7 @@ class Graphics final {
         SDL_Window * getSdlWindow();
         
         void prepareComponents();
-        Component * addModelComponent(std::string modelLocation);
+        Component * addComponentWithModel(std::string id, std::string modelId);
         Components & getComponents();
         
         Models & getModels();
@@ -289,6 +293,7 @@ class Graphics final {
         void stopCommandBufferQueue();
         ~Graphics();
 
+        std::filesystem::path getAppPath(APP_PATHS appPath);
 };
 
 #endif
