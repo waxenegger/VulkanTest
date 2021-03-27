@@ -43,7 +43,7 @@ class Components final {
     public:
         Component * addComponent(Component * component);
         std::vector<Component *> getAllComponentsForModel(std::string model);
-        void initWithModelIds(std::vector<std::string> modelLocations);
+        void initWithModelIds(std::vector< std::string > modelIds);
         std::map<std::string, std::vector<std::unique_ptr<Component>>> & getComponents();
         ~Components();
         std::vector<Component *> getSsboComponentsThatNeedUpdate();

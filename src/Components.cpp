@@ -91,8 +91,8 @@ std::map<std::string, std::vector<std::unique_ptr<Component>>> & Components::get
     return this->components;
 }
 
-void Components::initWithModelIds(std::vector<std::string> modelLocations) {
-    for(auto & l : modelLocations) {
+void Components::initWithModelIds(std::vector<std::string> modelIds) {
+    for(auto & l : modelIds) {
         this->components[l] = std::vector<std::unique_ptr<Component>>();
     }
 }
