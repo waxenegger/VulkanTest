@@ -27,8 +27,8 @@ void main() {
         meshProperties.specularTexture != -1 || meshProperties.normalTexture != -1;
 
     // ambientContribution
-    vec4 ambientLightColor = vec4(0.3);
-    float ambientLightStrength = 1;
+    vec4 ambientLightColor = vec4(1.0);
+    float ambientLightStrength = 0.3;
     vec4 ambientContribution = ambientLightColor * ambientLightStrength;
     
     // diffuseContribution
@@ -52,13 +52,13 @@ void main() {
     }
     
     // diffuse multiplier based on normals
-    float diffuse = max(dot(normals, lightDirection), 0.1);
+    float diffuse = max(dot(normals, lightDirection), 0.0);
 
     // specular multiplier based on normals and eye direction
     vec3 eyeDirection = normalize(vec3(eye) - fragPosition);
     vec3 halfDirection = normalize(lightDirection + vec3(eye));
-    float shininess = 10;
-    float specular = pow(max(dot(normals, halfDirection), 0.1), shininess);
+    float shininess = 1;
+    float specular = pow(max(dot(normals, halfDirection), 0.0), shininess);
     
     if (hasTextures) {
         // ambience
@@ -78,12 +78,12 @@ void main() {
             specularContribution *= texture(samplers[meshProperties.specularTexture], fragTexCoord);
         }
         
-        outColor = mix(mix(ambientContribution, specularContribution, 0.5), diffuseContribution, 0.95);
+        outColor = mix(ambientContribution, mix(specularContribution, diffuseContribution, 0.75), 0.95);
     } else {
         ambientContribution *= vec4(fragColor, 1.0);
         diffuseContribution *= vec4(fragColor * diffuse,1.0) ;
         specularContribution *= vec4(fragColor * specular, 1.0);
 
-        outColor = ambientContribution + diffuseContribution + specularContribution;
+        outColor = vec4(ambientContribution.rgb + specularContribution.rgb + diffuseContribution.rgb, 1);
     }
 }

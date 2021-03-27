@@ -54,14 +54,14 @@ bool Game::loadModels() {
     bool ret = true; 
     
     const std::vector<Vertex> vertices = {
-        Vertex(glm::vec3(-0.5f, -0.5f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
-        Vertex(glm::vec3(0.5f, -0.5f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
-        Vertex(glm::vec3(0.5f, 0.5f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
-        Vertex(glm::vec3(-0.5f, 0.5f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
-        Vertex(glm::vec3(-0.5f, -0.5f, 5.0f), glm::vec3(0.0f, 1.0f, 1.0f)),
-        Vertex(glm::vec3(0.5f, -0.5f, 5.0f), glm::vec3(0.0f, 1.0f, 1.0f)),
-        Vertex(glm::vec3(0.5f, 0.5f, 5.0f), glm::vec3(0.0f, 1.0f, 1.0f)),
-        Vertex(glm::vec3(-0.5f, 0.5f, 5.0f), glm::vec3(0.0f, 1.0f, 1.0f))
+        Vertex(glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
+        Vertex(glm::vec3(0.5f, 0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
+        Vertex(glm::vec3(0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
+        Vertex(glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
+        Vertex(glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
+        Vertex(glm::vec3(0.5f, 0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
+        Vertex(glm::vec3(0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
+        Vertex(glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f))
 
     };
     const std::vector<uint32_t> indices = {
@@ -69,13 +69,14 @@ bool Game::loadModels() {
         4, 5, 6, 6, 7, 4
     };
     
-    std::array<Model *, 6> models = {
+    std::array<Model *, 7> models = {
         new Model(vertices, indices, "quad"),
         new Model("teapot", this->graphics.getAppPath(MODELS) / "teapot.obj"),
         new Model("nanosuit", this->graphics.getAppPath(MODELS) / "nanosuit.obj"),
         new Model("batman", this->graphics.getAppPath(MODELS) / "batman.obj"),
         new Model("cyborg", this->graphics.getAppPath(MODELS) / "cyborg.obj"),
-        new Model("mammoth", this->graphics.getAppPath(MODELS) / "woolly-mammoth-150k.obj")
+        new Model("mammoth", this->graphics.getAppPath(MODELS) / "woolly-mammoth-150k.obj"),
+        new Model("plane", this->graphics.getAppPath(MODELS) / "plane.obj")
     };
     
     for (auto * m : models) {
@@ -101,10 +102,10 @@ bool Game::addComponents() {
     if (!this->graphics.isActive()) return false;
     
     bool ret = true;
-    Component * quad = this->graphics.addComponentWithModel("quad1", "quad");
+    Component * quad = this->graphics.addComponentWithModel("plane1", "plane");
     if (quad == nullptr) ret = false;
     else {
-        quad->setPosition(glm::vec3(0, 4, 0));
+        quad->setPosition(glm::vec3(0, 20, -35));
         quad->scale(10);
     }
 
@@ -153,6 +154,7 @@ void Game::loop() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
     this->graphics.setLastTimeMeasure(start);
 
+    /*
     std::thread rotationThread([this, &quit]() {
         std::chrono::high_resolution_clock::time_point rotationStart = std::chrono::high_resolution_clock::now();
         while(!quit) {
@@ -171,7 +173,7 @@ void Game::loop() {
         }
     });
     rotationThread.detach();
-    
+    */
     std::thread inputThread([this, &quit]() {
         SDL_Event e;
         bool isFullScreen = false;
