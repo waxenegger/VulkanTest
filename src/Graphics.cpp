@@ -1961,14 +1961,9 @@ bool Graphics::createUniformBuffers() {
 ModelSummary Graphics::getModelsBufferSizes() {
     ModelSummary bufferSizes;
     
-    std::map<std::string, std::vector<std::unique_ptr<Component>>> & allComponents = this->components.getComponents();
-    for (auto & comps : allComponents) {
-        auto & compsPerModel = comps.second;
-        
-        uint32_t compCount = compsPerModel.size();
-        if (compCount == 0) continue;
-        
-        auto model = compsPerModel[0]->getModel();
+    auto & allModels = this->models.getModels();
+    
+    for (auto & model : allModels) {
         auto meshes = model->getMeshes();
         for (Mesh & mesh : meshes) {
             VkDeviceSize vertexSize = mesh.getVertices().size();
@@ -2115,29 +2110,21 @@ bool Graphics::createSsboBufferFromModel(VkDeviceSize bufferSize, bool makeHostW
 void Graphics::draw(VkCommandBuffer & commandBuffer, bool useIndices) {
     VkDeviceSize lastVertexOffset = 0;
     VkDeviceSize lastIndexOffset = 0;
+    uint32_t firstInstanceMesh = 0;
 
-    std::map<std::string, std::vector<std::unique_ptr<Component>>> & allComponents = this->components.getComponents();
-    uint32_t firstInstanceOverall = 0;
+    auto & allModels = this->models.getModels();
     
-    for (auto & comps : allComponents) {
-        auto & compsPerModel = comps.second;
-        
-        uint32_t compCount = compsPerModel.size();
-        if (compCount == 0) continue;
-        
-        auto model = compsPerModel[0]->getModel();
-        if (model == nullptr) continue;
-        
+    for (auto & model :  allModels) {
         auto meshes = model->getMeshes();
         
-        uint32_t firstInstanceMesh = firstInstanceOverall;
         for (Mesh & mesh : meshes) {
             VkDeviceSize vertexSize = mesh.getVertices().size();
             VkDeviceSize indexSize = mesh.getIndices().size();
             
             if (this->requiresUpdateSwapChain) return;
             
-            for (auto & comp : compsPerModel) {
+            auto allComponents = this->components.getAllComponentsForModel(model->getId());
+            for (auto & comp : allComponents) {
                 if (!comp->isVisible() || !Camera::instance()->isInFrustum(comp->getPosition())) continue;
                 
                 ModelProperties props = { comp->getModelMatrix()};
@@ -2157,23 +2144,15 @@ void Graphics::draw(VkCommandBuffer & commandBuffer, bool useIndices) {
             lastVertexOffset += vertexSize;
             firstInstanceMesh++;
         }
-        
-        firstInstanceOverall = firstInstanceMesh;
     }
 }
 
 void Graphics::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsContentType, VkDeviceSize maxSize) {
     VkDeviceSize overallSize = 0;
     
-    std::map<std::string, std::vector<std::unique_ptr<Component>>> & allComponents = this->components.getComponents();
-    for (auto & comps : allComponents) {
-        auto & compsPerModel = comps.second;
-        
-        uint32_t compCount = compsPerModel.size();
-        if (compCount == 0) continue;
-        
-        auto model = compsPerModel[0]->getModel();
-        
+    auto & allModels = this->models.getModels();
+    
+    for (auto & model : allModels) {        
         if (modelsContentType == SSBO) {
             model->setSsboOffset(overallSize);
         }

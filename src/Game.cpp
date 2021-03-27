@@ -115,8 +115,8 @@ bool Game::addComponents() {
         teapot->scale(1);
     }
 
-    for (int x=-100;x<100;x+=2) {
-        for (int z=-100;z<100;z+=2) {
+    for (int x=-1;x<1;x+=2) {
+        for (int z=-1;z<1;z+=2) {
             Component * batman = this->graphics.addComponentWithModel(
                 std::string("teatpot" + std::to_string(x) + "_" + std::to_string(z)), "cyborg");
             if (batman == nullptr) ret = false;
@@ -166,6 +166,7 @@ void Game::loop() {
                     }
                 }
                 rotationStart = std::chrono::high_resolution_clock::now();
+
             }
         }
     });
