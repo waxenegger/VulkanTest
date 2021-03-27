@@ -169,7 +169,7 @@ bool Model::hasBeenLoaded() {
     return this->loaded;
 };
 
-std::filesystem::path Model::getPath() {
+std::filesystem::path Model::getFile() {
     return this->file;
 }
 
@@ -413,12 +413,12 @@ std::map< std::string, std::unique_ptr< Texture >>& Models::getTextures()
     return this->textures;
 }
 
-std::vector<std::string>  Models::getModelLocations() {
-    std::vector<std::string> modelLocations;
+std::vector<std::string>  Models::getModelIds() {
+    std::vector<std::string> modelIds;
     for (auto & m : this->models) {
-        modelLocations.push_back(m->getPath());
+        modelIds.push_back(m->getId());
     }
-    return modelLocations;
+    return modelIds;
 }
 
 void Models::setColor(glm::vec3 color) {

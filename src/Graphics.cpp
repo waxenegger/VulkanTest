@@ -2632,7 +2632,7 @@ Components & Graphics::getComponents() {
 }
 
 void Graphics::prepareComponents() {
-    this->components.initWithModelLocations(this->models.getModelLocations());
+    this->components.initWithModelIds(this->models.getModelIds());
 }
 
 double Graphics::getDeltaTime() {

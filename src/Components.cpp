@@ -73,15 +73,15 @@ Component * Components::addComponent(Component * component) {
     
     std::unique_ptr<Component> componentPtr(component);
     
-    const std::string modelLocation = component->hasModel() ? component->getModel()->getPath() : "";
+    const std::string modelId = component->hasModel() ? component->getModel()->getId() : "";
     
-    std::map<std::string, std::vector<std::unique_ptr<Component>>>::iterator it = this->components.find(modelLocation);
+    std::map<std::string, std::vector<std::unique_ptr<Component>>>::iterator it = this->components.find(modelId);
     if (it != this->components.end()) {
         it->second.push_back(std::move(componentPtr));
     } else {
         std::vector<std::unique_ptr<Component>> allComponentsPerModel;
         allComponentsPerModel.push_back(std::move(componentPtr));
-        this->components[modelLocation] = std::move(allComponentsPerModel);
+        this->components[modelId] = std::move(allComponentsPerModel);
     }
     
     return component;
@@ -91,7 +91,7 @@ std::map<std::string, std::vector<std::unique_ptr<Component>>> & Components::get
     return this->components;
 }
 
-void Components::initWithModelLocations(std::vector<std::string> modelLocations) {
+void Components::initWithModelIds(std::vector<std::string> modelLocations) {
     for(auto & l : modelLocations) {
         this->components[l] = std::vector<std::unique_ptr<Component>>();
     }

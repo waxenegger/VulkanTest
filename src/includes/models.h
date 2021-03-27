@@ -128,7 +128,7 @@ class Model final {
         Model(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, std::string id);
         void init();
         bool hasBeenLoaded();
-        std::filesystem::path getPath();
+        std::filesystem::path getFile();
         std::string getId();
         std::vector<Mesh> & getMeshes();
         void setColor(glm::vec3 color);
@@ -157,7 +157,7 @@ class Models final {
         const static std::string TEXTURE_NORMALS;
         void processTextures(Mesh & mesh);
         std::map<std::string, std::unique_ptr<Texture>> &  getTextures();
-        std::vector<std::string> getModelLocations();
+        std::vector<std::string> getModelIds();
         VkImageView findTextureImageViewById(int id); 
         void cleanUpTextures(const VkDevice & device);
         std::vector<std::unique_ptr<Model>> & getModels();
