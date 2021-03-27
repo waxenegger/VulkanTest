@@ -1735,7 +1735,7 @@ bool Graphics::createCommandPool() {
 void Graphics::updateUniformBuffer(uint32_t currentImage) {
     ModelUniforms modelUniforms {};
     modelUniforms.camera = glm::vec4(Camera::instance()->getPosition(),1);
-    modelUniforms.sun = glm::vec4(0.0f, 0.0f, 50.0f, 1);
+    modelUniforms.sun = glm::vec4(0.0f, 50.0f, 50.0f, 1);
     modelUniforms.viewMatrix = Camera::instance()->getViewMatrix();
     modelUniforms.projectionMatrix = Camera::instance()->getProjectionMatrix();
 

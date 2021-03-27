@@ -28,7 +28,7 @@ void main() {
 
     // ambientContribution
     vec4 ambientLightColor = vec4(1.0);
-    float ambientLightStrength = 0.3;
+    float ambientLightStrength = hasTextures ? 0.1 : 1.0;
     vec4 ambientContribution = ambientLightColor * ambientLightStrength;
     
     // diffuseContribution
@@ -38,7 +38,7 @@ void main() {
     
     // specularContribution
     vec4 specularLightColor = vec4(1);
-    float specularLightStrength = 0.5;
+    float specularLightStrength = 1.0;
     vec4 specularContribution = specularLightColor * specularLightStrength;
 
     // global light source
@@ -77,13 +77,11 @@ void main() {
         if (meshProperties.specularTexture != -1) {
             specularContribution *= texture(samplers[meshProperties.specularTexture], fragTexCoord);
         }
-        
-        outColor = mix(ambientContribution, mix(specularContribution, diffuseContribution, 0.75), 0.95);
     } else {
         ambientContribution *= vec4(fragColor, 1.0);
         diffuseContribution *= vec4(fragColor * diffuse,1.0) ;
         specularContribution *= vec4(fragColor * specular, 1.0);
-
-        outColor = vec4(ambientContribution.rgb + specularContribution.rgb + diffuseContribution.rgb, 1);
     }
+    
+    outColor = mix(ambientContribution, mix(specularContribution, diffuseContribution, 0.75), 0.95);
 }
