@@ -4,7 +4,7 @@
 
 #include "graphics.h"
 
-class Game final {
+class Engine final {
     private:
         bool initialized = false;
         std::filesystem::path root = "./";
@@ -12,12 +12,12 @@ class Game final {
         const std::string APP_NAME = "Vulkan Test";
         Graphics & graphics = Graphics::instance();
     public:
-        Game(std::filesystem::path root);
+        Engine(std::filesystem::path root);
         void init();
         void loop();
         bool loadModels();
         bool addComponents();
-        ~Game();
+        ~Engine();
 };
 
 #endif

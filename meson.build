@@ -50,9 +50,13 @@ endif
 
 src = [ join_paths('src','Main.cpp'), 
         join_paths('src','Engine.cpp'), 
-        join_paths('src','Components.cpp'), 
+        join_paths('src','Components.cpp'),
+        join_paths('src','VulkanInit.cpp'),
+        join_paths('src','VulkanInfo.cpp'),
+        join_paths('src','VulkanRender.cpp'),
+        join_paths('src','VulkanHelper.cpp'),
+        join_paths('src','Skybox.cpp'),
         join_paths('src','Camera.cpp'), 
-        join_paths('src','Graphics.cpp'), 
         join_paths('src','Models.cpp') ]
 
 executable('VulkanTest',  join_paths('src','Main.cpp'), src, include_directories: includeDir, dependencies: dependencies) 

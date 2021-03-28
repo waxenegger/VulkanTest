@@ -1,13 +1,13 @@
 #include "includes/engine.h"
 
-Game::Game(std::filesystem::path root) {
+Engine::Engine(std::filesystem::path root) {
     if (!std::filesystem::exists(root)) {
         std::cerr << "Root Directory " << root << " does not exist!" << std::endl;
     }
     this->root = root;
 }
 
-void Game::init() {
+void Engine::init() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
     
     this->graphics.init(this->APP_NAME, VK_MAKE_VERSION(1,1,0), this->root);
@@ -49,7 +49,7 @@ void Game::init() {
     this->initialized = true;
 }
 
-bool Game::loadModels() {
+bool Engine::loadModels() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
 
     if (!this->graphics.isActive()) return false;
@@ -86,7 +86,7 @@ bool Game::loadModels() {
     return ret;
 }
 
-bool Game::addComponents() {
+bool Engine::addComponents() {
     if (!this->graphics.isActive()) return false;
     
     bool ret = true;
@@ -132,7 +132,7 @@ bool Game::addComponents() {
 }
 
 
-void Game::loop() {
+void Engine::loop() {
     if (!this->initialized) return;
     
     SDL_StartTextInput();
@@ -272,7 +272,7 @@ void Game::loop() {
     SDL_StopTextInput();
 }
 
-Game::~Game() {
+Engine::~Engine() {
     if (this->camera != nullptr) this->camera->destroy();
 }
 

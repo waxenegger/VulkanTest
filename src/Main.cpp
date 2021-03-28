@@ -8,7 +8,7 @@ int main(int argc, char **argv) {
         return -1;
     }
     
-    std::unique_ptr<Game> vulkanTest = std::make_unique<Game>(root);
+    std::unique_ptr<Engine> vulkanTest = std::make_unique<Engine>(root);
     vulkanTest->init();
     vulkanTest->loop();
     

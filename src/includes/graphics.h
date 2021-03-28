@@ -227,6 +227,7 @@ class Graphics final {
         bool createSyncObjects();
 
         void cleanupSwapChain();
+        void cleanupVulkan();
 
         bool createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
         bool findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, uint32_t & memoryType);
