@@ -1,4 +1,4 @@
-#include "includes/game.h"
+#include "includes/engine.h"
 
 Game::Game(std::filesystem::path root) {
     if (!std::filesystem::exists(root)) {
@@ -12,7 +12,10 @@ void Game::init() {
     
     this->graphics.init(this->APP_NAME, VK_MAKE_VERSION(1,1,0), this->root);
     
-    if (!this->graphics.isActive()) return;
+    if (!this->graphics.isActive()) {
+        std::cerr << "Failed to initialize Graphics Facility" << std::endl;
+        return;
+    }
     
     this->graphics.listVkExtensions();
     this->graphics.listPhysicalDeviceExtensions();

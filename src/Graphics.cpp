@@ -27,9 +27,9 @@ void Graphics::init(const std::string & appName, uint32_t version, const std::fi
 
     if (this->initVulkan(appName, version)) {
         this->active = true;
-    }
-    
-    TTF_Init();
+        
+        TTF_Init();
+    }    
 }
 
 bool Graphics::initVulkan(const std::string & appName, uint32_t version) {
@@ -1698,19 +1698,30 @@ void Graphics::cleanupSwapChain() {
     }
     
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        if (this->renderFinishedSemaphores[i] != nullptr) {
-            vkDestroySemaphore(this->device, this->renderFinishedSemaphores[i], nullptr);
+        if (this->renderFinishedSemaphores.size() == MAX_FRAMES_IN_FLIGHT) {
+            if (this->renderFinishedSemaphores[i] != nullptr) {
+                vkDestroySemaphore(this->device, this->renderFinishedSemaphores[i], nullptr);
+            }
+            this->renderFinishedSemaphores.clear();
         }
-        this->renderFinishedSemaphores.clear();
-        if (this->imageAvailableSemaphores[i] != nullptr) {
-            vkDestroySemaphore(this->device, this->imageAvailableSemaphores[i], nullptr);
+
+        if (this->imageAvailableSemaphores.size() == MAX_FRAMES_IN_FLIGHT) {
+            if (this->imageAvailableSemaphores[i] != nullptr) {
+                vkDestroySemaphore(this->device, this->imageAvailableSemaphores[i], nullptr);
+            }
+            this->imageAvailableSemaphores.clear();
         }
-        this->imageAvailableSemaphores.clear();
-        this->imagesInFlight.clear();
-        if (this->inFlightFences[i] != nullptr) {
-            vkDestroyFence(this->device, this->inFlightFences[i], nullptr);
+        
+        if (this->imagesInFlight.size() == MAX_FRAMES_IN_FLIGHT) {
+            this->imagesInFlight.clear();
         }
-        this->inFlightFences.clear();
+
+        if (this->inFlightFences.size() == MAX_FRAMES_IN_FLIGHT) {
+            if (this->inFlightFences[i] != nullptr) {
+                vkDestroyFence(this->device, this->inFlightFences[i], nullptr);
+            }
+            this->inFlightFences.clear();
+        }
     }
 
 }
