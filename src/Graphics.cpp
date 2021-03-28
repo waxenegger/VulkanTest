@@ -28,6 +28,8 @@ void Graphics::init(const std::string & appName, uint32_t version, const std::fi
     if (this->initVulkan(appName, version)) {
         this->active = true;
     }
+    
+    TTF_Init();
 }
 
 bool Graphics::initVulkan(const std::string & appName, uint32_t version) {
@@ -2415,6 +2417,10 @@ bool Graphics::transitionImageLayout(VkImage image, VkImageLayout oldLayout, VkI
     return true;
 }
 
+void Graphics::addText(std::string id, std::string font, std::string text, uint16_t size) {
+    this->models.addTextModel(id, this->getAppPath(FONTS) / font, text, size);
+}
+
 void Graphics::addModel(Model * model) {
      std::unique_ptr<Model> modelPtr(model);
      if (model->hasBeenLoaded()) this->models.addModel(modelPtr.release());
@@ -2599,6 +2605,8 @@ Graphics::~Graphics() {
 
     if (this->sdlWindow != nullptr) SDL_DestroyWindow(this->sdlWindow);
 
+    TTF_Quit();
+    
     SDL_Quit();
 }
 

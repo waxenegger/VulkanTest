@@ -52,13 +52,13 @@ void main() {
     }
     
     // diffuse multiplier based on normals
-    float diffuse = max(dot(normals, lightDirection), 0.0);
+    float diffuse = max(dot(normals, lightDirection), 0.1);
 
     // specular multiplier based on normals and eye direction
     vec3 eyeDirection = normalize(vec3(eye) - fragPosition);
     vec3 halfDirection = normalize(lightDirection + vec3(eye));
     float shininess = 1;
-    float specular = pow(max(dot(normals, halfDirection), 0.0), shininess);
+    float specular = pow(max(dot(normals, halfDirection), 0.1), shininess);
     
     if (hasTextures) {
         // ambience

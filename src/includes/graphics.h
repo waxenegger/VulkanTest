@@ -4,7 +4,7 @@
 #include "components.h"
 #include "utils.h"
 
-const int MAX_TEXTURES = 25;
+const int MAX_TEXTURES = 50;
 const int MAX_FRAMES_IN_FLIGHT = 3;
 
 enum APP_PATHS {
@@ -271,6 +271,7 @@ class Graphics final {
         void addModel(Model * model);
         void addModel(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, std::string name);
         void addModel(const std::string & dir, const std::string & file);
+        void addText(std::string id, std::string font, std::string text, uint16_t size);
         bool prepareModels();
 
         VkExtent2D getWindowExtent();

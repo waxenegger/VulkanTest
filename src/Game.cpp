@@ -53,30 +53,13 @@ bool Game::loadModels() {
 
     bool ret = true; 
     
-    const std::vector<Vertex> vertices = {
-        Vertex(glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
-        Vertex(glm::vec3(0.5f, 0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
-        Vertex(glm::vec3(0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
-        Vertex(glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
-        Vertex(glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
-        Vertex(glm::vec3(0.5f, 0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
-        Vertex(glm::vec3(0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)),
-        Vertex(glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f))
-
-    };
-    const std::vector<uint32_t> indices = {
-        0, 3, 2, 2, 1, 0,
-        4, 5, 6, 6, 7, 4
-    };
-    
-    std::array<Model *, 7> models = {
-        new Model(vertices, indices, "quad"),
+    std::array<Model *, 6> models = {
         new Model("teapot", this->graphics.getAppPath(MODELS) / "teapot.obj"),
         new Model("nanosuit", this->graphics.getAppPath(MODELS) / "nanosuit.obj"),
         new Model("batman", this->graphics.getAppPath(MODELS) / "batman.obj"),
         new Model("cyborg", this->graphics.getAppPath(MODELS) / "cyborg.obj"),
         new Model("mammoth", this->graphics.getAppPath(MODELS) / "woolly-mammoth-150k.obj"),
-        new Model("plane", this->graphics.getAppPath(MODELS) / "plane.obj")
+        new Model("plane", this->graphics.getAppPath(MODELS) / "plane.obj"),
     };
     
     for (auto * m : models) {
@@ -89,6 +72,8 @@ bool Game::loadModels() {
             delete m;
         }
     };
+    
+    this->graphics.addText("text", "FreeMono.ttf", "hello world", 50);
 
     this->graphics.prepareComponents();
     
@@ -102,11 +87,11 @@ bool Game::addComponents() {
     if (!this->graphics.isActive()) return false;
     
     bool ret = true;
-    Component * quad = this->graphics.addComponentWithModel("plane1", "plane");
-    if (quad == nullptr) ret = false;
+    Component * text = this->graphics.addComponentWithModel("text1", "text");
+    if (text == nullptr) ret = false;
     else {
-        quad->setPosition(glm::vec3(0, 20, -35));
-        quad->scale(10);
+        text->setPosition(glm::vec3(0, 20, -15));
+        text->scale(5);
     }
 
     Component * teapot = this->graphics.addComponentWithModel("teatpot1", "teapot");
@@ -136,7 +121,7 @@ bool Game::addComponents() {
     if (mammoth == nullptr) ret = false;
     else {
         mammoth->setPosition(glm::vec3(-7, 4, 0));
-        mammoth->rotate(0, 60, 0);
+        mammoth->rotate(0, 0, 0);
         mammoth->scale(2);
     }
 

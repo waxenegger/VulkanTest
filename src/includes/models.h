@@ -100,6 +100,7 @@ class Texture final {
         void * getPixels();
         void freeSurface();
         Texture(bool empty = false, VkExtent2D extent = {100, 100});
+        Texture(SDL_Surface * surface);
         ~Texture();
         void cleanUpTexture(const VkDevice & device);
         bool readImageFormat();
@@ -120,7 +121,8 @@ class Model final {
 
         void processNode(const aiNode * node, const aiScene *scene);
         Mesh processMesh(const aiMesh *mesh, const aiScene *scene);
-        void calculateNormals();
+
+        Model(const std::string id);        
     public:
         ~Model();
         Model() {};
@@ -149,6 +151,7 @@ class Models final {
 
     public:
         void addModel(Model * model);
+        void addTextModel(std::string id, std::string font, std::string text, uint16_t size);
         void clear();
         void setColor(glm::vec3 color);
         const static std::string AMBIENT_TEXTURE;
@@ -162,6 +165,7 @@ class Models final {
         void cleanUpTextures(const VkDevice & device);
         std::vector<std::unique_ptr<Model>> & getModels();
         Model * findModel(std::string id);
+        static Model * createPlaneModel(std::string id, VkExtent2D extent);
         ~Models();
 
 };

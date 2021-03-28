@@ -112,17 +112,14 @@ void Mesh::setTextureInformation(TextureInformation & textures) {
     this->textures = textures;
 }
 
-Model::Model(const std::vector< Vertex >& vertices, const std::vector< uint32_t > indices, std::string id)
+Model::Model(const std::vector< Vertex >& vertices, const std::vector< uint32_t > indices, std::string id) : Model(id)
 {
-    this->id = id;
     this->file = "";
     this->meshes = { Mesh(vertices, indices) };
-    this->calculateNormals();
     this->loaded = true;
 }
 
-Model::Model(const std::string id, const  std::filesystem::path file) {
-    this->id = id;
+Model::Model(const std::string id, const  std::filesystem::path file) : Model(id) {
     this->file = file;
     Assimp::Importer importer;
 
@@ -177,23 +174,6 @@ std::string Model::getId() {
     return this->id;
 }
 
-void Model::calculateNormals() {
-    for (auto & mesh : this->meshes) {
-        auto vertices = mesh.getVertices();
-        auto indices = mesh.getIndices();
-        
-        if (indices.size() < 3 || indices.size() % 3 != 0) continue;
-        for (size_t i=0; i<indices.size(); i+= 3) {
-             const glm::vec3 edgeA = vertices[indices[i+1]].getPosition() - vertices[indices[i+0]].getPosition();
-             const glm::vec3 edgeB = vertices[indices[i+2]].getPosition() - vertices[indices[i+0]].getPosition();
-             const glm::vec3 crossProduct = glm::cross(edgeB, edgeA);
-             vertices[indices[i]].setNormal(glm::normalize(crossProduct));
-             vertices[indices[i+1]].setNormal(glm::normalize(crossProduct));
-             vertices[indices[i+2]].setNormal(glm::normalize(crossProduct));
-        }
-    }
-}
-
 Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
      std::vector<Vertex> vertices;
      std::vector<unsigned int> indices;
@@ -242,7 +222,8 @@ void Model::setColor(glm::vec3 color) {
     }
 }
 
-void Models::addModel(Model * model) {
+void Models::addModel(Model* model)
+{
     if (!model->hasBeenLoaded()) return;
 
     auto & meshes = model->getMeshes();
@@ -252,6 +233,121 @@ void Models::addModel(Model * model) {
     }
     
     this->models.push_back(std::unique_ptr<Model>(model));    
+}
+
+void Models::addTextModel(std::string id, std::string font, std::string text, uint16_t size) {
+    TTF_Font * f = TTF_OpenFont(font.c_str(), size);
+
+    if (f != nullptr) {
+        TTF_SetFontStyle(f, TTF_STYLE_NORMAL);
+        const SDL_Color bg = { 255, 255, 255 };
+        const SDL_Color fg = { 0, 0, 0 };
+
+        SDL_Surface * tmp = TTF_RenderUTF8_Shaded(f, text.c_str(), fg, bg);
+        
+        bool succeeded = false;
+        if (tmp != nullptr) {
+
+            SDL_PixelFormat *format = SDL_AllocFormat(SDL_PIXELFORMAT_RGBA8888);
+            std::unique_ptr<Texture> tex = std::make_unique<Texture>(SDL_ConvertSurface(tmp, format, 0));
+
+            SDL_FreeFormat(format);
+            SDL_FreeSurface(tmp);
+            
+            if (tex != nullptr && tex->isValid()) {
+                VkExtent2D extent = {
+                  tex->getWidth(), tex->getHeight()  
+                };
+                std::unique_ptr<Model> m(Models::createPlaneModel(id, extent));
+                if (m != nullptr && m->hasBeenLoaded()) {
+                    
+                    tex->setId(this->textures.size());
+                    tex->setPath(m->getId());
+
+                    TextureInformation texInfo;
+                    texInfo.diffuseTexture = tex->getId();
+                    texInfo.diffuseTextureLocation = m->getId();
+                    m->getMeshes()[0].setTextureInformation(texInfo);
+
+                    this->textures[m->getId()] = std::move(tex);                    
+                    this->addModel(m.release());
+                    
+                    succeeded = true;
+                }
+            }
+        }
+
+        TTF_CloseFont(f);
+        
+        if (succeeded) return;
+    }
+    
+    std::cerr << "Failed to add Text Model" << std::endl;
+}
+
+Model * Models::createPlaneModel(std::string id, VkExtent2D extent) {
+    const float zDirNormal = 1.0f;
+    const float w = extent.width / extent.height;
+    const float h = 1;
+
+    std::vector<Vertex> vertices;
+    
+    Vertex one(glm::vec3(-w/2, -h/2, 0.0f), glm::vec3(1.0f));
+    one.setUV(glm::vec2(-1.0f, 1.0f));
+    one.setNormal(glm::vec3(-1, -1, zDirNormal));
+    vertices.push_back(one);
+
+    Vertex two(glm::vec3(-w/2, h/2, 0.0f), glm::vec3(1.0f));
+    two.setUV(glm::vec2(-1.0f, 0.0f));
+    two.setNormal(glm::vec3(-1, 1, zDirNormal));
+    vertices.push_back(two);
+
+    Vertex three(glm::vec3(w/2, h/2, 0.0f), glm::vec3(1.0f));
+    three.setUV(glm::vec2(0.0f, 0.0f));
+    three.setNormal(glm::vec3(1, 1, zDirNormal));
+    vertices.push_back(three);
+
+    Vertex four(glm::vec3(w/2, -h/2, 0.0f), glm::vec3(1.0f));
+    four.setUV(glm::vec2(0.0f, 1.0f));
+    four.setNormal(glm::vec3(1, -1, zDirNormal));
+    vertices.push_back(four);
+
+    Vertex backOne(glm::vec3(-w/2, -h/2, 0.0f), glm::vec3(1.0f));
+    backOne.setNormal(glm::vec3(-1, -1, -zDirNormal));
+    vertices.push_back(backOne);
+
+    Vertex backTwo(glm::vec3(-w/2, h/2, 0.0f), glm::vec3(1.0f));
+    backTwo.setNormal(glm::vec3(-1, 1, -zDirNormal));
+    vertices.push_back(backTwo);
+
+    Vertex backThree(glm::vec3(w/2, h/2, 0.0f), glm::vec3(1.0f));
+    backThree.setNormal(glm::vec3(1, 1, -zDirNormal));
+    vertices.push_back(backThree);
+
+    Vertex backFour(glm::vec3(w/2, -h/2, 0.0f), glm::vec3(1.0f));
+    backFour.setNormal(glm::vec3(1, -1, -zDirNormal));
+    vertices.push_back(backFour);
+
+    
+    std::vector<uint32_t> indices;
+    
+    indices.push_back(3);
+    indices.push_back(1);
+    indices.push_back(0);
+
+    indices.push_back(2);
+    indices.push_back(1);
+    indices.push_back(3);
+
+    indices.push_back(4);
+    indices.push_back(5);
+    indices.push_back(7);
+
+    indices.push_back(7);
+    indices.push_back(5);
+    indices.push_back(6);
+    
+    return new Model(vertices, indices, id);
 }
 
 VkImageView Models::findTextureImageViewById(int id) {
@@ -399,9 +495,11 @@ void Model::correctTexturePath(char * path) {
     }
 }
 
-Model::~Model() {
-    
+Model::Model(std::string id) {
+    this->id = id;
 }
+
+Model::~Model() {}
 
 void Models::clear() {
     this->models.clear();
@@ -547,6 +645,16 @@ Texture::Texture(bool empty,  VkExtent2D extent) {
         
         this->loaded = true;
         this->valid = this->textureSurface != nullptr;
+    }
+}
+
+Texture::Texture(SDL_Surface * surface) {
+    if (surface != nullptr) {
+        this->textureSurface = surface;
+        this->imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
+        
+        this->loaded = true;
+        this->valid = true;
     }
 }
 
