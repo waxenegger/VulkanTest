@@ -48,8 +48,8 @@ class Camera
 
         bool flipY = true;
         
-        glm::mat4 perspective;
-        glm::mat4 view;
+        glm::mat4 perspective = glm::mat4();
+        glm::mat4 view = glm::mat4();
 
         void updateViewMatrix();
         bool moving();
