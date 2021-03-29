@@ -9,9 +9,19 @@ class CommandBufferQueue final {
         bool isStopping = true;
         bool hasStopped = true;
         std::mutex lock;
+        std::mutex lock2;
         std::vector<std::queue<VkCommandBuffer>> commmandBuffers;
+        std::vector<VkCommandBuffer> trash;
         uint16_t maxItems = 3;
-    public:
+        
+        void emptyTrash(std::function<void(VkCommandBuffer)> commandBufferDeletion) {
+            for (auto & t : this->trash) {
+                commandBufferDeletion(t);    
+            }
+            
+            this->trash.clear(); 
+        }
+    public:        
         VkCommandBuffer getNextCommandBuffer(uint16_t frameIndex) {            
             std::lock_guard<std::mutex> lock(this->lock);
 
@@ -29,13 +39,15 @@ class CommandBufferQueue final {
             return this->commmandBuffers[frameIndex].size();
         }
         
-        void startQueue(std::function<VkCommandBuffer(uint16_t)> commandBufferCreation, uint16_t numberOfFrames) {
+        void startQueue(std::function<VkCommandBuffer(uint16_t)> commandBufferCreation, 
+                        std::function<void(VkCommandBuffer)> commandBufferDeletion, uint16_t numberOfFrames) {
             this->commmandBuffers.resize(numberOfFrames);
 
-            this->queueThread = std::make_unique<std::thread>([this, commandBufferCreation]() {
+            this->queueThread = std::make_unique<std::thread>([this, commandBufferCreation,commandBufferDeletion]() {
                 this->isStopping = false;
                 this->hasStopped = false;
 
+                std::chrono::high_resolution_clock::time_point lastDeletion = std::chrono::high_resolution_clock::now();
                 while(!this->isStopping) {
                     for (uint16_t i=0;i<this->commmandBuffers.size();i++) {
                         if (this->isStopping) break;
@@ -52,7 +64,17 @@ class CommandBufferQueue final {
                             }
                         }
                     }
+                    
+                    std::chrono::duration<double, std::milli> timeSinceLastDeletion = std::chrono::high_resolution_clock::now() - lastDeletion;
+                    if (timeSinceLastDeletion.count() > 5000) {
+                        std::lock_guard<std::mutex> lock(this->lock2);
+                        this->emptyTrash(commandBufferDeletion);
+                        lastDeletion = std::chrono::high_resolution_clock::now();
+                    }                        
                 }
+                
+                this->emptyTrash(commandBufferDeletion);
+                
                 this->hasStopped = true;
             });
             
@@ -75,6 +97,11 @@ class CommandBufferQueue final {
         
         bool isRunning() {
             return !this->isStopping && !this->hasStopped;
+        }
+        
+        void queueCommandBufferForDeletion(VkCommandBuffer commandBuffer) {
+            std::lock_guard<std::mutex> lock(this->lock2);
+            this->trash.push_back(commandBuffer);
         }
 };
 

@@ -64,6 +64,10 @@ bool Graphics::createCommandBuffers() {
     return true;
 }
 
+void Graphics::destroyCommandBuffer(VkCommandBuffer commandBuffer) {
+    vkFreeCommandBuffers(this->device, this->commandPool, 1, &commandBuffer);
+}
+
 VkCommandBuffer Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
     if (this->requiresUpdateSwapChain) return nullptr;
     
@@ -195,7 +199,7 @@ void Graphics::drawFrame() {
     }
 
     if (this->commandBuffers[imageIndex] != nullptr) {
-        vkFreeCommandBuffers(this->device, this->commandPool, 1, &this->commandBuffers[imageIndex]);
+        this->workerQueue.queueCommandBufferForDeletion(this->commandBuffers[imageIndex]);
     }
 
     VkCommandBuffer latestCommandBuffer = this->workerQueue.getNextCommandBuffer(imageIndex);
@@ -638,7 +642,10 @@ void Graphics::setLastTimeMeasure(std::chrono::high_resolution_clock::time_point
 void Graphics::startCommandBufferQueue() {
     if (!this->isActive() || this->workerQueue.isRunning()) return;
     
-    this->workerQueue.startQueue(std::bind(&Graphics::createCommandBuffer, this, std::placeholders::_1), this->swapChainFramebuffers.size());
+    this->workerQueue.startQueue(
+        std::bind(&Graphics::createCommandBuffer, this, std::placeholders::_1),
+        std::bind(&Graphics::destroyCommandBuffer , this, std::placeholders::_1), 
+        this->swapChainFramebuffers.size());
 }
 
 void Graphics::stopCommandBufferQueue() {
