@@ -1,6 +1,8 @@
 #ifndef SRC_INCLUDES_THREADING_H_
 #define SRC_INCLUDES_THREADING_H_
 
+#include "shared.h"
+
 class CommandBufferQueue final {
     private:
         std::unique_ptr<std::thread> queueThread = nullptr;
@@ -68,7 +70,7 @@ class CommandBufferQueue final {
                 if (shutdownPeriod.count() > 5000) break;
             }
             
-            this->commmandBuffers.clear();            
+            this->commmandBuffers.clear();
         }
         
         bool isRunning() {

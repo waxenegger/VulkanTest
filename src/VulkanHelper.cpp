@@ -400,34 +400,6 @@ void Graphics::cleanupSwapChain() {
         vkDestroySwapchainKHR(this->device, this->swapChain, nullptr);
         this->swapChain = nullptr;
     }
-    
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        if (this->renderFinishedSemaphores.size() == MAX_FRAMES_IN_FLIGHT) {
-            if (this->renderFinishedSemaphores[i] != nullptr) {
-                vkDestroySemaphore(this->device, this->renderFinishedSemaphores[i], nullptr);
-            }
-            this->renderFinishedSemaphores.clear();
-        }
-
-        if (this->imageAvailableSemaphores.size() == MAX_FRAMES_IN_FLIGHT) {
-            if (this->imageAvailableSemaphores[i] != nullptr) {
-                vkDestroySemaphore(this->device, this->imageAvailableSemaphores[i], nullptr);
-            }
-            this->imageAvailableSemaphores.clear();
-        }
-        
-        if (this->imagesInFlight.size() == MAX_FRAMES_IN_FLIGHT) {
-            this->imagesInFlight.clear();
-        }
-
-        if (this->inFlightFences.size() == MAX_FRAMES_IN_FLIGHT) {
-            if (this->inFlightFences[i] != nullptr) {
-                vkDestroyFence(this->device, this->inFlightFences[i], nullptr);
-            }
-            this->inFlightFences.clear();
-        }
-    }
-
 }
 
 void Graphics::cleanupVulkan() {
@@ -488,6 +460,33 @@ void Graphics::cleanupVulkan() {
         if (this->uniformBuffersMemory[i] != nullptr) vkFreeMemory(this->device, this->uniformBuffersMemory[i], nullptr);
     }
 
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        if (this->renderFinishedSemaphores.size() == MAX_FRAMES_IN_FLIGHT) {
+            if (this->renderFinishedSemaphores[i] != nullptr) {
+                vkDestroySemaphore(this->device, this->renderFinishedSemaphores[i], nullptr);
+            }
+            this->renderFinishedSemaphores.clear();
+        }
+
+        if (this->imageAvailableSemaphores.size() == MAX_FRAMES_IN_FLIGHT) {
+            if (this->imageAvailableSemaphores[i] != nullptr) {
+                vkDestroySemaphore(this->device, this->imageAvailableSemaphores[i], nullptr);
+            }
+            this->imageAvailableSemaphores.clear();
+        }
+        
+        if (this->imagesInFlight.size() == MAX_FRAMES_IN_FLIGHT) {
+            this->imagesInFlight.clear();
+        }
+
+        if (this->inFlightFences.size() == MAX_FRAMES_IN_FLIGHT) {
+            if (this->inFlightFences[i] != nullptr) {
+                vkDestroyFence(this->device, this->inFlightFences[i], nullptr);
+            }
+            this->inFlightFences.clear();
+        }
+    }
+    
     if (this->device != nullptr && this->commandPool != nullptr) {
         vkDestroyCommandPool(this->device, this->commandPool, nullptr);
     }

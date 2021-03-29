@@ -1,5 +1,5 @@
-#ifndef SRC_INCLUDES_SHARED_H_
-#define SRC_INCLUDES_SHARED_H_
+#ifndef SRC_INCLUDES_SHARED_INCL_H_
+#define SRC_INCLUDES_SHARED_INCL_H_
 
 #include <iostream>
 #include <fstream>

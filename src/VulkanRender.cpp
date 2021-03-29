@@ -157,7 +157,6 @@ VkCommandBuffer Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
     return commandBuffer;
 }
 
-
 void Graphics::updateUniformBuffer(uint32_t currentImage) {
     ModelUniforms modelUniforms {};
     modelUniforms.camera = glm::vec4(Camera::instance()->getPosition(),1);
@@ -173,18 +172,18 @@ void Graphics::updateUniformBuffer(uint32_t currentImage) {
     
 void Graphics::drawFrame() {    
     std::chrono::high_resolution_clock::time_point frameStart = std::chrono::high_resolution_clock::now();
-
+    
     if (this->requiresUpdateSwapChain) {
         this->updateSwapChain();
         return;
     }
-    
+
     VkResult ret = vkWaitForFences(device, 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);
     if (ret != VK_SUCCESS) {
         this->requiresUpdateSwapChain = true;
         return;
     }
-
+    
     uint32_t imageIndex;
     ret = vkAcquireNextImageKHR(
         this->device, this->swapChain, UINT64_MAX, this->imageAvailableSemaphores[this->currentFrame], VK_NULL_HANDLE, &imageIndex);
@@ -198,6 +197,7 @@ void Graphics::drawFrame() {
     if (this->commandBuffers[imageIndex] != nullptr) {
         vkFreeCommandBuffers(this->device, this->commandPool, 1, &this->commandBuffers[imageIndex]);
     }
+
     VkCommandBuffer latestCommandBuffer = this->workerQueue.getNextCommandBuffer(imageIndex);
     std::chrono::high_resolution_clock::time_point nextBufferFetchStart = std::chrono::high_resolution_clock::now();
     while (latestCommandBuffer == nullptr) {
@@ -214,7 +214,6 @@ void Graphics::drawFrame() {
     //}
     //timer = std::chrono::high_resolution_clock::now() - nextBufferFetchStart;
     //std::cout << "Fetch Time: " << timer.count() << " | " << this->workerQueue.getNumberOfItems(imageIndex) << std::endl;
-    
     
     if (latestCommandBuffer == nullptr) return;
     this->commandBuffers[imageIndex] = latestCommandBuffer;
@@ -605,9 +604,7 @@ bool Graphics::updateSwapChain() {
     Camera::instance()->setAspectRatio(static_cast<float>(this->swapChainExtent.width) / this->swapChainExtent.height);
     
     if (!this->createCommandBuffers()) return false;
-    
-    if (!this->createSyncObjects()) return false;
-    
+        
     std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
     std::cout << "updateSwapChain: " << time_span.count() <<  std::endl;
 

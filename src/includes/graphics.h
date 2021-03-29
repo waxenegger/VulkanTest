@@ -73,7 +73,7 @@ class Graphics final {
         std::vector<const char *> vkExtensionNames;
         std::vector<VkPhysicalDevice> vkPhysicalDevices;
         std::vector<const char *> vkLayerNames = {
-           //"VK_LAYER_KHRONOS_validation"
+           "VK_LAYER_KHRONOS_validation"
         };
 
         bool showWireFrame = false;

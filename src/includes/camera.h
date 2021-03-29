@@ -1,7 +1,6 @@
 #ifndef SRC_INCLUDES_CAMERA_H_
 #define SRC_INCLUDES_CAMERA_H_
 
-#include "shared.h"
 #include "threading.h"
 #include "frustum.h"
 
