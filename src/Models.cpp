@@ -4,10 +4,6 @@ Vertex::Vertex(const glm::vec3 & position) {
     this->position = position;
 }
 
-Vertex::Vertex(const glm::vec3 & position, const glm::vec3 & color) : Vertex(position) {
-    this->color = color;
-}
-
 VkVertexInputBindingDescription Vertex::getBindingDescription() {
     VkVertexInputBindingDescription bindingDescription{};
     bindingDescription.binding = 0;
@@ -17,8 +13,8 @@ VkVertexInputBindingDescription Vertex::getBindingDescription() {
     return bindingDescription;
 }
 
-std::array<VkVertexInputAttributeDescription, 6> Vertex::getAttributeDescriptions() {
-    std::array<VkVertexInputAttributeDescription, 6> attributeDescriptions{};
+std::array<VkVertexInputAttributeDescription, 5> Vertex::getAttributeDescriptions() {
+    std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions{};
 
     attributeDescriptions[0].binding = 0;
     attributeDescriptions[0].location = 0;
@@ -28,27 +24,22 @@ std::array<VkVertexInputAttributeDescription, 6> Vertex::getAttributeDescription
     attributeDescriptions[1].binding = 0;
     attributeDescriptions[1].location = 1;
     attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[1].offset = offsetof(Vertex, color);
+    attributeDescriptions[1].offset = offsetof(Vertex, normal);
 
     attributeDescriptions[2].binding = 0;
     attributeDescriptions[2].location = 2;
-    attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[2].offset = offsetof(Vertex, normal);
+    attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+    attributeDescriptions[2].offset = offsetof(Vertex, uv);
 
     attributeDescriptions[3].binding = 0;
     attributeDescriptions[3].location = 3;
-    attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescriptions[3].offset = offsetof(Vertex, uv);
+    attributeDescriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescriptions[3].offset = offsetof(Vertex, tangent);
 
     attributeDescriptions[4].binding = 0;
     attributeDescriptions[4].location = 4;
     attributeDescriptions[4].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[4].offset = offsetof(Vertex, tangent);
-
-    attributeDescriptions[5].binding = 0;
-    attributeDescriptions[5].location = 5;
-    attributeDescriptions[5].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[5].offset = offsetof(Vertex, bitangent);
+    attributeDescriptions[4].offset = offsetof(Vertex, bitangent);
 
     return attributeDescriptions;
 }
@@ -70,10 +61,6 @@ void Vertex::setBitangent(const glm::vec3 & bitangent) {
     this->bitangent = bitangent;
 }
 
-void Vertex::setColor(const glm::vec3 & color) {
-    this->color = color;
-}
-
 glm::vec3 Vertex::getPosition() {
     return this->position;
 }
@@ -86,8 +73,10 @@ Mesh::Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> ind
     this->indices = indices;
 }
 
-Mesh::Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, const TextureInformation & textures) : Mesh(vertices, indices) {
+Mesh::Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, 
+           const TextureInformation & textures, const MaterialInformation & materials) : Mesh(vertices, indices) {
     this->textures = textures;
+    this->materials = materials;
 }
 
 const std::vector<Vertex> & Mesh::getVertices() const {
@@ -98,14 +87,16 @@ const std::vector<uint32_t> & Mesh::getIndices() const {
     return this->indices;
 }
 
-void Mesh::setColor(glm::vec3 color) {
-    for (Vertex & v : this->vertices) {
-        v.setColor(color);
-    }   
+void Mesh::setColor(glm::vec4 color) {
+    this->materials.diffuseColor = color;
 }
 
 TextureInformation Mesh::getTextureInformation() {
     return this->textures;
+}
+
+MaterialInformation Mesh::getMaterialInformation() {
+    return this->materials;
 }
 
 void Mesh::setTextureInformation(TextureInformation & textures) {
@@ -129,7 +120,7 @@ Model::Model(const std::string id, const  std::filesystem::path file) : Model(id
             aiProcess_Triangulate | aiProcess_CalcTangentSpace | aiProcess_FlipUVs | aiProcess_GenSmoothNormals);
 
     std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
-    std::cout << "assimp file read: " << time_span.count() <<  std::endl;
+    std::cout << "Read " << this->file << " in: " << time_span.count() <<  std::endl;
 
     if (scene == nullptr) {
         std::cerr << importer.GetErrorString() << std::endl;
@@ -178,16 +169,50 @@ Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
      std::vector<Vertex> vertices;
      std::vector<unsigned int> indices;
      TextureInformation textures;
+     MaterialInformation materials;
 
      if (scene->HasMaterials()) {
-         const aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
+        const aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
-         textures = this->addTextures(material);
+        std::unique_ptr<aiColor4D> ambient(new aiColor4D());
+        std::unique_ptr<aiColor4D> diffuse(new aiColor4D());
+        std::unique_ptr<aiColor4D> specular(new aiColor4D());
+        
+        float opacity = 1.0f;
+        aiGetMaterialFloat(material, AI_MATKEY_OPACITY, &opacity);
+        if (opacity > 0.0f) materials.opacity = opacity;
+        
+        const glm::vec3 nullVec3 = glm::vec3(0.0f);
+        
+        if (aiGetMaterialColor(material, AI_MATKEY_COLOR_AMBIENT, ambient.get()) == aiReturn_SUCCESS) {
+            glm::vec3 ambientVec3 = glm::vec3(ambient->r, ambient->g, ambient->b);
+            if (ambientVec3 != nullVec3) {
+                materials.ambientColor = ambientVec3;
+            }
+        };
+        if (aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, diffuse.get()) == aiReturn_SUCCESS) {
+            glm::vec3 diffuseVec3 = glm::vec3(diffuse->r, diffuse->g, diffuse->b);
+            if (diffuseVec3 != nullVec3) {
+                materials.diffuseColor = diffuseVec3;
+            }
+        };
+        if (aiGetMaterialColor(material, AI_MATKEY_COLOR_SPECULAR, specular.get()) == aiReturn_SUCCESS) {
+            glm::vec3 specularVec3 = glm::vec3(specular->r, specular->g, specular->b);
+            if (specularVec3 != nullVec3) {
+                materials.specularColor = specularVec3;
+            }
+        };
+
+        float shiny = 1.0f;
+        aiGetMaterialFloat(material, AI_MATKEY_SHININESS, &shiny);
+        if (shiny > 0.0f) materials.shininess = shiny;
+
+        textures = this->addTextures(material);
      }
      
      if (mesh->mNumVertices > 0) vertices.reserve(mesh->mNumVertices);
      for(unsigned int i = 0; i < mesh->mNumVertices; i++) {
-         Vertex vertex(glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z), glm::vec3(1.0f));
+         Vertex vertex(glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z));
 
          if (mesh->HasNormals())
              vertex.setNormal(glm::normalize(glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z)));
@@ -213,10 +238,10 @@ Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
          for(unsigned int j = 0; j < face.mNumIndices; j++) indices.push_back(face.mIndices[j]);
      }
 
-     return Mesh(vertices, indices, textures);
+     return Mesh(vertices, indices, textures, materials);
 }
 
-void Model::setColor(glm::vec3 color) {
+void Model::setColor(glm::vec4 color) {
     for (Mesh & m : this->meshes) {
         m.setColor(color);
     }
@@ -292,39 +317,39 @@ Model * Models::createPlaneModel(std::string id, VkExtent2D extent) {
 
     std::vector<Vertex> vertices;
     
-    Vertex one(glm::vec3(-w/2, -h/2, 0.0f), glm::vec3(1.0f));
+    Vertex one(glm::vec3(-w/2, -h/2, 0.0f));
     one.setUV(glm::vec2(-1.0f, 1.0f));
     one.setNormal(glm::vec3(-1, -1, zDirNormal));
     vertices.push_back(one);
 
-    Vertex two(glm::vec3(-w/2, h/2, 0.0f), glm::vec3(1.0f));
+    Vertex two(glm::vec3(-w/2, h/2, 0.0f));
     two.setUV(glm::vec2(-1.0f, 0.0f));
     two.setNormal(glm::vec3(-1, 1, zDirNormal));
     vertices.push_back(two);
 
-    Vertex three(glm::vec3(w/2, h/2, 0.0f), glm::vec3(1.0f));
+    Vertex three(glm::vec3(w/2, h/2, 0.0f));
     three.setUV(glm::vec2(0.0f, 0.0f));
     three.setNormal(glm::vec3(1, 1, zDirNormal));
     vertices.push_back(three);
 
-    Vertex four(glm::vec3(w/2, -h/2, 0.0f), glm::vec3(1.0f));
+    Vertex four(glm::vec3(w/2, -h/2, 0.0f));
     four.setUV(glm::vec2(0.0f, 1.0f));
     four.setNormal(glm::vec3(1, -1, zDirNormal));
     vertices.push_back(four);
 
-    Vertex backOne(glm::vec3(-w/2, -h/2, 0.0f), glm::vec3(1.0f));
+    Vertex backOne(glm::vec3(-w/2, -h/2, 0.0f));
     backOne.setNormal(glm::vec3(-1, -1, -zDirNormal));
     vertices.push_back(backOne);
 
-    Vertex backTwo(glm::vec3(-w/2, h/2, 0.0f), glm::vec3(1.0f));
+    Vertex backTwo(glm::vec3(-w/2, h/2, 0.0f));
     backTwo.setNormal(glm::vec3(-1, 1, -zDirNormal));
     vertices.push_back(backTwo);
 
-    Vertex backThree(glm::vec3(w/2, h/2, 0.0f), glm::vec3(1.0f));
+    Vertex backThree(glm::vec3(w/2, h/2, 0.0f));
     backThree.setNormal(glm::vec3(1, 1, -zDirNormal));
     vertices.push_back(backThree);
 
-    Vertex backFour(glm::vec3(w/2, -h/2, 0.0f), glm::vec3(1.0f));
+    Vertex backFour(glm::vec3(w/2, -h/2, 0.0f));
     backFour.setNormal(glm::vec3(1, -1, -zDirNormal));
     vertices.push_back(backFour);
 
@@ -519,7 +544,7 @@ std::vector<std::string>  Models::getModelIds() {
     return modelIds;
 }
 
-void Models::setColor(glm::vec3 color) {
+void Models::setColor(glm::vec4 color) {
     for (auto & model : this->models) {
         model->setColor(color);
     }

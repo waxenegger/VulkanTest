@@ -268,7 +268,7 @@ void Graphics::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsC
     
     auto & allModels = this->models.getModels();
     
-    for (auto & model : allModels) {        
+    for (auto & model : allModels) {
         if (modelsContentType == SSBO) {
             model->setSsboOffset(overallSize);
         }
@@ -292,12 +292,20 @@ void Graphics::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsC
                     break;
                 case SSBO:
                     TextureInformation textureInfo = mesh.getTextureInformation();
+                    MaterialInformation materialInfo = mesh.getMaterialInformation();
                     MeshProperties modelProps = { 
                         textureInfo.ambientTexture,
                         textureInfo.diffuseTexture,
                         textureInfo.specularTexture,
-                        textureInfo.normalTexture
+                        textureInfo.normalTexture,
+                        materialInfo.ambientColor,
+                        materialInfo.emissiveFactor,
+                        materialInfo.diffuseColor,
+                        materialInfo.opacity,
+                        materialInfo.specularColor,
+                        materialInfo.shininess
                     };
+                    
                     dataSize = sizeof(struct MeshProperties);             
                     if (overallSize + dataSize <= maxSize) {
                         memcpy(static_cast<char *>(data)+overallSize, &modelProps, dataSize);

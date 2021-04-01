@@ -153,7 +153,7 @@ bool Graphics::createSkyboxGraphicsPipeline() {
 
     if (this->skyBoxVertexBuffer != nullptr) {
         const VkVertexInputBindingDescription bindingDescription = Vertex::getBindingDescription();
-        const std::array<VkVertexInputAttributeDescription, 6> attributeDescriptions = Vertex::getAttributeDescriptions();
+        const std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions = Vertex::getAttributeDescriptions();
 
         vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
         vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());

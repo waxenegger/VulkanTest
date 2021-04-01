@@ -2,20 +2,25 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(location = 0) in vec3 fragPosition;
-layout(location = 1) in vec3 fragColor;
-layout(location = 2) in vec2 fragTexCoord;
-layout(location = 3) in vec3 fragNormals;
-layout(location = 4) in vec4 eye;
-layout(location = 5) in vec4 light;
+layout(location = 1) in vec2 fragTexCoord;
+layout(location = 2) in vec3 fragNormals;
+layout(location = 3) in vec4 eye;
+layout(location = 4) in vec4 light;
 
 struct MeshProperties {
     int ambientTexture;
     int diffuseTexture;
     int specularTexture;
     int normalTexture;
+    vec3 ambientColor;
+    float emissiveFactor;
+    vec3 diffuseColor;
+    float opacity;
+    vec3 specularColor;
+    float shininess;
 };
 
-layout(location = 6) flat in MeshProperties meshProperties;
+layout(location = 5) flat in MeshProperties meshProperties;
 
 layout(binding = 2) uniform sampler2D samplers[25];
 
@@ -26,20 +31,17 @@ void main() {
         meshProperties.ambientTexture != -1 || meshProperties.diffuseTexture != -1 ||
         meshProperties.specularTexture != -1 || meshProperties.normalTexture != -1;
 
+    // emissiveContribution
+    vec4 emissiveContribution = vec4(vec3(1) * meshProperties.emissiveFactor, meshProperties.opacity);
+
     // ambientContribution
-    vec4 ambientLightColor = vec4(1.0);
-    float ambientLightStrength = hasTextures ? 0.1 : 1.0;
-    vec4 ambientContribution = ambientLightColor * ambientLightStrength;
+    vec4 ambientContribution = vec4(meshProperties.ambientColor * 0.2, meshProperties.opacity);
     
     // diffuseContribution
-    vec4 diffuseLightColor = vec4(1.0);
-    float diffuseLightStrength = 1.0;
-    vec4 diffuseContribution = diffuseLightColor * diffuseLightStrength;    
+    vec4 diffuseContribution = vec4(meshProperties.diffuseColor * 0.8, meshProperties.opacity);
     
     // specularContribution
-    vec4 specularLightColor = vec4(1);
-    float specularLightStrength = 1.0;
-    vec4 specularContribution = specularLightColor * specularLightStrength;
+    vec4 specularContribution = vec4(meshProperties.specularColor * 0.4, meshProperties.opacity);
 
     // global light source
     vec3 lightDirection = normalize(vec3(light) - fragPosition);
@@ -53,12 +55,13 @@ void main() {
     
     // diffuse multiplier based on normals
     float diffuse = max(dot(normals, lightDirection), 0.1);
+    diffuseContribution = diffuseContribution * diffuse;
 
     // specular multiplier based on normals and eye direction
     vec3 eyeDirection = normalize(vec3(eye) - fragPosition);
     vec3 halfDirection = normalize(lightDirection + vec3(eye));
-    float shininess = 1;
-    float specular = pow(max(dot(normals, halfDirection), 0.1), shininess);
+    float specular = pow(max(dot(normals, halfDirection), 0.1), meshProperties.shininess);
+    specularContribution = specularContribution * specular;
     
     if (hasTextures) {
         // ambience
@@ -67,20 +70,14 @@ void main() {
         }
         
         // diffuse
-        diffuseContribution = diffuseContribution * diffuse;
         if (meshProperties.diffuseTexture != -1) {
             diffuseContribution *= texture(samplers[meshProperties.diffuseTexture], fragTexCoord);
         }
         
         // sepcular
-        specularContribution = specularContribution * specular;
         if (meshProperties.specularTexture != -1) {
             specularContribution *= texture(samplers[meshProperties.specularTexture], fragTexCoord);
         }
-    } else {
-        ambientContribution *= vec4(fragColor, 1.0);
-        diffuseContribution *= vec4(fragColor * diffuse,1.0) ;
-        specularContribution *= vec4(fragColor * specular, 1.0);
     }
     
     outColor = mix(ambientContribution, mix(specularContribution, diffuseContribution, 0.75), 0.95);

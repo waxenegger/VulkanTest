@@ -9,6 +9,12 @@ struct MeshProperties final {
         int diffuseTexture = -1;
         int specularTexture = -1;
         int normalTexture = -1;
+        glm::vec3 ambientColor = glm::vec3(1.0f);
+        float emissiveFactor = 0.1f;
+        glm::vec3 diffuseColor = glm::vec3(1.0f);
+        float opacity = 1.0f;
+        glm::vec3 specularColor = glm::vec3(1.0f);
+        float shininess = 1.0f;
 };
 
 struct ModelProperties final {
@@ -19,7 +25,6 @@ struct ModelProperties final {
 class Vertex final {
     private:
         glm::vec3 position;
-        glm::vec3 color;
         glm::vec3 normal;
         glm::vec2 uv;
         glm::vec3 tangent;
@@ -27,17 +32,25 @@ class Vertex final {
 
     public:
         Vertex(const glm::vec3 & position);
-        Vertex(const glm::vec3 & position, const glm::vec3 & color);
 
         static VkVertexInputBindingDescription getBindingDescription();
-        static std::array<VkVertexInputAttributeDescription, 6> getAttributeDescriptions();
+        static std::array<VkVertexInputAttributeDescription, 5> getAttributeDescriptions();
 
         void setUV(const glm::vec2 & uv);
         void setNormal(const glm::vec3 & normal);
         void setTangent(const glm::vec3 & tangent);
         void setBitangent(const glm::vec3 & bitangent);
-        void setColor(const glm::vec3 & color);
         glm::vec3 getPosition();
+};
+
+struct MaterialInformation final {
+    public:
+        glm::vec3 ambientColor = glm::vec3(1.0f);
+        glm::vec3 diffuseColor = glm::vec3(1.0f);
+        glm::vec3 specularColor = glm::vec3(1.0f);
+        float emissiveFactor = 0.1f;
+        float shininess = 1.0f;
+        float opacity = 1.0f;
 };
 
 struct TextureInformation final {
@@ -61,14 +74,17 @@ class Mesh final {
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
         TextureInformation textures;
+        MaterialInformation materials;
     public:
         Mesh(const std::vector<Vertex> & vertices);
         Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices);
-        Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, const TextureInformation & textures);
+        Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, 
+             const TextureInformation & textures, const MaterialInformation & materials);
         const std::vector<Vertex> & getVertices() const;
         const std::vector<uint32_t> & getIndices() const;
-        void setColor(glm::vec3 color);
+        void setColor(glm::vec4 color);
         TextureInformation getTextureInformation();
+        MaterialInformation getMaterialInformation();
         void setTextureInformation(TextureInformation & TextureInformation);
 };
 
@@ -133,7 +149,7 @@ class Model final {
         std::filesystem::path getFile();
         std::string getId();
         std::vector<Mesh> & getMeshes();
-        void setColor(glm::vec3 color);
+        void setColor(glm::vec4 color);
         TextureInformation addTextures(const aiMaterial * mat);
         void correctTexturePath(char * path);
         void setSsboOffset(VkDeviceSize offset);
@@ -153,7 +169,7 @@ class Models final {
         void addModel(Model * model);
         void addTextModel(std::string id, std::string font, std::string text, uint16_t size);
         void clear();
-        void setColor(glm::vec3 color);
+        void setColor(glm::vec4 color);
         const static std::string AMBIENT_TEXTURE;
         const static std::string DIFFUSE_TEXTURE;
         const static std::string SPECULAR_TEXTURE;

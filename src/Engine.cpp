@@ -56,13 +56,14 @@ bool Engine::loadModels() {
 
     bool ret = true; 
     
-    std::array<Model *, 6> models = {
+    std::array<Model *, 7> models = {
+        new Model("batman", this->graphics.getAppPath(MODELS) / "batman.obj"),
         new Model("teapot", this->graphics.getAppPath(MODELS) / "teapot.obj"),
         new Model("nanosuit", this->graphics.getAppPath(MODELS) / "nanosuit.obj"),
-        new Model("batman", this->graphics.getAppPath(MODELS) / "batman.obj"),
         new Model("cyborg", this->graphics.getAppPath(MODELS) / "cyborg.obj"),
         new Model("mammoth", this->graphics.getAppPath(MODELS) / "woolly-mammoth-150k.obj"),
         new Model("plane", this->graphics.getAppPath(MODELS) / "plane.obj"),
+        new Model("contraption", this->graphics.getAppPath(MODELS) / "contraption.obj"),
     };
     
     for (auto * m : models) {
@@ -90,6 +91,7 @@ bool Engine::addComponents() {
     if (!this->graphics.isActive()) return false;
     
     bool ret = true;
+
     Component * text = this->graphics.addComponentWithModel("text1", "text");
     if (text == nullptr) ret = false;
     else {
@@ -104,15 +106,15 @@ bool Engine::addComponents() {
         teapot->scale(1);
     }
 
-    for (int x=-100;x<100;x+=2) {
-        for (int z=-100;z<100;z+=2) {
+    for (int x=-1;x<1;x+=2) {
+        for (int z=-1;z<1;z+=2) {
             Component * batman = this->graphics.addComponentWithModel(
-                std::string("teatpot" + std::to_string(x) + "_" + std::to_string(z)), "cyborg");
+                std::string("batman" + std::to_string(x) + "_" + std::to_string(z)), "batman");
             if (batman == nullptr) ret = false;
             else batman->setPosition(glm::vec3(x,0,z));
         }        
     }
-
+    
     Component * nanosuit = this->graphics.addComponentWithModel("nanosuit1", "nanosuit");
     if (nanosuit == nullptr) ret = false;
     else {
@@ -124,8 +126,22 @@ bool Engine::addComponents() {
     if (mammoth == nullptr) ret = false;
     else {
         mammoth->setPosition(glm::vec3(-7, 4, 0));
-        mammoth->rotate(0, 0, 0);
         mammoth->scale(2);
+    }
+
+    Component * contraption = this->graphics.addComponentWithModel("blender1", "contraption");
+    if (contraption == nullptr) ret = false;
+    else {
+        contraption->setPosition(glm::vec3(-20, 20, -60));
+        contraption->rotate(45, 0, 45);
+        contraption->scale(2);
+    }
+
+    Component * cyborg = this->graphics.addComponentWithModel("cyborg1", "cyborg");
+    if (cyborg == nullptr) ret = false;
+    else {
+        cyborg->setPosition(glm::vec3(15, -4, 10));
+        cyborg->scale(2);
     }
 
     return ret;
@@ -142,6 +158,7 @@ void Engine::loop() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
     this->graphics.setLastTimeMeasure(start);
 
+    /*
     std::thread rotationThread([this, &quit]() {
         std::chrono::high_resolution_clock::time_point rotationStart = std::chrono::high_resolution_clock::now();
         while(!quit) {
@@ -160,7 +177,8 @@ void Engine::loop() {
         }
     });
     rotationThread.detach();
-
+    */
+    
     std::thread inputThread([this, &quit]() {
         SDL_Event e;
         bool isFullScreen = false;
