@@ -31,17 +31,16 @@ void main() {
         meshProperties.ambientTexture != -1 || meshProperties.diffuseTexture != -1 ||
         meshProperties.specularTexture != -1 || meshProperties.normalTexture != -1;
 
-    // emissiveContribution
     vec4 emissiveContribution = vec4(vec3(1) * meshProperties.emissiveFactor, meshProperties.opacity);
-
+    
     // ambientContribution
     vec4 ambientContribution = vec4(meshProperties.ambientColor * 0.2, meshProperties.opacity);
     
     // diffuseContribution
-    vec4 diffuseContribution = vec4(meshProperties.diffuseColor * 0.8, meshProperties.opacity);
+    vec4 diffuseContribution = vec4(meshProperties.diffuseColor * 2.0, meshProperties.opacity);
     
     // specularContribution
-    vec4 specularContribution = vec4(meshProperties.specularColor * 0.4, meshProperties.opacity);
+    vec4 specularContribution = vec4(meshProperties.specularColor * 1.0, meshProperties.opacity);
 
     // global light source
     vec3 lightDirection = normalize(vec3(light) - fragPosition);
@@ -80,5 +79,5 @@ void main() {
         }
     }
     
-    outColor = mix(ambientContribution, mix(specularContribution, diffuseContribution, 0.75), 0.95);
+    outColor = mix(emissiveContribution, mix(ambientContribution, mix(specularContribution, diffuseContribution, 0.75), 0.95), 0.95);
 }

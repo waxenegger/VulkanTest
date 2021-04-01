@@ -31,7 +31,7 @@ layout(push_constant) uniform PushConstants {
     mat4 matrix;
 } modelProperties;
 
-layout(binding = 1) readonly buffer SSBO {
+layout(std430, binding = 1) readonly buffer SSBO {
     MeshProperties props[];
 } meshPropertiesSSBO;
 

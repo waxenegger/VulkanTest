@@ -186,21 +186,15 @@ Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
         
         if (aiGetMaterialColor(material, AI_MATKEY_COLOR_AMBIENT, ambient.get()) == aiReturn_SUCCESS) {
             glm::vec3 ambientVec3 = glm::vec3(ambient->r, ambient->g, ambient->b);
-            if (ambientVec3 != nullVec3) {
-                materials.ambientColor = ambientVec3;
-            }
+            if (ambientVec3 != nullVec3) materials.ambientColor = ambientVec3;
         };
         if (aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, diffuse.get()) == aiReturn_SUCCESS) {
             glm::vec3 diffuseVec3 = glm::vec3(diffuse->r, diffuse->g, diffuse->b);
-            if (diffuseVec3 != nullVec3) {
-                materials.diffuseColor = diffuseVec3;
-            }
+            if (diffuseVec3 != nullVec3) materials.diffuseColor = diffuseVec3;
         };
         if (aiGetMaterialColor(material, AI_MATKEY_COLOR_SPECULAR, specular.get()) == aiReturn_SUCCESS) {
             glm::vec3 specularVec3 = glm::vec3(specular->r, specular->g, specular->b);
-            if (specularVec3 != nullVec3) {
-                materials.specularColor = specularVec3;
-            }
+            if (specularVec3 != nullVec3) materials.specularColor = specularVec3;
         };
 
         float shiny = 1.0f;
