@@ -125,7 +125,7 @@ void Camera::update(float deltaTime) {
             if (this->keys.down) position -= camFront * moveSpeed;
             if (this->keys.left) position -= glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
             if (this->keys.right) position += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
-
+            
             this->updateViewMatrix();
         }
     }
@@ -201,8 +201,8 @@ BoundingBox Camera::getBoundingBox(KeyPress key, float distance) {
     }
 
     return {
-        glm::vec3(pos.x - 0.1, pos.y - 0.1, pos.z - 0.1),
-        glm::vec3(pos.x + 0.1, pos.y + 0.1, pos.z + 0.1)
+        glm::vec3(-pos.x - 0.1, pos.y - 0.1, -pos.z - 0.1),
+        glm::vec3(-pos.x + 0.1, pos.y + 0.1, -pos.z + 0.1)
     };
 }
 

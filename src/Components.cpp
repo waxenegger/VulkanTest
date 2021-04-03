@@ -144,8 +144,8 @@ bool Components::checkCollision(BoundingBox & bbox) {
         for (auto & c : allComps) {
             BoundingBox compBbox = c->getBoundingBox();
             
-            if (c->getId().compare("text1") == 0) {
-                std::cout << "TEXT: " << c->getId() << std::endl;
+            if (c->getId().compare("blender1") == 0) {
+                std::cout << "SAT: " << c->getId() << std::endl;
                 std::cout << "model => " << compBbox.min.x << "|" << compBbox.min.y << "|" << compBbox.min.z << std::endl;
                 std::cout << "model => " << compBbox.max.x << "|" << compBbox.max.y << "|" << compBbox.max.z << std::endl;                
             }
