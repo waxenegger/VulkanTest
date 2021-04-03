@@ -298,6 +298,7 @@ class Graphics final {
         ~Graphics();
 
         std::filesystem::path getAppPath(APP_PATHS appPath);
+        bool checkCollision(BoundingBox bbox);
 };
 
 #endif

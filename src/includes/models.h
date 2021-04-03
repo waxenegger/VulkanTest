@@ -75,6 +75,7 @@ class Mesh final {
         std::vector<uint32_t> indices;
         TextureInformation textures;
         MaterialInformation materials;
+        BoundingBox bbox;
     public:
         Mesh(const std::vector<Vertex> & vertices);
         Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices);
@@ -86,6 +87,8 @@ class Mesh final {
         TextureInformation getTextureInformation();
         MaterialInformation getMaterialInformation();
         void setTextureInformation(TextureInformation & TextureInformation);
+        void setBoundingBox(BoundingBox & bbox);
+        BoundingBox & getBoundingBox();
 };
 
 class Texture final {
@@ -134,7 +137,8 @@ class Model final {
         bool loaded = false;
         VkDeviceSize ssboOffset = 0;
 
-
+        BoundingBox bbox;
+        
         void processNode(const aiNode * node, const aiScene *scene);
         Mesh processMesh(const aiMesh *mesh, const aiScene *scene);
 
@@ -154,6 +158,8 @@ class Model final {
         void correctTexturePath(char * path);
         void setSsboOffset(VkDeviceSize offset);
         VkDeviceSize getSsboOffset();
+        BoundingBox & getBoundingBox();
+        void setBoundingBox(BoundingBox bbox);
 };
 
 enum ModelsContentType {

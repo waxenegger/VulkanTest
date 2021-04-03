@@ -68,6 +68,11 @@ void Component::scale(float factor) {
     this->sceneUpdate = true;
 }
 
+std::string Component::getId() {
+    return this->id;
+}
+
+
 Component * Components::addComponent(Component * component) {
     if (component == nullptr) return nullptr;
     
@@ -130,6 +135,44 @@ std::vector<Component *> Components::getAllComponentsForModel(std::string model)
     return allMeshProperties;
 }
 
+bool Components::checkCollision(BoundingBox & bbox) {
+    std::cout << "min => " << bbox.min.x << "|" << bbox.min.y << "|" << bbox.min.z << std::endl;
+    std::cout << "max => " << bbox.max.x << "|" << bbox.max.y << "|" << bbox.max.z << std::endl;
+    
+    for (auto & allComponentsPerModel : this->components) {
+        auto & allComps = allComponentsPerModel.second;
+        for (auto & c : allComps) {
+            BoundingBox compBbox = c->getBoundingBox();
+            
+            if (c->getId().compare("text1") == 0) {
+                std::cout << "TEXT: " << c->getId() << std::endl;
+                std::cout << "model => " << compBbox.min.x << "|" << compBbox.min.y << "|" << compBbox.min.z << std::endl;
+                std::cout << "model => " << compBbox.max.x << "|" << compBbox.max.y << "|" << compBbox.max.z << std::endl;                
+            }
+            
+            bool intersectsAlongX = 
+                (bbox.min.x >= compBbox.min.x && bbox.min.x <= compBbox.max.x) ||
+                (bbox.max.x >= compBbox.min.x && bbox.max.x <= compBbox.max.x);
+            bool intersectsAlongY = 
+                (bbox.min.y >= compBbox.min.y && bbox.min.y <= compBbox.max.y) ||
+                (bbox.max.y >= compBbox.min.y && bbox.max.y <= compBbox.max.y);
+
+            bool intersectsAlongZ = 
+                (bbox.min.z >= compBbox.min.z && bbox.min.z <= compBbox.max.z) ||
+                (bbox.max.z >= compBbox.min.z && bbox.max.z <= compBbox.max.z);
+                
+            if (intersectsAlongX && intersectsAlongY && intersectsAlongZ) {
+                std::cout << "INTER MODEL: " << c->getId() << std::endl;
+                std::cout << "model => " << compBbox.min.x << "|" << compBbox.min.y << "|" << compBbox.min.z << std::endl;
+                std::cout << "model => " << compBbox.max.x << "|" << compBbox.max.y << "|" << compBbox.max.z << std::endl;                
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
 void Component::markSceneAsUpdated()
 {
     this->sceneUpdate = false;
@@ -151,3 +194,19 @@ bool Component::needsSceneUpdate()
 glm::vec3 Component::getRotation() {
     return this->rotation;
 }
+
+BoundingBox Component::getBoundingBox() {
+    BoundingBox & modelBbox = this->getModel()->getBoundingBox();
+    glm::mat4 modelMatrix = this->getModelMatrix();
+    
+    glm::mat2x4 bbox;
+    bbox[0] = modelMatrix * glm::vec4(modelBbox.min,1);
+    bbox[1] = modelMatrix * glm::vec4(modelBbox.max,1);
+    
+    return {
+        glm::vec3(bbox[0].x, bbox[0].y, bbox[0].z),
+        glm::vec3(bbox[1].x, bbox[1].y, bbox[1].z)
+    };
+}
+
+

@@ -171,7 +171,7 @@ void Engine::loop() {
         std::chrono::high_resolution_clock::time_point rotationStart = std::chrono::high_resolution_clock::now();
         while(!quit) {
             std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - rotationStart;
-            if (time_span.count() >= 25) {
+            if (time_span.count() >= 1000) {
                 auto & components = this->graphics.getComponents().getComponents();
                 for (auto & c : components) {
                     auto & allCompsPerModel =  c.second;
@@ -192,6 +192,8 @@ void Engine::loop() {
         bool isFullScreen = false;
         bool needsRestoreAfterFullScreen = false;
 
+        float walkingSpeed = 0.25;
+        
         while(!quit) {
             while (SDL_PollEvent(&e) != 0) {
                 switch(e.type) {
@@ -205,17 +207,29 @@ void Engine::loop() {
                         break;
                     case SDL_KEYDOWN:
                         switch (e.key.keysym.scancode) {
-                            case SDL_SCANCODE_W:                                    
-                                Camera::instance()->move(Camera::KeyPress::UP, true, 0.5f);
+                            case SDL_SCANCODE_W:
+                                if (!this->graphics.checkCollision(
+                                        Camera::instance()->getBoundingBox(Camera::KeyPress::UP, walkingSpeed))) {
+                                            Camera::instance()->move(Camera::KeyPress::UP, true, walkingSpeed);
+                                }
                                 break;
                             case SDL_SCANCODE_S:
-                                Camera::instance()->move(Camera::KeyPress::DOWN, true, 0.5f);
+                                if (!this->graphics.checkCollision(
+                                        Camera::instance()->getBoundingBox(Camera::KeyPress::DOWN, walkingSpeed))) {
+                                            Camera::instance()->move(Camera::KeyPress::DOWN, true, walkingSpeed);
+                                }
                                 break;
                             case SDL_SCANCODE_A:
-                                Camera::instance()->move(Camera::KeyPress::LEFT, true, 0.5f);
+                                if (!this->graphics.checkCollision(
+                                        Camera::instance()->getBoundingBox(Camera::KeyPress::LEFT, walkingSpeed))) {
+                                            Camera::instance()->move(Camera::KeyPress::LEFT, true, walkingSpeed);
+                                }
                                 break;
                             case SDL_SCANCODE_D:
-                                Camera::instance()->move(Camera::KeyPress::RIGHT, true, 0.5f);
+                                if (!this->graphics.checkCollision(
+                                        Camera::instance()->getBoundingBox(Camera::KeyPress::RIGHT, walkingSpeed))) {
+                                            Camera::instance()->move(Camera::KeyPress::RIGHT, true, walkingSpeed);
+                                }
                                 break;
                             case SDL_SCANCODE_F:
                                 this->graphics.toggleWireFrame();

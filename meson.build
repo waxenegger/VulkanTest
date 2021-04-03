@@ -4,8 +4,10 @@ WINDOWS_SDL_PATH = join_paths(meson.source_root(),'SDL2-2.0.12')
 WINDOWS_SDL_IMAGE_PATH = join_paths(meson.source_root(),'SDL2_image-2.0.5')
 WINDOWS_SDL_FONT_PATH = join_paths(meson.source_root(),'SDL2_ttf-2.0.15')
 WINDOWS_LUNAR_G_PATH = join_paths(meson.source_root(),'VulkanSDK')
-WINDOWS_ASSIMP_PATH = join_paths(meson.source_root(),'assimp')
 
+ASSIMP_PATH = join_paths(meson.source_root(),'assimp-5.0.1')
+assimpIncDir = join_paths(ASSIMP_PATH, 'include')
+assimpLibDir = join_paths(ASSIMP_PATH, 'lib')
 
 includeDir = []
 dependencies = []
@@ -19,7 +21,7 @@ if sdlDep.found()
     sdlFontDep = dependency('SDL2_ttf')
     vulkanDep = dependency('vulkan')
     glmDep = dependency('glm', required: true)
-    assimpDep = dependency('assimp', required: true)
+    assimpDep = meson.get_compiler('cpp').find_library('assimp', dirs: [assimpLibDir])
     libDlDep = meson.get_compiler('cpp').find_library('dl', required: true)
 
     dependencies = [libDlDep, threadDep, glmDep, assimpDep, sdlDep, sdlImageDep, sdlFontDep, vulkanDep]
@@ -32,8 +34,6 @@ else
     sdlFontLibDir = join_paths(WINDOWS_SDL_FONT_PATH, 'lib', 'x64')   
     sdlImageIncDir = join_paths(WINDOWS_SDL_IMAGE_PATH, 'include')
     sdlImageLibDir = join_paths(WINDOWS_SDL_IMAGE_PATH, 'lib', 'x64')
-    assimpIncDir = join_paths(WINDOWS_ASSIMP_PATH, 'include')
-    assimpLibDir = join_paths(WINDOWS_ASSIMP_PATH, 'lib')
     vulkanIncDir = join_paths(WINDOWS_LUNAR_G_PATH, 'Include')
     vulkanLibDir = join_paths(WINDOWS_LUNAR_G_PATH, 'Lib')
 
@@ -45,7 +45,7 @@ else
     sdlDep2Win = meson.get_compiler('cpp').find_library('SDL2main', dirs: [sdlLibDir])
 
     dependencies = [threadDep, assimpDepWin, sdlDepWin, sdlDep2Win, sdlImageDepWin, sdlFontDepWin, vulkanDepWin]
-    includeDir = [sdlIncDir, assimpIncDir, vulkanIncDir, sdlImageIncDir, sdlFontIncDir]
+    includeDir = [sdlIncDir, vulkanIncDir, sdlImageIncDir, sdlFontIncDir]
 endif
 
 src = [ join_paths('src','Main.cpp'), 

@@ -104,15 +104,21 @@ void Camera::translate(glm::vec3 delta) {
     this->updateViewMatrix();
 }
 
+glm::vec3 Camera::getCameraFront() {
+    glm::vec3 camFront;
+    
+    camFront.x = -cos(this->rotation.x) * sin(this->rotation.y);
+    camFront.y = sin(this->rotation.x);
+    camFront.z = cos(this->rotation.x) * cos(rotation.y);
+    camFront = glm::normalize(camFront);
+    
+    return camFront;
+}
+
 void Camera::update(float deltaTime) {
     if (type == CameraType::firstperson) {
         if (moving()) {
-            glm::vec3 camFront;
-            camFront.x = -cos(this->rotation.x) * sin(this->rotation.y);
-            camFront.y = sin(this->rotation.x);
-            camFront.z = cos(this->rotation.x) * cos(rotation.y);
-            camFront = glm::normalize(camFront);
-
+            glm::vec3 camFront = this->getCameraFront();
             float moveSpeed = deltaTime;
 
             if (this->keys.up) position += camFront * moveSpeed;
@@ -171,6 +177,33 @@ void Camera::destroy() {
 
 bool Camera::isInFrustum(glm::vec3 pos) {
     return this->frustum.checkSphere(pos, 5.0f);
+}
+
+BoundingBox Camera::getBoundingBox(KeyPress key, float distance) {
+    glm::vec3 camFront = this->getCameraFront();
+    
+    
+    glm::vec3 pos = this->position;
+    
+    switch(key) {
+        case LEFT:
+            pos -= glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * distance;
+            break;
+        case RIGHT:
+            pos += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * distance;
+            break;
+        case UP:
+            pos += camFront * distance;
+            break;
+        case DOWN:
+            pos -= camFront * distance;
+            break;
+    }
+
+    return {
+        glm::vec3(pos.x - 0.1, pos.y - 0.1, pos.z - 0.1),
+        glm::vec3(pos.x + 0.1, pos.y + 0.1, pos.z + 0.1)
+    };
 }
 
 Camera * Camera::singleton = nullptr;

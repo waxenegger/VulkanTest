@@ -508,4 +508,6 @@ void Graphics::cleanupVulkan() {
     if (this->sdlWindow != nullptr) SDL_DestroyWindow(this->sdlWindow);    
 }
 
-
+bool Graphics::checkCollision(BoundingBox bbox) {
+    return this->components.checkCollision(bbox);
+}

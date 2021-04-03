@@ -7,6 +7,11 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
+struct BoundingBox final {
+    glm::vec3 min = glm::vec3(std::numeric_limits<float>::infinity());
+    glm::vec3 max = glm::vec3(-1 * std::numeric_limits<float>::infinity());
+};
+
 struct ModelUniforms final {
     public:
         glm::mat4 viewMatrix;
@@ -29,8 +34,6 @@ class Camera
 
         glm::vec3 rotation = glm::vec3();
         glm::vec3 position = glm::vec3();
-        
-        glm::vec3 direction = glm::vec3(0.001f, 0.0f, -0.001f);
 
         float aspect = 1.0f;
         float fovy = 45.0f;
@@ -75,6 +78,8 @@ class Camera
             void destroy();
             
             bool isInFrustum(glm::vec3 pos);
+            BoundingBox getBoundingBox(KeyPress key, float distance);
+            glm::vec3 getCameraFront();
 };
 
 #endif

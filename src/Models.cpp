@@ -103,6 +103,14 @@ void Mesh::setTextureInformation(TextureInformation & textures) {
     this->textures = textures;
 }
 
+void Mesh::setBoundingBox(BoundingBox & bbox) {
+    this->bbox = bbox;
+}
+
+BoundingBox & Mesh::getBoundingBox() {
+    return this->bbox;
+}
+
 Model::Model(const std::vector< Vertex >& vertices, const std::vector< uint32_t > indices, std::string id) : Model(id)
 {
     this->file = "";
@@ -117,7 +125,7 @@ Model::Model(const std::string id, const  std::filesystem::path file) : Model(id
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
 
     const aiScene *scene = importer.ReadFile(this->file.c_str(),
-            aiProcess_Triangulate | aiProcess_CalcTangentSpace | aiProcess_FlipUVs | aiProcess_GenSmoothNormals);
+            aiProcess_Triangulate | aiProcess_GenBoundingBoxes | aiProcess_CalcTangentSpace | aiProcess_FlipUVs | aiProcess_GenSmoothNormals);
 
     std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
     std::cout << "Read " << this->file << " in: " << time_span.count() <<  std::endl;
@@ -131,6 +139,23 @@ Model::Model(const std::string id, const  std::filesystem::path file) : Model(id
         start = std::chrono::high_resolution_clock::now();
 
         this->processNode(scene->mRootNode, scene);
+        
+        glm::vec3 min(std::numeric_limits<float>::infinity());
+        glm::vec3 max(-1 * std::numeric_limits<float>::infinity());
+        
+        for (auto & m : this->meshes) {
+            min.x = std::min(m.getBoundingBox().min.x, min.x);
+            min.y = std::min(m.getBoundingBox().min.y, min.y);
+            min.z = std::min(m.getBoundingBox().min.z, min.z);
+            
+            max.x = std::max(m.getBoundingBox().max.x, max.x);
+            max.y = std::max(m.getBoundingBox().max.y, max.y);
+            max.z = std::max(m.getBoundingBox().max.z, max.z);
+        }
+        
+        this->bbox.min = min;
+        this->bbox.max = max;
+        
         this->loaded = true;
 
         std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
@@ -232,13 +257,28 @@ Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
          for(unsigned int j = 0; j < face.mNumIndices; j++) indices.push_back(face.mIndices[j]);
      }
 
-     return Mesh(vertices, indices, textures, materials);
+     Mesh m = Mesh(vertices, indices, textures, materials);
+     BoundingBox bbox = {
+       glm::vec3(mesh->mAABB.mMin.x, mesh->mAABB.mMin.y, mesh->mAABB.mMin.z),
+       glm::vec3(mesh->mAABB.mMax.x, mesh->mAABB.mMax.y, mesh->mAABB.mMax.z)
+     };
+     m.setBoundingBox(bbox);
+
+     return m;
 }
 
 void Model::setColor(glm::vec4 color) {
     for (Mesh & m : this->meshes) {
         m.setColor(color);
     }
+}
+
+BoundingBox & Model::getBoundingBox() {
+    return this->bbox;
+}
+
+void Model::setBoundingBox(BoundingBox bbox) {
+    this->bbox = bbox;
 }
 
 void Models::addModel(Model* model)
@@ -366,7 +406,29 @@ Model * Models::createPlaneModel(std::string id, VkExtent2D extent) {
     indices.push_back(5);
     indices.push_back(6);
     
-    return new Model(vertices, indices, id);
+    std::unique_ptr<Model> m = std::make_unique<Model>(vertices, indices, id);
+    
+    BoundingBox bbox;
+    
+    for (uint16_t i=0;i<4;i++) {
+        Vertex v = vertices[i];
+        glm::vec3 pos(v.getPosition());
+        
+        bbox.min.x = std::min(pos.x, bbox.min.x);
+        bbox.min.y = std::min(pos.y, bbox.min.y);
+        bbox.min.z = std::min(pos.z, bbox.min.z);
+        
+        bbox.max.x = std::max(pos.x, bbox.max.x);
+        bbox.max.y = std::max(pos.y, bbox.max.y);
+        bbox.max.z = std::max(pos.z, bbox.max.z);
+    }
+    
+    bbox.min.z -= 0.1;
+    bbox.max.z += 0.1;
+    
+    m->setBoundingBox(bbox);
+        
+    return m.release();
 }
 
 VkImageView Models::findTextureImageViewById(int id) {

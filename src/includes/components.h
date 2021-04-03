@@ -34,6 +34,8 @@ class Component final {
         glm::vec3 getRotation();
         bool isVisible();
         void setVisible(bool visible);
+        BoundingBox getBoundingBox();
+        std::string getId();
 };
 
 class Components final {
@@ -48,6 +50,7 @@ class Components final {
         ~Components();
         std::vector<Component *> getSsboComponentsThatNeedUpdate();
         bool isSceneUpdateNeeded(bool reset = true);
+        bool checkCollision(BoundingBox & bbox);
 };
 
 #endif
