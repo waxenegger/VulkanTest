@@ -164,7 +164,7 @@ VkCommandBuffer Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
 void Graphics::updateUniformBuffer(uint32_t currentImage) {
     ModelUniforms modelUniforms {};
     modelUniforms.camera = glm::vec4(Camera::instance()->getPosition(),1);
-    modelUniforms.sun = glm::vec4(0.0f, 100.0f, 100.0f, 1);
+    modelUniforms.sun = glm::vec4(0.0f, 100.0f, 0.0f, 1);
     modelUniforms.viewMatrix = Camera::instance()->getViewMatrix();
     modelUniforms.projectionMatrix = Camera::instance()->getProjectionMatrix();
 
@@ -461,7 +461,7 @@ void Graphics::draw(VkCommandBuffer & commandBuffer, bool useIndices) {
             
             auto allComponents = this->components.getAllComponentsForModel(model->getId());
             for (auto & comp : allComponents) {
-                if (!comp->isVisible() || !Camera::instance()->isInFrustum(comp->getPosition())) continue;
+                if (!comp->isVisible() || (this->useFrustumCulling && !Camera::instance()->isInFrustum(comp->getPosition()))) continue;
                 
                 ModelProperties props = { comp->getModelMatrix()};
                 

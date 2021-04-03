@@ -56,7 +56,7 @@ bool Engine::loadModels() {
 
     bool ret = true; 
     
-    std::array<Model *, 7> models = {
+    std::array<Model *, 8> models = {
         new Model("batman", this->graphics.getAppPath(MODELS) / "batman.obj"),
         new Model("teapot", this->graphics.getAppPath(MODELS) / "teapot.obj"),
         new Model("nanosuit", this->graphics.getAppPath(MODELS) / "nanosuit.obj"),
@@ -64,6 +64,7 @@ bool Engine::loadModels() {
         new Model("mammoth", this->graphics.getAppPath(MODELS) / "woolly-mammoth-150k.obj"),
         new Model("plane", this->graphics.getAppPath(MODELS) / "plane.obj"),
         new Model("contraption", this->graphics.getAppPath(MODELS) / "contraption.obj"),
+        new Model("house", this->graphics.getAppPath(MODELS) / "house.obj")
     };
     
     for (auto * m : models) {
@@ -102,16 +103,16 @@ bool Engine::addComponents() {
     Component * teapot = this->graphics.addComponentWithModel("teatpot1", "teapot");
     if (teapot == nullptr) ret = false;
     else {
-        teapot->setPosition(glm::vec3(0, 4, 0));
+        teapot->setPosition(glm::vec3(0, 6, 0));
         teapot->scale(1);
     }
 
-    for (int x=-1;x<1;x+=2) {
-        for (int z=-1;z<1;z+=2) {
+    for (int x=-10;x<10;x+=2) {
+        for (int z=-10;z<10;z+=2) {
             Component * batman = this->graphics.addComponentWithModel(
                 std::string("batman" + std::to_string(x) + "_" + std::to_string(z)), "batman");
             if (batman == nullptr) ret = false;
-            else batman->setPosition(glm::vec3(x,0,z));
+            else batman->setPosition(glm::vec3(x,1,z));
         }        
     }
     
@@ -140,8 +141,15 @@ bool Engine::addComponents() {
     Component * cyborg = this->graphics.addComponentWithModel("cyborg1", "cyborg");
     if (cyborg == nullptr) ret = false;
     else {
-        cyborg->setPosition(glm::vec3(15, -4, 10));
-        cyborg->scale(2);
+        cyborg->setPosition(glm::vec3(15, -7, 10));
+        cyborg->scale(1.5);
+    }
+
+    Component * house = this->graphics.addComponentWithModel("house1", "house");
+    if (house == nullptr) ret = false;
+    else {
+        house->setPosition(glm::vec3(15, -4, 10));
+        house->scale(2);
     }
 
     return ret;

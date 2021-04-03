@@ -9,11 +9,11 @@ struct MeshProperties final {
         int diffuseTexture = -1;
         int specularTexture = -1;
         int normalTexture = -1;
-        glm::vec3 ambientColor = glm::vec3(1.0f);
-        float emissiveFactor = 0.4f;
-        glm::vec3 diffuseColor = glm::vec3(1.0f);
+        glm::vec3 ambientColor = glm::vec3(0.2f);
+        float emissiveFactor = 0.1f;
+        glm::vec3 diffuseColor = glm::vec3(0.6f);
         float opacity = 1.0f;
-        glm::vec3 specularColor = glm::vec3(1.0f);
+        glm::vec3 specularColor = glm::vec3(0.3f);
         float shininess = 1.0f;
 };
 

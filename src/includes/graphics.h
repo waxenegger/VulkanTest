@@ -78,6 +78,7 @@ class Graphics final {
 
         bool showWireFrame = false;
         bool requiresUpdateSwapChain = false;
+        bool useFrustumCulling = false;
         
         uint16_t frameCount = 0;
         double deltaTime = 1;

@@ -31,16 +31,16 @@ void main() {
         meshProperties.ambientTexture != -1 || meshProperties.diffuseTexture != -1 ||
         meshProperties.specularTexture != -1 || meshProperties.normalTexture != -1;
 
-    vec4 emissiveContribution = vec4(vec3(1) * meshProperties.emissiveFactor, meshProperties.opacity);
+    vec3 emissiveContribution = vec3(1) * meshProperties.emissiveFactor;
     
     // ambientContribution
-    vec4 ambientContribution = vec4(meshProperties.ambientColor * 0.2, meshProperties.opacity);
+    vec3 ambientContribution = meshProperties.ambientColor;
     
     // diffuseContribution
-    vec4 diffuseContribution = vec4(meshProperties.diffuseColor * 2.0, meshProperties.opacity);
+    vec3 diffuseContribution = meshProperties.diffuseColor;
     
     // specularContribution
-    vec4 specularContribution = vec4(meshProperties.specularColor * 1.0, meshProperties.opacity);
+    vec3 specularContribution = meshProperties.specularColor;
 
     // global light source
     vec3 lightDirection = normalize(vec3(light) - fragPosition);
@@ -53,31 +53,29 @@ void main() {
     }
     
     // diffuse multiplier based on normals
-    float diffuse = max(dot(normals, lightDirection), 0.1);
-    diffuseContribution = diffuseContribution * diffuse;
+    float diffuse = max(dot(normals, lightDirection), 0);
 
     // specular multiplier based on normals and eye direction
     vec3 eyeDirection = normalize(vec3(eye) - fragPosition);
     vec3 halfDirection = normalize(lightDirection + vec3(eye));
-    float specular = pow(max(dot(normals, halfDirection), 0.1), meshProperties.shininess);
-    specularContribution = specularContribution * specular;
+    float specular = pow(max(dot(normals, halfDirection), 0), meshProperties.shininess);
     
     if (hasTextures) {
         // ambience
         if (meshProperties.ambientTexture != -1) {
-            ambientContribution *= texture(samplers[meshProperties.ambientTexture], fragTexCoord);
+            ambientContribution = texture(samplers[meshProperties.ambientTexture], fragTexCoord).rgb;
         }
         
         // diffuse
         if (meshProperties.diffuseTexture != -1) {
-            diffuseContribution *= texture(samplers[meshProperties.diffuseTexture], fragTexCoord);
+            diffuseContribution = texture(samplers[meshProperties.diffuseTexture], fragTexCoord).rgb;
         }
         
         // sepcular
         if (meshProperties.specularTexture != -1) {
-            specularContribution *= texture(samplers[meshProperties.specularTexture], fragTexCoord);
+            specularContribution = texture(samplers[meshProperties.specularTexture], fragTexCoord).rgb;
         }
     }
     
-    outColor = mix(emissiveContribution, mix(ambientContribution, mix(specularContribution, diffuseContribution, 0.75), 0.95), 0.95);
+    outColor = vec4((emissiveContribution + ambientContribution + vec3(diffuse) + vec3(specular) * specularContribution.rgb) * diffuseContribution.rgb, meshProperties.opacity);
 }
