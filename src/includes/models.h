@@ -89,6 +89,7 @@ class Mesh final {
         void setTextureInformation(TextureInformation & TextureInformation);
         void setBoundingBox(BoundingBox & bbox);
         BoundingBox & getBoundingBox();
+        void setOpacity(float opacity);
 };
 
 class Texture final {
@@ -160,6 +161,7 @@ class Model final {
         VkDeviceSize getSsboOffset();
         BoundingBox & getBoundingBox();
         void setBoundingBox(BoundingBox bbox);
+        void calculateBoundingBoxForModel(bool addBboxMesh = false);
 };
 
 enum ModelsContentType {

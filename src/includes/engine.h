@@ -1,7 +1,6 @@
 #ifndef SRC_INCLUDES_GAME_H_
 #define SRC_INCLUDES_GAME_H_
 
-
 #include "graphics.h"
 
 class Engine final {

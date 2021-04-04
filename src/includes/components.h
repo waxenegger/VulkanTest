@@ -35,6 +35,7 @@ class Component final {
         bool isVisible();
         void setVisible(bool visible);
         BoundingBox getBoundingBox();
+        glm::mat4 getRotationMatrix();
         std::string getId();
 };
 

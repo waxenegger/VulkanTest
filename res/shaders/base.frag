@@ -77,5 +77,7 @@ void main() {
         }
     }
     
-    outColor = vec4((emissiveContribution + ambientContribution + vec3(diffuse) + vec3(specular) * specularContribution.rgb) * diffuseContribution.rgb, meshProperties.opacity);
+    outColor = vec4(
+        (emissiveContribution + ambientContribution + vec3(diffuse) + vec3(specular) * specularContribution.rgb) * 
+            diffuseContribution.rgb, meshProperties.opacity);
 }

@@ -91,6 +91,10 @@ void Mesh::setColor(glm::vec4 color) {
     this->materials.diffuseColor = color;
 }
 
+void Mesh::setOpacity(float opacity) {
+    this->materials.opacity = opacity;
+}
+
 TextureInformation Mesh::getTextureInformation() {
     return this->textures;
 }
@@ -140,22 +144,8 @@ Model::Model(const std::string id, const  std::filesystem::path file) : Model(id
 
         this->processNode(scene->mRootNode, scene);
         
-        glm::vec3 min(std::numeric_limits<float>::infinity());
-        glm::vec3 max(-1 * std::numeric_limits<float>::infinity());
-        
-        for (auto & m : this->meshes) {
-            min.x = std::min(m.getBoundingBox().min.x, min.x);
-            min.y = std::min(m.getBoundingBox().min.y, min.y);
-            min.z = std::min(m.getBoundingBox().min.z, min.z);
-            
-            max.x = std::max(m.getBoundingBox().max.x, max.x);
-            max.y = std::max(m.getBoundingBox().max.y, max.y);
-            max.z = std::max(m.getBoundingBox().max.z, max.z);
-        }
-        
-        this->bbox.min = min;
-        this->bbox.max = max;
-        
+        this->calculateBoundingBoxForModel(DEBUG_BBOX);
+                
         this->loaded = true;
 
         std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
@@ -172,6 +162,73 @@ void Model::processNode(const aiNode * node, const aiScene *scene) {
     for(unsigned int i=0; i<node->mNumChildren; i++) {
         processNode(node->mChildren[i], scene);
     }
+}
+
+void Model::calculateBoundingBoxForModel(bool addBboxMesh) {
+    
+    glm::vec3 min = glm::vec3(INF);
+    glm::vec3 max = glm::vec3(NEG_INF);
+    
+    for (auto & m : this->meshes) {
+        min.x = std::min(m.getBoundingBox().min.x, min.x);
+        min.y = std::min(m.getBoundingBox().min.y, min.y);
+        min.z = std::min(m.getBoundingBox().min.z, min.z);
+        
+        max.x = std::max(m.getBoundingBox().max.x, max.x);
+        max.y = std::max(m.getBoundingBox().max.y, max.y);
+        max.z = std::max(m.getBoundingBox().max.z, max.z);
+    }        
+    
+    this->bbox.min = min;
+    this->bbox.max = max;
+    
+    if (!addBboxMesh) return;
+    
+    float padding = 0.01;
+    
+    std::vector<Vertex> bboxVertices = {
+        Vertex(glm::vec3(min.x-padding, min.y-padding, min.z-padding)),            
+        Vertex(glm::vec3(min.x-padding, max.y+padding, min.z-padding)),
+        Vertex(glm::vec3(max.x+padding, max.y+padding, min.z-padding)),
+        Vertex(glm::vec3(max.x+padding, min.y-padding, min.z-padding)),
+        Vertex(glm::vec3(min.x-padding, min.y-padding, max.z+padding)),
+        Vertex(glm::vec3(min.x-padding, max.y+padding, max.z+padding)),
+        Vertex(glm::vec3(max.x+padding, max.y+padding, max.z+padding)),
+        Vertex(glm::vec3(max.x+padding, min.y-padding, max.z+padding))
+    };
+    glm::vec3 edge1 = bboxVertices[3].getPosition() - bboxVertices[1].getPosition();
+    glm::vec3 edge2 = bboxVertices[1].getPosition() - bboxVertices[0].getPosition();
+    glm::vec cross1 = normalize(glm::cross(edge2, edge1));
+    
+    glm::vec3 edge3 = bboxVertices[6].getPosition() - bboxVertices[2].getPosition();
+    glm::vec3 edge4 = bboxVertices[6].getPosition() - bboxVertices[7].getPosition();
+    glm::vec cross2 = normalize(glm::cross(edge4, edge3));
+
+    glm::vec3 edge5 = bboxVertices[5].getPosition() - bboxVertices[1].getPosition();
+    glm::vec cross3 = normalize(glm::cross(edge5, edge1));
+    
+    bboxVertices[0].setNormal((cross1+cross3) / 2.0f);
+    bboxVertices[1].setNormal((cross1+cross3) / 2.0f);
+    bboxVertices[2].setNormal((cross1+cross2) / 2.0f);
+    bboxVertices[3].setNormal((cross1+cross2) / 2.0f);
+    bboxVertices[4].setNormal((-cross1+cross3) / 2.0f);
+    bboxVertices[5].setNormal((-cross1+cross3) / 2.0f);
+    bboxVertices[6].setNormal((-cross1+cross2) / 2.0f);
+    bboxVertices[7].setNormal((-cross1+cross2) / 2.0f);
+    
+    std::vector<uint32_t> bboxIndices = {
+        1, 3, 0, 3, 1, 2,
+        3, 2, 7, 6, 7, 2,
+        1, 0, 4, 4, 5, 1,        
+        4, 0, 7 ,7, 0, 3,
+        6, 1, 5, 6, 2, 1,        
+        5, 4, 7, 6, 5, 7
+    };
+    
+    Mesh mesh = Mesh(bboxVertices, bboxIndices);
+    mesh.setColor(glm::vec4(1.0f));
+    mesh.setOpacity(0.3);
+    this->meshes.push_back(mesh);
 }
 
 std::vector<Mesh> & Model::getMeshes() {
@@ -426,7 +483,8 @@ Model * Models::createPlaneModel(std::string id, VkExtent2D extent) {
     bbox.min.z -= 0.1;
     bbox.max.z += 0.1;
     
-    m->setBoundingBox(bbox);
+    m->getMeshes()[0].setBoundingBox(bbox);
+    m->calculateBoundingBoxForModel(DEBUG_BBOX);
         
     return m.release();
 }

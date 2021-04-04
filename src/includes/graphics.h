@@ -4,8 +4,8 @@
 #include "components.h"
 #include "utils.h"
 
-const int MAX_TEXTURES = 50;
-const int MAX_FRAMES_IN_FLIGHT = 3;
+static constexpr int MAX_TEXTURES = 50;
+static constexpr int MAX_FRAMES_IN_FLIGHT = 3;
 
 enum APP_PATHS {
     ROOT, SHADERS, MODELS, FONTS

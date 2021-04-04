@@ -28,6 +28,16 @@ glm::mat4 Component::getModelMatrix() {
     return glm::scale(transformation, glm::vec3(this->scaleFactor));   
 }
 
+glm::mat4 Component::getRotationMatrix() {
+    glm::mat4 transformation = glm::mat4(1.0f);
+
+    if (this->rotation.x != 0.0f) transformation = glm::rotate(transformation, this->rotation.x, glm::vec3(1, 0, 0));
+    if (this->rotation.y != 0.0f) transformation = glm::rotate(transformation, this->rotation.y, glm::vec3(0, 1, 0));
+    if (this->rotation.z != 0.0f) transformation = glm::rotate(transformation, this->rotation.z, glm::vec3(0, 0, 1));
+
+    return transformation;   
+}
+
 void Component::setPosition(float x, float y, float z) {
     this->setPosition(glm::vec3(x,y,z));
 }
@@ -135,33 +145,30 @@ std::vector<Component *> Components::getAllComponentsForModel(std::string model)
     return allMeshProperties;
 }
 
-bool Components::checkCollision(BoundingBox & bbox) {
-    std::cout << "min => " << bbox.min.x << "|" << bbox.min.y << "|" << bbox.min.z << std::endl;
-    std::cout << "max => " << bbox.max.x << "|" << bbox.max.y << "|" << bbox.max.z << std::endl;
-    
+bool Components::checkCollision(BoundingBox & bbox) {    
     for (auto & allComponentsPerModel : this->components) {
         auto & allComps = allComponentsPerModel.second;
         for (auto & c : allComps) {
             BoundingBox compBbox = c->getBoundingBox();
             
-            if (c->getId().compare("blender1") == 0) {
-                std::cout << "SAT: " << c->getId() << std::endl;
-                std::cout << "model => " << compBbox.min.x << "|" << compBbox.min.y << "|" << compBbox.min.z << std::endl;
-                std::cout << "model => " << compBbox.max.x << "|" << compBbox.max.y << "|" << compBbox.max.z << std::endl;                
-            }
-            
             bool intersectsAlongX = 
                 (bbox.min.x >= compBbox.min.x && bbox.min.x <= compBbox.max.x) ||
-                (bbox.max.x >= compBbox.min.x && bbox.max.x <= compBbox.max.x);
+                (bbox.max.x >= compBbox.min.x && bbox.max.x <= compBbox.max.x) ||
+                (bbox.min.x < compBbox.min.x && bbox.max.x > compBbox.max.x);
             bool intersectsAlongY = 
                 (bbox.min.y >= compBbox.min.y && bbox.min.y <= compBbox.max.y) ||
-                (bbox.max.y >= compBbox.min.y && bbox.max.y <= compBbox.max.y);
+                (bbox.max.y >= compBbox.min.y && bbox.max.y <= compBbox.max.y) ||
+                (bbox.min.y < compBbox.min.y && bbox.max.y > compBbox.max.y);
 
             bool intersectsAlongZ = 
                 (bbox.min.z >= compBbox.min.z && bbox.min.z <= compBbox.max.z) ||
-                (bbox.max.z >= compBbox.min.z && bbox.max.z <= compBbox.max.z);
+                (bbox.max.z >= compBbox.min.z && bbox.max.z <= compBbox.max.z) ||
+                (bbox.min.z < compBbox.min.z && bbox.max.z > compBbox.max.z);
                 
             if (intersectsAlongX && intersectsAlongY && intersectsAlongZ) {
+                std::cout << "min => " << bbox.min.x << "|" << bbox.min.y << "|" << bbox.min.z << std::endl;
+                std::cout << "max => " << bbox.max.x << "|" << bbox.max.y << "|" << bbox.max.z << std::endl;
+
                 std::cout << "INTER MODEL: " << c->getId() << std::endl;
                 std::cout << "model => " << compBbox.min.x << "|" << compBbox.min.y << "|" << compBbox.min.z << std::endl;
                 std::cout << "model => " << compBbox.max.x << "|" << compBbox.max.y << "|" << compBbox.max.z << std::endl;                
@@ -199,14 +206,33 @@ BoundingBox Component::getBoundingBox() {
     BoundingBox & modelBbox = this->getModel()->getBoundingBox();
     glm::mat4 modelMatrix = this->getModelMatrix();
     
-    glm::mat2x4 bbox;
-    bbox[0] = modelMatrix * glm::vec4(modelBbox.min,1);
-    bbox[1] = modelMatrix * glm::vec4(modelBbox.max,1);
-    
-    return {
-        glm::vec3(bbox[0].x, bbox[0].y, bbox[0].z),
-        glm::vec3(bbox[1].x, bbox[1].y, bbox[1].z)
+    std::vector<glm::vec4> bboxVertices = {
+        glm::vec4(modelBbox.min.x, modelBbox.min.y, modelBbox.min.z, 1),
+        glm::vec4(modelBbox.min.x, modelBbox.max.y, modelBbox.min.z, 1),
+        glm::vec4(modelBbox.max.x, modelBbox.min.y, modelBbox.min.z, 1),
+        glm::vec4(modelBbox.max.x, modelBbox.max.y, modelBbox.min.z, 1),
+        glm::vec4(modelBbox.max.x, modelBbox.min.y, modelBbox.max.z, 1),
+        glm::vec4(modelBbox.min.x, modelBbox.min.y, modelBbox.max.z, 1),
+        glm::vec4(modelBbox.min.x, modelBbox.max.y, modelBbox.max.z, 1),
+        glm::vec4(modelBbox.max.x, modelBbox.max.y, modelBbox.max.z, 1)
     };
+    
+    glm::vec3 min = glm::vec3(INF);
+    glm::vec3 max = glm::vec3(NEG_INF);
+
+    for (uint16_t i=0;i<bboxVertices.size();i++) {
+        bboxVertices[i] = modelMatrix * bboxVertices[i];
+        
+        min.x = std::min(bboxVertices[i].x, min.x);
+        min.y = std::min(bboxVertices[i].y, min.y);
+        min.z = std::min(bboxVertices[i].z, min.z);
+
+        max.x = std::max(bboxVertices[i].x, max.x);
+        max.y = std::max(bboxVertices[i].y, max.y);
+        max.z = std::max(bboxVertices[i].z, max.z);
+    }
+    
+    return { min, max };
 }
 
 

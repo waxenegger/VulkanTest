@@ -7,9 +7,14 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
+static constexpr float INF = std::numeric_limits<float>::infinity();
+static constexpr float NEG_INF = -1 * std::numeric_limits<float>::infinity();
+static constexpr glm::mat4 IDENTITY_MATRIX4 = glm::mat4(1.0f);
+
 struct BoundingBox final {
-    glm::vec3 min = glm::vec3(std::numeric_limits<float>::infinity());
-    glm::vec3 max = glm::vec3(-1 * std::numeric_limits<float>::infinity());
+    public:
+        glm::vec3 min = glm::vec3(INF);
+        glm::vec3 max = glm::vec3(NEG_INF);
 };
 
 struct ModelUniforms final {

@@ -42,5 +42,8 @@
     if (val != VK_SUCCESS) { \
         std::cerr << "Error: " << val << std::endl; \
     };
-        
+
+    
+static constexpr bool DEBUG_BBOX = true;
+
 #endif
