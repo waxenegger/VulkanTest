@@ -9,12 +9,12 @@ struct MeshProperties final {
         int diffuseTexture = -1;
         int specularTexture = -1;
         int normalTexture = -1;
-        glm::vec3 ambientColor = glm::vec3(0.2f);
+        glm::vec3 ambientColor = glm::vec3(0.1f);
         float emissiveFactor = 0.1f;
-        glm::vec3 diffuseColor = glm::vec3(0.6f);
+        glm::vec3 diffuseColor = glm::vec3(0.5f);
         float opacity = 1.0f;
         glm::vec3 specularColor = glm::vec3(0.3f);
-        float shininess = 1.0f;
+        float shininess = 10.0f;
 };
 
 struct ModelProperties final {
@@ -76,6 +76,8 @@ class Mesh final {
         TextureInformation textures;
         MaterialInformation materials;
         BoundingBox bbox;
+        bool isBbox = false;
+        std::string name = "";
     public:
         Mesh(const std::vector<Vertex> & vertices);
         Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices);
@@ -90,6 +92,10 @@ class Mesh final {
         void setBoundingBox(BoundingBox & bbox);
         BoundingBox & getBoundingBox();
         void setOpacity(float opacity);
+        bool isBoundingBox();
+        void markAsBoundingBox();
+        std::string getName();
+        void setName(std::string name);
 };
 
 class Texture final {

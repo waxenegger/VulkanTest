@@ -9,6 +9,8 @@
 
 static constexpr float INF = std::numeric_limits<float>::infinity();
 static constexpr float NEG_INF = -1 * std::numeric_limits<float>::infinity();
+static constexpr glm::vec3 INFINITY_VECTOR3 = glm::vec3(INF);
+static constexpr glm::vec3 NEGATIVE_INFINITY_VECTOR3 = glm::vec3(NEG_INF);
 static constexpr glm::mat4 IDENTITY_MATRIX4 = glm::mat4(1.0f);
 
 struct BoundingBox final {
@@ -29,7 +31,7 @@ class Camera
 {
     public:
         enum CameraType { lookat, firstperson };
-        enum KeyPress { LEFT = 0, RIGHT = 1, UP = 2, DOWN = 3};
+        enum KeyPress { LEFT = 0, RIGHT = 1, UP = 2, DOWN = 3 };
         
     private:
         Camera(glm::vec3 position);

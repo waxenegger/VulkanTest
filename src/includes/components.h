@@ -28,20 +28,19 @@ class Component final {
         void rotate(int xAxis = 0, int yAxis = 0, int zAxis = 0);
         void move(float xAxis, float yAxis, float zAxis);
         void scale(float factor);
-        glm::mat4 getModelMatrix();
+        glm::mat4 getModelMatrix(bool includeRotation = true);
         bool needsSceneUpdate();
         void markSceneAsUpdated();
         glm::vec3 getRotation();
         bool isVisible();
         void setVisible(bool visible);
-        BoundingBox getBoundingBox();
-        glm::mat4 getRotationMatrix();
         std::string getId();
 };
 
 class Components final {
     private:
         std::map<std::string, std::vector<std::unique_ptr<Component>>> components;
+        bool checkBboxIntersection(const BoundingBox & bbox1, const BoundingBox & bbox2);
 
     public:
         Component * addComponent(Component * component);

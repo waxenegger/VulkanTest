@@ -48,7 +48,9 @@ void Camera::move(KeyPress key, bool isPressed, float deltaTime)
             break;
         case DOWN:
             this->keys.down = isPressed;
-            break;            
+            break;
+        default:
+            break;
     }
     
     this->update(deltaTime);
@@ -72,7 +74,7 @@ float Camera::getFovY()
 
 void Camera::setPerspective()
 {
-    this->perspective = glm::perspective(glm::radians(this->fovy), this->aspect, 0.1f, 10000.0f);
+    this->perspective = glm::perspective(glm::radians(this->fovy), this->aspect, 0.001f, 100000.0f);
     if (this->flipY) {
         this->perspective[1][1] *= -1.0f;
     }
@@ -182,8 +184,10 @@ bool Camera::isInFrustum(glm::vec3 pos) {
 BoundingBox Camera::getBoundingBox(KeyPress key, float distance) {
     glm::vec3 camFront = this->getCameraFront();
     
-    
     glm::vec3 pos = this->position;
+    
+    float buffer = 0.1;
+    distance += buffer * 10;
     
     switch(key) {
         case LEFT:
@@ -201,8 +205,8 @@ BoundingBox Camera::getBoundingBox(KeyPress key, float distance) {
     }
 
     return {
-        glm::vec3(-pos.x - 0.1, pos.y - 0.1, -pos.z - 0.1),
-        glm::vec3(-pos.x + 0.1, pos.y + 0.1, -pos.z + 0.1)
+        glm::vec3(-pos.x - buffer, pos.y - buffer, -pos.z - buffer),
+        glm::vec3(-pos.x + buffer, pos.y + buffer, -pos.z + buffer)
     };
 }
 

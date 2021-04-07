@@ -44,6 +44,6 @@
     };
 
     
-static constexpr bool DEBUG_BBOX = true;
+static constexpr bool DEBUG_BBOX = false;
 
 #endif

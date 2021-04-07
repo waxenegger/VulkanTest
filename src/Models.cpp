@@ -95,6 +95,14 @@ void Mesh::setOpacity(float opacity) {
     this->materials.opacity = opacity;
 }
 
+std::string Mesh::getName() {
+    return this->name;
+}
+
+void Mesh::setName(std::string name) {
+    this->name = name;
+}
+
 TextureInformation Mesh::getTextureInformation() {
     return this->textures;
 }
@@ -114,6 +122,15 @@ void Mesh::setBoundingBox(BoundingBox & bbox) {
 BoundingBox & Mesh::getBoundingBox() {
     return this->bbox;
 }
+
+bool Mesh::isBoundingBox() {
+    return this->isBbox;
+}
+
+void Mesh::markAsBoundingBox() {
+    this->isBbox = true;
+}
+
 
 Model::Model(const std::vector< Vertex >& vertices, const std::vector< uint32_t > indices, std::string id) : Model(id)
 {
@@ -228,6 +245,7 @@ void Model::calculateBoundingBoxForModel(bool addBboxMesh) {
     Mesh mesh = Mesh(bboxVertices, bboxIndices);
     mesh.setColor(glm::vec4(1.0f));
     mesh.setOpacity(0.3);
+    mesh.markAsBoundingBox();
     this->meshes.push_back(mesh);
 }
 
@@ -253,6 +271,8 @@ Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
      TextureInformation textures;
      MaterialInformation materials;
 
+     const std::string name = mesh->mName.C_Str();
+     
      if (scene->HasMaterials()) {
         const aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
 
@@ -315,11 +335,13 @@ Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
      }
 
      Mesh m = Mesh(vertices, indices, textures, materials);
+     m.setName(name);
+     
      BoundingBox bbox = {
-       glm::vec3(mesh->mAABB.mMin.x, mesh->mAABB.mMin.y, mesh->mAABB.mMin.z),
-       glm::vec3(mesh->mAABB.mMax.x, mesh->mAABB.mMax.y, mesh->mAABB.mMax.z)
+        glm::vec3(mesh->mAABB.mMin.x, mesh->mAABB.mMin.y, mesh->mAABB.mMin.z),
+        glm::vec3(mesh->mAABB.mMax.x, mesh->mAABB.mMax.y, mesh->mAABB.mMax.z)
      };
-     m.setBoundingBox(bbox);
+     m.setBoundingBox(bbox);         
 
      return m;
 }

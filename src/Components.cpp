@@ -16,26 +16,18 @@ Model * Component::getModel() {
     return this->model;
 }
 
-glm::mat4 Component::getModelMatrix() {
+glm::mat4 Component::getModelMatrix(bool includeRotation) {
     glm::mat4 transformation = glm::mat4(1.0f);
 
     transformation = glm::translate(transformation, this->position);
 
-    if (this->rotation.x != 0.0f) transformation = glm::rotate(transformation, this->rotation.x, glm::vec3(1, 0, 0));
-    if (this->rotation.y != 0.0f) transformation = glm::rotate(transformation, this->rotation.y, glm::vec3(0, 1, 0));
-    if (this->rotation.z != 0.0f) transformation = glm::rotate(transformation, this->rotation.z, glm::vec3(0, 0, 1));
+    if (includeRotation) {
+        if (this->rotation.x != 0.0f) transformation = glm::rotate(transformation, this->rotation.x, glm::vec3(1, 0, 0));
+        if (this->rotation.y != 0.0f) transformation = glm::rotate(transformation, this->rotation.y, glm::vec3(0, 1, 0));
+        if (this->rotation.z != 0.0f) transformation = glm::rotate(transformation, this->rotation.z, glm::vec3(0, 0, 1));
+    }
 
     return glm::scale(transformation, glm::vec3(this->scaleFactor));   
-}
-
-glm::mat4 Component::getRotationMatrix() {
-    glm::mat4 transformation = glm::mat4(1.0f);
-
-    if (this->rotation.x != 0.0f) transformation = glm::rotate(transformation, this->rotation.x, glm::vec3(1, 0, 0));
-    if (this->rotation.y != 0.0f) transformation = glm::rotate(transformation, this->rotation.y, glm::vec3(0, 1, 0));
-    if (this->rotation.z != 0.0f) transformation = glm::rotate(transformation, this->rotation.z, glm::vec3(0, 0, 1));
-
-    return transformation;   
 }
 
 void Component::setPosition(float x, float y, float z) {
@@ -149,35 +141,64 @@ bool Components::checkCollision(BoundingBox & bbox) {
     for (auto & allComponentsPerModel : this->components) {
         auto & allComps = allComponentsPerModel.second;
         for (auto & c : allComps) {
-            BoundingBox compBbox = c->getBoundingBox();
+            BoundingBox compBbox = c->getModel()->getBoundingBox();
             
-            bool intersectsAlongX = 
-                (bbox.min.x >= compBbox.min.x && bbox.min.x <= compBbox.max.x) ||
-                (bbox.max.x >= compBbox.min.x && bbox.max.x <= compBbox.max.x) ||
-                (bbox.min.x < compBbox.min.x && bbox.max.x > compBbox.max.x);
-            bool intersectsAlongY = 
-                (bbox.min.y >= compBbox.min.y && bbox.min.y <= compBbox.max.y) ||
-                (bbox.max.y >= compBbox.min.y && bbox.max.y <= compBbox.max.y) ||
-                (bbox.min.y < compBbox.min.y && bbox.max.y > compBbox.max.y);
-
-            bool intersectsAlongZ = 
-                (bbox.min.z >= compBbox.min.z && bbox.min.z <= compBbox.max.z) ||
-                (bbox.max.z >= compBbox.min.z && bbox.max.z <= compBbox.max.z) ||
-                (bbox.min.z < compBbox.min.z && bbox.max.z > compBbox.max.z);
+            if (compBbox.min == INFINITY_VECTOR3 || compBbox.max == NEGATIVE_INFINITY_VECTOR3) continue;
+            
+            const glm::mat4 inverseModelMatrix = glm::inverse(c->getModelMatrix(true));
+            BoundingBox inverseModelBbox = {
+                inverseModelMatrix * glm::vec4(bbox.min,1),
+                inverseModelMatrix * glm::vec4(bbox.max,1)
+            };
+            inverseModelBbox.min.x = std::min(inverseModelBbox.min.x, inverseModelBbox.max.x);
+            inverseModelBbox.min.y = std::min(inverseModelBbox.min.y, inverseModelBbox.max.y);
+            inverseModelBbox.min.z = std::min(inverseModelBbox.min.z, inverseModelBbox.max.z);
+            inverseModelBbox.max.x = std::min(inverseModelBbox.min.x, inverseModelBbox.max.x);
+            inverseModelBbox.max.y = std::min(inverseModelBbox.min.y, inverseModelBbox.max.y);
+            inverseModelBbox.max.z = std::min(inverseModelBbox.min.z, inverseModelBbox.max.z);
+            
+            if (this->checkBboxIntersection(inverseModelBbox, compBbox)) {
+                bool hitBBox = false;
                 
-            if (intersectsAlongX && intersectsAlongY && intersectsAlongZ) {
-                std::cout << "min => " << bbox.min.x << "|" << bbox.min.y << "|" << bbox.min.z << std::endl;
-                std::cout << "max => " << bbox.max.x << "|" << bbox.max.y << "|" << bbox.max.z << std::endl;
-
-                std::cout << "INTER MODEL: " << c->getId() << std::endl;
-                std::cout << "model => " << compBbox.min.x << "|" << compBbox.min.y << "|" << compBbox.min.z << std::endl;
-                std::cout << "model => " << compBbox.max.x << "|" << compBbox.max.y << "|" << compBbox.max.z << std::endl;                
-                return true;
+                for (auto & m : c->getModel()->getMeshes()) {
+                    if (m.isBoundingBox()) continue;
+                    
+                    compBbox = m.getBoundingBox();
+                    
+                    if (this->checkBboxIntersection(inverseModelBbox, compBbox)) {
+                        if (m.getName().compare("opening") == 0 ||
+                            m.getName().compare("inside") == 0
+                        ) {
+                            return false;
+                        }
+                        hitBBox = true;
+                    }
+                }
+                
+                if (hitBBox) return true;
             }
         }
     }
     
     return false;
+}
+
+bool Components::checkBboxIntersection(const BoundingBox & bbox1, const BoundingBox & bbox2) {
+    bool intersectsAlongX = 
+        (bbox1.min.x >= bbox2.min.x && bbox1.min.x <= bbox2.max.x) ||
+        (bbox1.max.x >= bbox2.min.x && bbox1.max.x <= bbox2.max.x) ||
+        (bbox1.min.x < bbox2.min.x && bbox1.max.x > bbox2.max.x);
+    bool intersectsAlongY = 
+        (bbox1.min.y >= bbox2.min.y && bbox1.min.y <= bbox2.max.y) ||
+        (bbox1.max.y >= bbox2.min.y && bbox1.max.y <= bbox2.max.y) ||
+        (bbox1.min.y < bbox2.min.y && bbox1.max.y > bbox2.max.y);
+
+    bool intersectsAlongZ = 
+        (bbox1.min.z >= bbox2.min.z && bbox1.min.z <= bbox2.max.z) ||
+        (bbox1.max.z >= bbox2.min.z && bbox1.max.z <= bbox2.max.z) ||
+        (bbox1.min.z < bbox2.min.z && bbox1.max.z > bbox2.max.z);
+   
+    return intersectsAlongX && intersectsAlongY && intersectsAlongZ;
 }
 
 void Component::markSceneAsUpdated()
@@ -201,38 +222,4 @@ bool Component::needsSceneUpdate()
 glm::vec3 Component::getRotation() {
     return this->rotation;
 }
-
-BoundingBox Component::getBoundingBox() {
-    BoundingBox & modelBbox = this->getModel()->getBoundingBox();
-    glm::mat4 modelMatrix = this->getModelMatrix();
-    
-    std::vector<glm::vec4> bboxVertices = {
-        glm::vec4(modelBbox.min.x, modelBbox.min.y, modelBbox.min.z, 1),
-        glm::vec4(modelBbox.min.x, modelBbox.max.y, modelBbox.min.z, 1),
-        glm::vec4(modelBbox.max.x, modelBbox.min.y, modelBbox.min.z, 1),
-        glm::vec4(modelBbox.max.x, modelBbox.max.y, modelBbox.min.z, 1),
-        glm::vec4(modelBbox.max.x, modelBbox.min.y, modelBbox.max.z, 1),
-        glm::vec4(modelBbox.min.x, modelBbox.min.y, modelBbox.max.z, 1),
-        glm::vec4(modelBbox.min.x, modelBbox.max.y, modelBbox.max.z, 1),
-        glm::vec4(modelBbox.max.x, modelBbox.max.y, modelBbox.max.z, 1)
-    };
-    
-    glm::vec3 min = glm::vec3(INF);
-    glm::vec3 max = glm::vec3(NEG_INF);
-
-    for (uint16_t i=0;i<bboxVertices.size();i++) {
-        bboxVertices[i] = modelMatrix * bboxVertices[i];
-        
-        min.x = std::min(bboxVertices[i].x, min.x);
-        min.y = std::min(bboxVertices[i].y, min.y);
-        min.z = std::min(bboxVertices[i].z, min.z);
-
-        max.x = std::max(bboxVertices[i].x, max.x);
-        max.y = std::max(bboxVertices[i].y, max.y);
-        max.z = std::max(bboxVertices[i].z, max.z);
-    }
-    
-    return { min, max };
-}
-
 
