@@ -11,7 +11,7 @@ struct MeshProperties final {
         int normalTexture = -1;
         glm::vec3 ambientColor = glm::vec3(0.1f);
         float emissiveFactor = 0.1f;
-        glm::vec3 diffuseColor = glm::vec3(0.5f);
+        glm::vec3 diffuseColor = glm::vec3(0.8f);
         float opacity = 1.0f;
         glm::vec3 specularColor = glm::vec3(0.3f);
         float shininess = 10.0f;

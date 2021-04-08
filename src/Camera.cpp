@@ -186,8 +186,7 @@ BoundingBox Camera::getBoundingBox(KeyPress key, float distance) {
     
     glm::vec3 pos = this->position;
     
-    float buffer = 0.1;
-    distance += buffer * 10;
+    float buffer = 0.15;
     
     switch(key) {
         case LEFT:
@@ -203,10 +202,15 @@ BoundingBox Camera::getBoundingBox(KeyPress key, float distance) {
             pos -= camFront * distance;
             break;
     }
-
+    
+    glm::vec3 deltaPos = pos - this->position;
+    if (glm::abs(deltaPos.x) < buffer) deltaPos.x < 0 ? pos.x-= buffer + deltaPos.x : pos.x+= buffer - deltaPos.x;
+    if (glm::abs(deltaPos.y) < buffer) deltaPos.y < 0 ? pos.y-= buffer + deltaPos.y : pos.y+= buffer - deltaPos.y; 
+    if (glm::abs(deltaPos.z) < buffer) deltaPos.z < 0 ? pos.z-= buffer + deltaPos.z : pos.z+= buffer - deltaPos.z; 
+    
     return {
-        glm::vec3(-pos.x - buffer, pos.y - buffer, -pos.z - buffer),
-        glm::vec3(-pos.x + buffer, pos.y + buffer, -pos.z + buffer)
+        glm::vec3(-pos.x, pos.y, -pos.z),
+        glm::vec3(-pos.x, pos.y, -pos.z)
     };
 }
 

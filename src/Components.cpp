@@ -167,8 +167,7 @@ bool Components::checkCollision(BoundingBox & bbox) {
                     
                     if (this->checkBboxIntersection(inverseModelBbox, compBbox)) {
                         if (m.getName().compare("opening") == 0 ||
-                            m.getName().compare("inside") == 0
-                        ) {
+                            m.getName().compare("inside") == 0) {
                             return false;
                         }
                         hitBBox = true;
@@ -187,16 +186,17 @@ bool Components::checkBboxIntersection(const BoundingBox & bbox1, const Bounding
     bool intersectsAlongX = 
         (bbox1.min.x >= bbox2.min.x && bbox1.min.x <= bbox2.max.x) ||
         (bbox1.max.x >= bbox2.min.x && bbox1.max.x <= bbox2.max.x) ||
-        (bbox1.min.x < bbox2.min.x && bbox1.max.x > bbox2.max.x);
+        (bbox1.min.x <= bbox2.min.x && bbox1.max.x >= bbox2.max.x);
+        
     bool intersectsAlongY = 
         (bbox1.min.y >= bbox2.min.y && bbox1.min.y <= bbox2.max.y) ||
         (bbox1.max.y >= bbox2.min.y && bbox1.max.y <= bbox2.max.y) ||
-        (bbox1.min.y < bbox2.min.y && bbox1.max.y > bbox2.max.y);
+        (bbox1.min.y <= bbox2.min.y && bbox1.max.y >= bbox2.max.y);
 
     bool intersectsAlongZ = 
         (bbox1.min.z >= bbox2.min.z && bbox1.min.z <= bbox2.max.z) ||
         (bbox1.max.z >= bbox2.min.z && bbox1.max.z <= bbox2.max.z) ||
-        (bbox1.min.z < bbox2.min.z && bbox1.max.z > bbox2.max.z);
+        (bbox1.min.z <= bbox2.min.z && bbox1.max.z >= bbox2.max.z);
    
     return intersectsAlongX && intersectsAlongY && intersectsAlongZ;
 }
