@@ -114,6 +114,20 @@ VkCommandBuffer Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
     if (this->requiresUpdateSwapChain) return nullptr;
     
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+        
+    if (this->hasSkybox) {
+        vkCmdBindDescriptorSets(
+            commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+            this->skyboxGraphicsPipelineLayout, 0, 1, &this->skyboxDescriptorSets[commandBufferIndex], 0, nullptr);
+    
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->skyboxGraphicsPipeline);
+
+        VkDeviceSize offsets[] = {0};
+        VkBuffer vertexBuffers[] = {this->skyBoxVertexBuffer};
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        
+        vkCmdDraw(commandBuffer, SKYBOX_VERTICES.size(), 1, 0, 0);
+    }
 
     if (this->hasTerrain) {
         vkCmdBindDescriptorSets(
@@ -128,21 +142,7 @@ VkCommandBuffer Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
         
         vkCmdDraw(commandBuffer, this->terrainVertices.size(), 1, 0, 0);
     }
-    
-    if (this->hasSkybox) {
-        vkCmdBindDescriptorSets(
-            commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-            this->skyboxGraphicsPipelineLayout, 0, 1, &this->skyboxDescriptorSets[commandBufferIndex], 0, nullptr);
-    
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->skyboxGraphicsPipeline);
 
-        VkDeviceSize offsets[] = {0};
-        VkBuffer vertexBuffers[] = {this->skyBoxVertexBuffer};
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        
-        vkCmdDraw(commandBuffer, SKYBOX_VERTICES.size(), 1, 0, 0);
-    }
-    
     if (this->graphicsPipeline != nullptr && !this->requiresUpdateSwapChain) {
         if (this->vertexBuffer != nullptr) {
             vkCmdBindDescriptorSets(
