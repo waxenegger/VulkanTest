@@ -1,6 +1,6 @@
 #include "includes/graphics.h"
 
-bool Graphics::createSkyboxDescriptorPool() {
+bool Graphics::createTerrainDescriptorPool() {
     std::array<VkDescriptorPoolSize, 2> poolSizes{};
 
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -14,17 +14,17 @@ bool Graphics::createSkyboxDescriptorPool() {
     poolInfo.pPoolSizes = poolSizes.data();
     poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size());
 
-    VkResult ret = vkCreateDescriptorPool(device, &poolInfo, nullptr, &this->skyboxDescriptorPool);
+    VkResult ret = vkCreateDescriptorPool(device, &poolInfo, nullptr, &this->terrainDescriptorPool);
     ASSERT_VULKAN(ret);
     if (ret != VK_SUCCESS) {
-       std::cerr << "Failed to Create Skybox Descriptor Pool!" << std::endl;
+       std::cerr << "Failed to Create Terrain Descriptor Pool!" << std::endl;
        return false;
     }
     
     return true;
 }
 
-bool Graphics::createSkyboxDescriptorSetLayout() {
+bool Graphics::createTerrainDescriptorSetLayout() {
     std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
 
     VkDescriptorSetLayoutBinding modelUniformLayoutBinding{};
@@ -35,51 +35,38 @@ bool Graphics::createSkyboxDescriptorSetLayout() {
     modelUniformLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     layoutBindings.push_back(modelUniformLayoutBinding);
 
-    VkDescriptorSetLayoutBinding samplersLayoutBinding{};
-    samplersLayoutBinding.binding = 1;
-    samplersLayoutBinding.descriptorCount = 1;
-    samplersLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    samplersLayoutBinding.pImmutableSamplers = nullptr;
-    samplersLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    layoutBindings.push_back(samplersLayoutBinding);
-
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     layoutInfo.bindingCount = layoutBindings.size();
     layoutInfo.pBindings = layoutBindings.data();
 
-    VkResult ret = vkCreateDescriptorSetLayout(this->device, &layoutInfo, nullptr, &this->skyboxDescriptorSetLayout);
+    VkResult ret = vkCreateDescriptorSetLayout(this->device, &layoutInfo, nullptr, &this->terrainDescriptorSetLayout);
     ASSERT_VULKAN(ret);
     if (ret != VK_SUCCESS) {
-        std::cerr << "Failed to Create Descriptor Set Layout!" << std::endl;
+        std::cerr << "Failed to Create Terrain Descriptor Set Layout!" << std::endl;
         return false;
     }
     
     return true;
 }
 
-bool Graphics::createSkyboxDescriptorSets() {
-    std::vector<VkDescriptorSetLayout> layouts(this->swapChainImages.size(), this->skyboxDescriptorSetLayout);
+bool Graphics::createTerrainDescriptorSets() {
+    std::vector<VkDescriptorSetLayout> layouts(this->swapChainImages.size(), this->terrainDescriptorSetLayout);
     
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool = this->skyboxDescriptorPool;
+    allocInfo.descriptorPool = this->terrainDescriptorPool;
     allocInfo.descriptorSetCount = static_cast<uint32_t>(this->swapChainImages.size());
     allocInfo.pSetLayouts = layouts.data();
 
-    this->skyboxDescriptorSets.resize(this->swapChainImages.size());
-    VkResult ret = vkAllocateDescriptorSets(this->device, &allocInfo, this->skyboxDescriptorSets.data());
+    this->terrainDescriptorSets.resize(this->swapChainImages.size());
+    VkResult ret = vkAllocateDescriptorSets(this->device, &allocInfo, this->terrainDescriptorSets.data());
     if (ret != VK_SUCCESS) {
-        std::cerr << "Failed to Allocate Skybox Descriptor Sets!" << std::endl;
+        std::cerr << "Failed to Allocate Terrain Descriptor Sets!" << std::endl;
         return false;
     }
 
-    VkDescriptorImageInfo descriptorImageInfo;
-    descriptorImageInfo.sampler = this->skyboxSampler;
-    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    descriptorImageInfo.imageView = this->skyboxImageView;
-
-    for (size_t i = 0; i < this->skyboxDescriptorSets.size(); i++) {
+    for (size_t i = 0; i < this->terrainDescriptorSets.size(); i++) {
         VkDescriptorBufferInfo uniformBufferInfo{};
         uniformBufferInfo.buffer = this->uniformBuffers[i];
         uniformBufferInfo.offset = 0;
@@ -89,7 +76,7 @@ bool Graphics::createSkyboxDescriptorSets() {
 
         VkWriteDescriptorSet uniformDescriptorSet = {};
         uniformDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        uniformDescriptorSet.dstSet = this->skyboxDescriptorSets[i];
+        uniformDescriptorSet.dstSet = this->terrainDescriptorSets[i];
         uniformDescriptorSet.dstBinding = 0;
         uniformDescriptorSet.dstArrayElement = 0;
         uniformDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -97,15 +84,6 @@ bool Graphics::createSkyboxDescriptorSets() {
         uniformDescriptorSet.pBufferInfo = &uniformBufferInfo;
         descriptorWrites.push_back(uniformDescriptorSet);
         
-        VkWriteDescriptorSet samplerDescriptorSet = {};
-        samplerDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        samplerDescriptorSet.dstBinding = 1;
-        samplerDescriptorSet.dstArrayElement = 0;
-        samplerDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        samplerDescriptorSet.descriptorCount = 1;
-        samplerDescriptorSet.pImageInfo = &descriptorImageInfo;
-        samplerDescriptorSet.dstSet = this->skyboxDescriptorSets[i];
-        descriptorWrites.push_back(samplerDescriptorSet);
 
         vkUpdateDescriptorSets(this->device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
@@ -113,45 +91,45 @@ bool Graphics::createSkyboxDescriptorSets() {
     return true;
 }
 
-bool Graphics::createSkyboxShaderStageInfo() {
+bool Graphics::createTerrainShaderStageInfo() {
     std::vector<char> vertShaderCode;
     std::vector<char> fragShaderCode;
-    if (!Utils::readFile(this->getAppPath(SHADERS) / "skybox_vert.spv", vertShaderCode) ||
-            !Utils::readFile(this->getAppPath(SHADERS) / "skybox_frag.spv", fragShaderCode)) {
+    if (!Utils::readFile(this->getAppPath(SHADERS) / "terrain_vert.spv", vertShaderCode) ||
+            !Utils::readFile(this->getAppPath(SHADERS) / "terrain_frag.spv", fragShaderCode)) {
         std::cerr << "Failed to read shader files: " << this->getAppPath(SHADERS) << std::endl;
         return false;
     }
 
-    this->skyboxVertShaderModule = this->createShaderModule(vertShaderCode);
-    if (skyboxVertShaderModule == nullptr) return false;
-    this->skyboxFragShaderModule = this->createShaderModule(fragShaderCode);
-    if (this->skyboxFragShaderModule == nullptr) return false;
+    this->terrainVertShaderModule = this->createShaderModule(vertShaderCode);
+    if (this->terrainVertShaderModule == nullptr) return false;
+    this->terrainFragShaderModule = this->createShaderModule(fragShaderCode);
+    if (this->terrainFragShaderModule == nullptr) return false;
     
     VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
     vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertShaderStageInfo.module = this->skyboxVertShaderModule;
+    vertShaderStageInfo.module = this->terrainVertShaderModule;
     vertShaderStageInfo.pName = "main";
 
     VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
     fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragShaderStageInfo.module = this->skyboxFragShaderModule;
+    fragShaderStageInfo.module = this->terrainFragShaderModule;
     fragShaderStageInfo.pName = "main";
 
-    this->skyboxShaderStageInfo[0] = vertShaderStageInfo;
-    this->skyboxShaderStageInfo[1] = fragShaderStageInfo;
+    this->terrainShaderStageInfo[0] = vertShaderStageInfo;
+    this->terrainShaderStageInfo[1] = fragShaderStageInfo;
     
     return true;
 }
 
-bool Graphics::createSkyboxGraphicsPipeline() {
+bool Graphics::createTerrainGraphicsPipeline() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
     
     VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {};
     vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-    if (this->skyBoxVertexBuffer != nullptr) {
+    if (this->terrainVertexBuffer != nullptr) {
         const VkVertexInputBindingDescription bindingDescription = Vertex::getBindingDescription();
         const std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions = Vertex::getAttributeDescriptions();
 
@@ -228,20 +206,20 @@ bool Graphics::createSkyboxGraphicsPipeline() {
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.pSetLayouts = &this->skyboxDescriptorSetLayout;
+    pipelineLayoutInfo.pSetLayouts = &this->terrainDescriptorSetLayout;
     pipelineLayoutInfo.setLayoutCount = 1;
 
-    VkResult ret = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->skyboxGraphicsPipelineLayout);
+    VkResult ret = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->terrainGraphicsPipelineLayout);
     ASSERT_VULKAN(ret);
     if (ret != VK_SUCCESS) {
-        std::cerr << "Failed to Create Skybox Pipeline Layout!" << std::endl;
+        std::cerr << "Failed to Create Terrain Pipeline Layout!" << std::endl;
         return false;
     }
 
     VkGraphicsPipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineInfo.stageCount = static_cast<uint32_t>(this->skyboxShaderStageInfo.size());
-    pipelineInfo.pStages = this->skyboxShaderStageInfo.data();
+    pipelineInfo.stageCount = static_cast<uint32_t>(this->terrainShaderStageInfo.size());
+    pipelineInfo.pStages = this->terrainShaderStageInfo.data();
     pipelineInfo.pVertexInputState = &vertexInputCreateInfo;
     pipelineInfo.pInputAssemblyState = &inputAssembly;
     pipelineInfo.pViewportState = &viewportState;
@@ -249,116 +227,57 @@ bool Graphics::createSkyboxGraphicsPipeline() {
     pipelineInfo.pMultisampleState = &multisampling;
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDepthStencilState = &depthStencil;
-    pipelineInfo.layout = this->skyboxGraphicsPipelineLayout;
+    pipelineInfo.layout = this->terrainGraphicsPipelineLayout;
     pipelineInfo.renderPass = this->renderPass;
     pipelineInfo.subpass = 0;
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-    ret = vkCreateGraphicsPipelines(this->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &this->skyboxGraphicsPipeline);
+    ret = vkCreateGraphicsPipelines(this->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &this->terrainGraphicsPipeline);
     ASSERT_VULKAN(ret);
 
     if (ret != VK_SUCCESS) {
-        std::cerr << "Failed to Create Skybox Graphics Pipeline!" << std::endl;
+        std::cerr << "Failed to Create Terrain Graphics Pipeline!" << std::endl;
         return false;
     }
 
     std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
-    std::cout << "createSkyboxGraphicsPipeline: " << time_span.count() <<  std::endl;
+    std::cout << "createTerrainGraphicsPipeline: " << time_span.count() <<  std::endl;
 
     return true;
 }
 
-bool Graphics::createSkybox() {
-    std::array<std::string, 6> skyboxCubeImageLocations = {
-        "sky_right.png", "sky_left.png", "sky_top.png", "sky_bottom.png", "sky_front.png", "sky_back.png" 
-    };
-    std::vector<std::unique_ptr<Texture>> skyboxCubeTextures;
-
-    for (auto & s : skyboxCubeImageLocations) {
-        std::unique_ptr<Texture> texture = std::make_unique<Texture>();
-        texture->setPath(this->getAppPath(MODELS) / s);
-        texture->load();
-        if (texture->isValid()) {
-            skyboxCubeTextures.push_back(std::move(texture));
-        }            
-    }
+bool Graphics::createTerrain() {
+    if (this->terrainVertexBuffer != nullptr) vkDestroyBuffer(this->device, this->terrainVertexBuffer, nullptr);
+    if (this->terrainVertexBufferMemory != nullptr) vkFreeMemory(this->device, this->terrainVertexBufferMemory, nullptr);
     
-    if (skyboxCubeTextures.size() != 6) return false;
-
-    VkDeviceSize bufferSize = SKYBOX_VERTICES.size() * sizeof(class Vertex);
+    VkDeviceSize bufferSize = this->terrainVertices.size() * sizeof(class Vertex);
     
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     if (!this->createBuffer(bufferSize,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             stagingBuffer, stagingBufferMemory)) {
-        std::cerr << "Failed to get Create Skybox Staging Buffer" << std::endl;
+        std::cerr << "Failed to get Create Terrain Staging Buffer" << std::endl;
         return false;
     }
 
     void* data = nullptr;
     vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, SKYBOX_VERTICES.data(), bufferSize);
+    memcpy(data, this->terrainVertices.data(), bufferSize);
     vkUnmapMemory(this->device, stagingBufferMemory);
 
     if (!this->createBuffer(
             bufferSize,
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            this->skyBoxVertexBuffer, this->skyBoxVertexBufferMemory)) {
-        std::cerr << "Failed to get Create Skybox Vertex Buffer" << std::endl;
+            this->terrainVertexBuffer, this->terrainVertexBufferMemory)) {
+        std::cerr << "Failed to get Create Terrain Vertex Buffer" << std::endl;
         return false;
     }
 
-    this->copyBuffer(stagingBuffer,this->skyBoxVertexBuffer, bufferSize);
+    this->copyBuffer(stagingBuffer,this->terrainVertexBuffer, bufferSize);
 
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
-    
-    stagingBuffer = nullptr;
-    stagingBufferMemory = nullptr;
-    VkDeviceSize skyboxCubeSize = skyboxCubeTextures.size() * skyboxCubeTextures[0]->getSize();
-    
-    if (!this->createBuffer(
-        skyboxCubeSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory)) {
-            std::cerr << "Failed to Create Skybox Staging Buffer" << std::endl;
-            return false;
-    }
-
-    data = nullptr;
-    VkDeviceSize offset = 0;
-    vkMapMemory(device, stagingBufferMemory, 0, skyboxCubeSize, 0, &data);
-    for (auto & tex : skyboxCubeTextures) {
-        memcpy(static_cast<char *>(data) + offset, tex->getPixels(), tex->getSize());
-        offset += tex->getSize();
-    }
-    vkUnmapMemory(device, stagingBufferMemory);
-
-    if (!this->createImage(
-        skyboxCubeTextures[0]->getWidth(), skyboxCubeTextures[0]->getHeight(), skyboxCubeTextures[0]->getImageFormat(), 
-        VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-        this->skyboxCubeImage, this->skyboxCubeImageMemory, skyboxCubeTextures.size())) {
-            std::cerr << "Failed to Create Skybox Image" << std::endl;
-            return false;
-    }
-
-    transitionImageLayout(
-        this->skyboxCubeImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, skyboxCubeTextures.size());
-    
-    this->copyBufferToImage(
-        stagingBuffer, this->skyboxCubeImage, skyboxCubeTextures[0]->getWidth(), skyboxCubeTextures[0]->getHeight(), skyboxCubeTextures.size());
-    
-    transitionImageLayout(
-        this->skyboxCubeImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, skyboxCubeTextures.size());
-
-    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
-    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
-    
-    this->skyboxImageView = 
-        this->createImageView(this->skyboxCubeImage, skyboxCubeTextures[0]->getImageFormat(), VK_IMAGE_ASPECT_COLOR_BIT, skyboxCubeTextures.size());
-    if (this->skyboxImageView == nullptr) {
-        std::cerr << "Failed to Create Skybox Image View!" << std::endl;
-        return false;
-    }
 
     return true;
 }

@@ -114,6 +114,20 @@ VkCommandBuffer Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
     if (this->requiresUpdateSwapChain) return nullptr;
     
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    if (this->hasTerrain) {
+        vkCmdBindDescriptorSets(
+            commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+            this->terrainGraphicsPipelineLayout, 0, 1, &this->terrainDescriptorSets[commandBufferIndex], 0, nullptr);
+    
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->terrainGraphicsPipeline);
+
+        VkDeviceSize offsets[] = {0};
+        VkBuffer vertexBuffers[] = {this->terrainVertexBuffer};
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        
+        vkCmdDraw(commandBuffer, this->terrainVertices.size(), 1, 0, 0);
+    }
     
     if (this->hasSkybox) {
         vkCmdBindDescriptorSets(
@@ -596,6 +610,10 @@ bool Graphics::updateSwapChain() {
     if (!this->createSwapChain()) return false;
     if (!this->createImageViews()) return false;
     if (!this->createRenderPass()) return false;
+
+    if (this->hasTerrain) {
+        if (!this->createTerrainGraphicsPipeline()) return false;
+    }
     
     if (this->hasSkybox) {
         if (!this->createSkyboxGraphicsPipeline()) return false;

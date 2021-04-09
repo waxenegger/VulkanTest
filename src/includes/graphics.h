@@ -88,6 +88,9 @@ class Graphics final {
         VkDevice device = nullptr;
 
         bool hasSkybox = false;
+        bool hasTerrain = false;
+        
+        std::vector<Vertex> terrainVertices;
         
         uint32_t graphicsQueueIndex = -1;
         VkQueue graphicsQueue = nullptr;
@@ -109,16 +112,19 @@ class Graphics final {
         VkCommandPool commandPool = nullptr;
         VkDescriptorPool descriptorPool = nullptr;
         VkDescriptorPool skyboxDescriptorPool = nullptr;
+        VkDescriptorPool terrainDescriptorPool = nullptr;
 
         std::vector<VkCommandBuffer> commandBuffers;
         VkPipelineLayout graphicsPipelineLayout = nullptr;
 
         std::vector<VkDescriptorSet> descriptorSets;
         std::vector<VkDescriptorSet> skyboxDescriptorSets;
+        std::vector<VkDescriptorSet> terrainDescriptorSets;
         
         VkRenderPass renderPass = nullptr;
         VkDescriptorSetLayout descriptorSetLayout;
         VkDescriptorSetLayout skyboxDescriptorSetLayout;
+        VkDescriptorSetLayout terrainDescriptorSetLayout;
         
         VkPipeline graphicsPipeline = nullptr;
         std::array<VkPipelineShaderStageCreateInfo, 2> shaderStageInfo;
@@ -126,6 +132,10 @@ class Graphics final {
         VkPipeline skyboxGraphicsPipeline = nullptr;
         VkPipelineLayout skyboxGraphicsPipelineLayout = nullptr;
         std::array<VkPipelineShaderStageCreateInfo, 2> skyboxShaderStageInfo;
+
+        VkPipeline terrainGraphicsPipeline = nullptr;
+        VkPipelineLayout terrainGraphicsPipelineLayout = nullptr;
+        std::array<VkPipelineShaderStageCreateInfo, 2> terrainShaderStageInfo;
         
         std::vector<VkFramebuffer> swapChainFramebuffers;
 
@@ -141,6 +151,11 @@ class Graphics final {
         
         VkBuffer skyBoxVertexBuffer = nullptr;
         VkDeviceMemory skyBoxVertexBufferMemory = nullptr;        
+
+        VkBuffer terrainVertexBuffer = nullptr;
+        VkDeviceMemory terrainVertexBufferMemory = nullptr;        
+        VkShaderModule terrainVertShaderModule = nullptr;
+        VkShaderModule terrainFragShaderModule = nullptr;
         
         VkImage skyboxCubeImage = nullptr;
         VkDeviceMemory skyboxCubeImageMemory = nullptr;
@@ -188,6 +203,9 @@ class Graphics final {
         bool createShaderStageInfo();
         bool createSkyboxShaderStageInfo();
         bool createSkybox();
+
+        bool createTerrainShaderStageInfo();
+        bool createTerrain();
         
         bool createImageViews();
 
@@ -195,7 +213,9 @@ class Graphics final {
 
         bool createGraphicsPipeline();
         bool createSkyboxGraphicsPipeline();
+        bool createTerrainGraphicsPipeline();
         VkShaderModule createShaderModule(const std::vector<char> & code);
+
 
         void queryPhysicalDevices();
 
@@ -208,10 +228,13 @@ class Graphics final {
         bool createSwapChain();
         bool createDescriptorPool();
         bool createSkyboxDescriptorPool();
+        bool createTerrainDescriptorPool();
         bool createDescriptorSetLayout();
         bool createSkyboxDescriptorSetLayout();
+        bool createTerrainDescriptorSetLayout();
         bool createDescriptorSets();
         bool createSkyboxDescriptorSets();
+        bool createTerrainDescriptorSets();
         
         bool createUniformBuffers();
         void updateUniformBuffer(uint32_t currentImage);

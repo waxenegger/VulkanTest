@@ -406,16 +406,19 @@ bool Graphics::initVulkan(const std::string & appName, uint32_t version) {
     if (!this->createRenderPass()) return false;
     if (!this->createCommandPool()) return false;
     
+    this->hasTerrain = this->createTerrain();
     this->hasSkybox = this->createSkybox();
         
     if (!this->createShaderStageInfo()) return false;
     if (this->hasSkybox) {
         if (!this->createSkyboxShaderStageInfo()) return false;        
-    }
-
-    if (this->hasSkybox) {
         if (!this->createSkyboxDescriptorPool()) return false;
     }
+    if (this->hasTerrain) {
+        if (!this->createTerrainShaderStageInfo()) return false;        
+        if (!this->createTerrainDescriptorPool()) return false;
+    }
+    
     if (!this->createDescriptorPool()) return false;
     
     if (!this->createSyncObjects()) return false;
@@ -486,14 +489,18 @@ bool Graphics::createUniformBuffers() {
     }
     
     if (!this->createDescriptorSets()) return false;
+
+    if (this->hasTerrain) {
+        if (!this->createTerrainDescriptorSetLayout()) return false;
+        if (!this->createTerrainDescriptorSets()) return false;
+    }
     
     if (this->hasSkybox) {
         if (!this->createTextureSampler(this->skyboxSampler, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)) return false;
         if (!this->createSkyboxDescriptorSetLayout()) return false;
-                    
         if (!this->createSkyboxDescriptorSets()) return false;
     }
-    
+
     return true;
 }
 

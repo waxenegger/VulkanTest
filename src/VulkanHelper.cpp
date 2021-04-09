@@ -388,6 +388,15 @@ void Graphics::cleanupSwapChain() {
         this->renderPass = nullptr;
     }
 
+    if (this->terrainGraphicsPipeline != nullptr) {
+        vkDestroyPipeline(this->device, this->terrainGraphicsPipeline, nullptr);
+        this->terrainGraphicsPipeline = nullptr;
+    }
+    if (this->terrainGraphicsPipelineLayout != nullptr) {
+        vkDestroyPipelineLayout(this->device, this->terrainGraphicsPipelineLayout, nullptr);
+        this->terrainGraphicsPipelineLayout = nullptr;
+    }
+
     if (this->skyboxGraphicsPipeline != nullptr) {
         vkDestroyPipeline(this->device, this->skyboxGraphicsPipeline, nullptr);
         this->skyboxGraphicsPipeline = nullptr;
@@ -413,6 +422,8 @@ void Graphics::cleanupSwapChain() {
 void Graphics::cleanupVulkan() {
     if (this->fragShaderModule != nullptr) vkDestroyShaderModule(this->device, this->fragShaderModule, nullptr);
     if (this->vertShaderModule != nullptr) vkDestroyShaderModule(this->device, this->vertShaderModule, nullptr);
+    if (this->terrainFragShaderModule != nullptr) vkDestroyShaderModule(this->device, this->terrainFragShaderModule, nullptr);
+    if (this->terrainVertShaderModule != nullptr) vkDestroyShaderModule(this->device, this->terrainVertShaderModule, nullptr);
     if (this->skyboxFragShaderModule != nullptr) vkDestroyShaderModule(this->device, this->skyboxFragShaderModule, nullptr);
     if (this->skyboxVertShaderModule != nullptr) vkDestroyShaderModule(this->device, this->skyboxVertShaderModule, nullptr);
 
@@ -441,12 +452,18 @@ void Graphics::cleanupVulkan() {
     if (this->descriptorPool != nullptr) {
         vkDestroyDescriptorPool(this->device, this->descriptorPool, nullptr);
     }
+    if (this->terrainDescriptorPool != nullptr) {
+        vkDestroyDescriptorPool(this->device, this->terrainDescriptorPool, nullptr);
+    }
     if (this->skyboxDescriptorPool != nullptr) {
         vkDestroyDescriptorPool(this->device, this->skyboxDescriptorPool, nullptr);
     }
     
     if (this->descriptorSetLayout != nullptr) {
         vkDestroyDescriptorSetLayout(this->device, this->descriptorSetLayout, nullptr);
+    }
+    if (this->terrainDescriptorSetLayout != nullptr) {
+        vkDestroyDescriptorSetLayout(this->device, this->terrainDescriptorSetLayout, nullptr);
     }
     if (this->skyboxDescriptorSetLayout != nullptr) {
         vkDestroyDescriptorSetLayout(this->device, this->skyboxDescriptorSetLayout, nullptr);
@@ -457,6 +474,12 @@ void Graphics::cleanupVulkan() {
 
     if (this->indexBuffer != nullptr) vkDestroyBuffer(this->device, this->indexBuffer, nullptr);
     if (this->indexBufferMemory != nullptr) vkFreeMemory(this->device, this->indexBufferMemory, nullptr);
+
+    if (this->terrainVertexBuffer != nullptr) vkDestroyBuffer(this->device, this->terrainVertexBuffer, nullptr);
+    if (this->terrainVertexBufferMemory != nullptr) vkFreeMemory(this->device, this->terrainVertexBufferMemory, nullptr);
+
+    if (this->skyBoxVertexBuffer != nullptr) vkDestroyBuffer(this->device, this->skyBoxVertexBuffer, nullptr);
+    if (this->skyBoxVertexBufferMemory != nullptr) vkFreeMemory(this->device, this->skyBoxVertexBufferMemory, nullptr);
 
     if (this->ssboBuffer != nullptr) vkDestroyBuffer(this->device, this->ssboBuffer, nullptr);
     if (this->ssboBufferMemory != nullptr) vkFreeMemory(this->device, this->ssboBufferMemory, nullptr);

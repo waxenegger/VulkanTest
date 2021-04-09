@@ -55,6 +55,7 @@ src = [ join_paths('src','Main.cpp'),
         join_paths('src','VulkanInfo.cpp'),
         join_paths('src','VulkanRender.cpp'),
         join_paths('src','VulkanHelper.cpp'),
+        join_paths('src','Terrain.cpp'),
         join_paths('src','Skybox.cpp'),
         join_paths('src','Camera.cpp'), 
         join_paths('src','Models.cpp') ]
