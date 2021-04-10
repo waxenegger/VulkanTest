@@ -133,7 +133,7 @@ bool Engine::addComponents() {
     Component * contraption = this->graphics.addComponentWithModel("blender1", "contraption");
     if (contraption == nullptr) ret = false;
     else {
-        contraption->setPosition(glm::vec3(-20, 20, -60));
+        contraption->setPosition(glm::vec3(0, 100, 0));
         contraption->rotate(45, 0, 45);
         contraption->scale(2);
     }

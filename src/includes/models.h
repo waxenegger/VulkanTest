@@ -3,6 +3,12 @@
 
 #include "camera.h"
 
+struct ModelSummary {
+    VkDeviceSize vertexBufferSize = 0;
+    VkDeviceSize indexBufferSize = 0;
+    VkDeviceSize ssboBufferSize = 0;
+};
+
 struct MeshProperties final {
     public:
         int ambientTexture = -1;
@@ -22,7 +28,37 @@ struct ModelProperties final {
         glm::mat4 matrix = glm::mat4(1);
 };
 
-class Vertex final {
+class SimpleVertex final {
+    private:
+        glm::vec3 position;
+    public:
+        SimpleVertex(const glm::vec3 & position);
+        glm::vec3 getPosition();
+        
+        static VkVertexInputBindingDescription getBindingDescription();
+        static std::array<VkVertexInputAttributeDescription, 1> getAttributeDescriptions();
+};
+
+class ColorVertex final {
+    private:
+        glm::vec3 position;
+        glm::vec3 normal;
+        glm::vec2 uv;
+        glm::vec3 color;
+        
+
+    public:
+        ColorVertex(const glm::vec3 & position);
+        void setUV(const glm::vec2 & uv);
+        void setNormal(const glm::vec3 & normal);
+        void setColor(const glm::vec3 & color);
+        glm::vec3 getPosition();
+
+        static VkVertexInputBindingDescription getBindingDescription();
+        static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions();
+};
+
+class ModelVertex final {
     private:
         glm::vec3 position;
         glm::vec3 normal;
@@ -31,16 +67,16 @@ class Vertex final {
         glm::vec3 bitangent;
 
     public:
-        Vertex(const glm::vec3 & position);
+        ModelVertex(const glm::vec3 & position);
 
         static VkVertexInputBindingDescription getBindingDescription();
         static std::array<VkVertexInputAttributeDescription, 5> getAttributeDescriptions();
 
+        glm::vec3 getPosition();
         void setUV(const glm::vec2 & uv);
         void setNormal(const glm::vec3 & normal);
         void setTangent(const glm::vec3 & tangent);
         void setBitangent(const glm::vec3 & bitangent);
-        glm::vec3 getPosition();
 };
 
 struct MaterialInformation final {
@@ -71,7 +107,7 @@ struct TextureInformation final {
 
 class Mesh final {
     private:
-        std::vector<Vertex> vertices;
+        std::vector<ModelVertex> vertices;
         std::vector<uint32_t> indices;
         TextureInformation textures;
         MaterialInformation materials;
@@ -79,11 +115,11 @@ class Mesh final {
         bool isBbox = false;
         std::string name = "";
     public:
-        Mesh(const std::vector<Vertex> & vertices);
-        Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices);
-        Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, 
+        Mesh(const std::vector<ModelVertex> & vertices);
+        Mesh(const std::vector<ModelVertex> & vertices, const std::vector<uint32_t> indices);
+        Mesh(const std::vector<ModelVertex> & vertices, const std::vector<uint32_t> indices, 
              const TextureInformation & textures, const MaterialInformation & materials);
-        const std::vector<Vertex> & getVertices() const;
+        const std::vector<ModelVertex> & getVertices() const;
         const std::vector<uint32_t> & getIndices() const;
         void setColor(glm::vec4 color);
         TextureInformation getTextureInformation();
@@ -154,7 +190,7 @@ class Model final {
         ~Model();
         Model() {};
         Model(const std::string id, const std::filesystem::path file);
-        Model(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, std::string id);
+        Model(const std::vector<ModelVertex> & vertices, const std::vector<uint32_t> indices, std::string id);
         void init();
         bool hasBeenLoaded();
         std::filesystem::path getFile();
@@ -198,6 +234,61 @@ class Models final {
         static Model * createPlaneModel(std::string id, VkExtent2D extent);
         ~Models();
 
+};
+
+class TerrainMap final {
+    private:
+        SDL_Surface * map = nullptr;
+        
+    public:
+        TerrainMap(const std::string & file);
+        bool hasBeenLoaded();
+        glm::vec4 getPointInfo(int x, int z, int xRange, int yRange);
+        ~TerrainMap();
+};
+
+const std::vector<SimpleVertex> SKYBOX_VERTICES = {
+    SimpleVertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+    SimpleVertex(glm::vec3(-1.0f, -1.0f, -1.0f)),
+    SimpleVertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+    SimpleVertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+    SimpleVertex(glm::vec3(1.0f,  1.0f, -1.0f)),
+    SimpleVertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+    
+    SimpleVertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+    SimpleVertex(glm::vec3(-1.0f, -1.0f, -1.0f)),
+    SimpleVertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+    SimpleVertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+    SimpleVertex(glm::vec3(-1.0f,  1.0f,  1.0f)),
+    SimpleVertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+    
+    SimpleVertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+    SimpleVertex(glm::vec3(1.0f, -1.0f,  1.0f)),
+    SimpleVertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+    SimpleVertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+    SimpleVertex(glm::vec3(1.0f,  1.0f, -1.0f)),
+    SimpleVertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+
+    SimpleVertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+    SimpleVertex(glm::vec3(-1.0f,  1.0f,  1.0f)),
+    SimpleVertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+    SimpleVertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+    SimpleVertex(glm::vec3(1.0f, -1.0f,  1.0f)),
+    SimpleVertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+
+    SimpleVertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+    SimpleVertex(glm::vec3(1.0f,  1.0f, -1.0f)),
+    SimpleVertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+    SimpleVertex(glm::vec3(1.0f,  1.0f,  1.0f)),
+    SimpleVertex(glm::vec3(-1.0f,  1.0f,  1.0f)),
+    SimpleVertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
+
+    SimpleVertex(glm::vec3(-1.0f, -1.0f, -1.0f)),
+    SimpleVertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+    SimpleVertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+    SimpleVertex(glm::vec3(1.0f, -1.0f, -1.0f)),
+    SimpleVertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
+    SimpleVertex(glm::vec3(1.0f, -1.0f,  1.0f))
 };
 
 #endif

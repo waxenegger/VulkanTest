@@ -1,5 +1,43 @@
 #include "includes/graphics.h"
 
+TerrainMap::TerrainMap(const std::string & file) {
+    this->map = IMG_Load(file.c_str());
+}
+
+bool TerrainMap::hasBeenLoaded() {
+    return this->map != nullptr;
+}
+
+glm::vec4 TerrainMap::getPointInfo(int x, int y, int xRange, int yRange) {
+    if (!this->hasBeenLoaded()) return glm::vec4(1,1,1,0);
+    
+    uint16_t w = this->map->w;
+    uint16_t h = this->map->h;
+    
+    uint16_t xShifted = x + xRange / 2;
+    uint16_t yShifted = y + yRange / 2;
+    
+    float xFactor = w / xRange;
+    float yFactor = h / yRange;
+    
+    uint32_t xPixelIndex =  xShifted * xFactor;
+    uint32_t yPixelIndex =  yShifted * yFactor;
+    
+    uint64_t index = yPixelIndex * this->map->pitch + xPixelIndex * 4;
+    Uint8 * data = static_cast<Uint8 *>(this->map->pixels);
+    
+    return {
+        static_cast<float>(data[index]) / 255.0f,
+        static_cast<float>(data[index+1]) / 255.0f,
+        static_cast<float>(data[index+2]) / 255.0f,
+        static_cast<float>(data[index+3]) / 255.0f
+    };
+}
+
+TerrainMap::~TerrainMap() {
+    if (this->map != nullptr) SDL_FreeSurface(this->map);
+}
+
 bool Graphics::createTerrainDescriptorPool() {
     std::array<VkDescriptorPoolSize, 2> poolSizes{};
 
@@ -130,8 +168,8 @@ bool Graphics::createTerrainGraphicsPipeline() {
     vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
     if (this->terrainVertexBuffer != nullptr) {
-        const VkVertexInputBindingDescription bindingDescription = Vertex::getBindingDescription();
-        const std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions = Vertex::getAttributeDescriptions();
+        const VkVertexInputBindingDescription bindingDescription = ColorVertex::getBindingDescription();
+        const std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions = ColorVertex::getAttributeDescriptions();
 
         vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
         vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
@@ -247,24 +285,36 @@ bool Graphics::createTerrainGraphicsPipeline() {
 }
 
 bool Graphics::createTerrain() {
-    // TODO: generate mesh
-    for (int z=-100;z<100;z++) {
-        for (int x=-100;x<100;x++) {
-            
-            Vertex v00 = Vertex(glm::vec3(x,0, z));
-            v00.setNormal(glm::vec3(1, 1, 1));
-            
-            Vertex v11 = Vertex(glm::vec3(x+1,0, z+1));
-            v11.setNormal(glm::vec3(1, 1, 1));
-            
-            Vertex v01 = Vertex(glm::vec3(x,0, z+1));
-            v01.setNormal(glm::vec3(1, 1, 1));
+    this->terrainMap = std::make_unique<TerrainMap>(this->getAppPath(MAPS) / "terrain.png");
+    if (!this->terrainMap->hasBeenLoaded()) return false;
+    
+    const uint16_t rangeX = 2047;
+    const uint16_t rangeZ = 2047;
+    
+    for (int z=-rangeZ/2;z<rangeZ/2;z++) {
+        for (int x=-rangeX/2;x<rangeX/2;x++) {
 
-            Vertex v10 = Vertex(glm::vec3(x+1,0, z));
-            v10.setNormal(glm::vec3(1, 1, 1));
+            glm::vec4 pointData = this->terrainMap->getPointInfo(x, z, rangeX, rangeZ);            
+            ColorVertex v00 = ColorVertex(glm::vec3(x, 0, z));            
+            v00.setNormal(glm::vec3(0, 1, 0));
+            v00.setColor(glm::vec3(pointData.r, pointData.g, pointData.b));
+
+            pointData = this->terrainMap->getPointInfo(x+1, z+1, rangeX, rangeZ);
+            ColorVertex v11 = ColorVertex(glm::vec3(x+1, 0, z+1));
+            v11.setNormal(glm::vec3(0, 1, 0));
+            v11.setColor(glm::vec3(pointData.r, pointData.g, pointData.b));
+
+            pointData = this->terrainMap->getPointInfo(x, z+1, rangeX, rangeZ);            
+            ColorVertex v01 = ColorVertex(glm::vec3(x, 0, z+1));
+            v01.setNormal(glm::vec3(0, 1, 0));
+            v01.setColor(glm::vec3(pointData.r, pointData.g, pointData.b));
+            
+            pointData = this->terrainMap->getPointInfo(x+1, z, rangeX, rangeZ);
+            ColorVertex v10 = ColorVertex(glm::vec3(x+1, 0, z));
+            v10.setNormal(glm::vec3(0, 1, 0));
+            v10.setColor(glm::vec3(pointData.r, pointData.g, pointData.b));
 
             // triangle 1
-
             this->terrainVertices.push_back(v00);
             this->terrainVertices.push_back(v01);
             this->terrainVertices.push_back(v11);
@@ -276,7 +326,7 @@ bool Graphics::createTerrain() {
         };
     };
     
-    VkDeviceSize bufferSize = this->terrainVertices.size() * sizeof(class Vertex);
+    VkDeviceSize bufferSize = this->terrainVertices.size() * sizeof(class ColorVertex);
     
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -307,4 +357,3 @@ bool Graphics::createTerrain() {
 
     return true;
 }
-

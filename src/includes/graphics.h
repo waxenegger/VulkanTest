@@ -8,57 +8,7 @@ static constexpr int MAX_TEXTURES = 50;
 static constexpr int MAX_FRAMES_IN_FLIGHT = 3;
 
 enum APP_PATHS {
-    ROOT, SHADERS, MODELS, FONTS
-};
-
-const std::vector<Vertex> SKYBOX_VERTICES = {
-    Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
-    Vertex(glm::vec3(-1.0f, -1.0f, -1.0f)),
-    Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
-    Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
-    Vertex(glm::vec3(1.0f,  1.0f, -1.0f)),
-    Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
-    
-    Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
-    Vertex(glm::vec3(-1.0f, -1.0f, -1.0f)),
-    Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
-    Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
-    Vertex(glm::vec3(-1.0f,  1.0f,  1.0f)),
-    Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
-    
-    Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
-    Vertex(glm::vec3(1.0f, -1.0f,  1.0f)),
-    Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
-    Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
-    Vertex(glm::vec3(1.0f,  1.0f, -1.0f)),
-    Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
-
-    Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
-    Vertex(glm::vec3(-1.0f,  1.0f,  1.0f)),
-    Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
-    Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
-    Vertex(glm::vec3(1.0f, -1.0f,  1.0f)),
-    Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
-
-    Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
-    Vertex(glm::vec3(1.0f,  1.0f, -1.0f)),
-    Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
-    Vertex(glm::vec3(1.0f,  1.0f,  1.0f)),
-    Vertex(glm::vec3(-1.0f,  1.0f,  1.0f)),
-    Vertex(glm::vec3(-1.0f,  1.0f, -1.0f)),
-
-    Vertex(glm::vec3(-1.0f, -1.0f, -1.0f)),
-    Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
-    Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
-    Vertex(glm::vec3(1.0f, -1.0f, -1.0f)),
-    Vertex(glm::vec3(-1.0f, -1.0f,  1.0f)),
-    Vertex(glm::vec3(1.0f, -1.0f,  1.0f))
-};
-
-struct ModelSummary {
-    VkDeviceSize vertexBufferSize = 0;
-    VkDeviceSize indexBufferSize = 0;
-    VkDeviceSize ssboBufferSize = 0;
+    ROOT, SHADERS, MODELS, FONTS, MAPS
 };
 
 class Graphics final {
@@ -90,7 +40,8 @@ class Graphics final {
         bool hasSkybox = false;
         bool hasTerrain = false;
         
-        std::vector<Vertex> terrainVertices;
+        std::unique_ptr<TerrainMap> terrainMap = nullptr;         
+        std::vector<ColorVertex> terrainVertices;
         
         uint32_t graphicsQueueIndex = -1;
         VkQueue graphicsQueue = nullptr;
@@ -295,7 +246,7 @@ class Graphics final {
         bool updateSwapChain();
         void drawFrame();
         void addModel(Model * model);
-        void addModel(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, std::string name);
+        void addModel(const std::vector<ModelVertex> & vertices, const std::vector<uint32_t> indices, std::string name);
         void addModel(const std::string & dir, const std::string & file);
         void addText(std::string id, std::string font, std::string text, uint16_t size);
         bool prepareModels();

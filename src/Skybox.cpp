@@ -152,8 +152,8 @@ bool Graphics::createSkyboxGraphicsPipeline() {
     vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
     if (this->skyBoxVertexBuffer != nullptr) {
-        const VkVertexInputBindingDescription bindingDescription = Vertex::getBindingDescription();
-        const std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions = Vertex::getAttributeDescriptions();
+        const VkVertexInputBindingDescription bindingDescription = SimpleVertex::getBindingDescription();
+        const std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions = SimpleVertex::getAttributeDescriptions();
 
         vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
         vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
@@ -285,7 +285,7 @@ bool Graphics::createSkybox() {
     
     if (skyboxCubeTextures.size() != 6) return false;
 
-    VkDeviceSize bufferSize = SKYBOX_VERTICES.size() * sizeof(class Vertex);
+    VkDeviceSize bufferSize = SKYBOX_VERTICES.size() * sizeof(class SimpleVertex);
     
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;

@@ -1,138 +1,6 @@
 #include <src/includes/models.h>
 
-Vertex::Vertex(const glm::vec3 & position) {
-    this->position = position;
-}
-
-VkVertexInputBindingDescription Vertex::getBindingDescription() {
-    VkVertexInputBindingDescription bindingDescription{};
-    bindingDescription.binding = 0;
-    bindingDescription.stride = sizeof(Vertex);
-    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-    return bindingDescription;
-}
-
-std::array<VkVertexInputAttributeDescription, 5> Vertex::getAttributeDescriptions() {
-    std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions{};
-
-    attributeDescriptions[0].binding = 0;
-    attributeDescriptions[0].location = 0;
-    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[0].offset = offsetof(Vertex, position);
-
-    attributeDescriptions[1].binding = 0;
-    attributeDescriptions[1].location = 1;
-    attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[1].offset = offsetof(Vertex, normal);
-
-    attributeDescriptions[2].binding = 0;
-    attributeDescriptions[2].location = 2;
-    attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescriptions[2].offset = offsetof(Vertex, uv);
-
-    attributeDescriptions[3].binding = 0;
-    attributeDescriptions[3].location = 3;
-    attributeDescriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[3].offset = offsetof(Vertex, tangent);
-
-    attributeDescriptions[4].binding = 0;
-    attributeDescriptions[4].location = 4;
-    attributeDescriptions[4].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[4].offset = offsetof(Vertex, bitangent);
-
-    return attributeDescriptions;
-}
-
-void Vertex::setUV(const glm::vec2 & uv) {
-    this->uv = uv;
-}
-
-
-void Vertex::setNormal(const glm::vec3 & normal) {
-    this->normal = normal;
-}
-
-void Vertex::setTangent(const glm::vec3 & tangent) {
-    this->tangent = tangent;
-}
-
-void Vertex::setBitangent(const glm::vec3 & bitangent) {
-    this->bitangent = bitangent;
-}
-
-glm::vec3 Vertex::getPosition() {
-    return this->position;
-}
-
-Mesh::Mesh(const std::vector<Vertex> & vertices) {
-    this->vertices = vertices;
-}
-
-Mesh::Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices) : Mesh(vertices) {
-    this->indices = indices;
-}
-
-Mesh::Mesh(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, 
-           const TextureInformation & textures, const MaterialInformation & materials) : Mesh(vertices, indices) {
-    this->textures = textures;
-    this->materials = materials;
-}
-
-const std::vector<Vertex> & Mesh::getVertices() const {
-    return this->vertices;
-}
-
-const std::vector<uint32_t> & Mesh::getIndices() const {
-    return this->indices;
-}
-
-void Mesh::setColor(glm::vec4 color) {
-    this->materials.diffuseColor = color;
-}
-
-void Mesh::setOpacity(float opacity) {
-    this->materials.opacity = opacity;
-}
-
-std::string Mesh::getName() {
-    return this->name;
-}
-
-void Mesh::setName(std::string name) {
-    this->name = name;
-}
-
-TextureInformation Mesh::getTextureInformation() {
-    return this->textures;
-}
-
-MaterialInformation Mesh::getMaterialInformation() {
-    return this->materials;
-}
-
-void Mesh::setTextureInformation(TextureInformation & textures) {
-    this->textures = textures;
-}
-
-void Mesh::setBoundingBox(BoundingBox & bbox) {
-    this->bbox = bbox;
-}
-
-BoundingBox & Mesh::getBoundingBox() {
-    return this->bbox;
-}
-
-bool Mesh::isBoundingBox() {
-    return this->isBbox;
-}
-
-void Mesh::markAsBoundingBox() {
-    this->isBbox = true;
-}
-
-
-Model::Model(const std::vector< Vertex >& vertices, const std::vector< uint32_t > indices, std::string id) : Model(id)
+Model::Model(const std::vector< ModelVertex >& vertices, const std::vector< uint32_t > indices, std::string id) : Model(id)
 {
     this->file = "";
     this->meshes = { Mesh(vertices, indices) };
@@ -203,15 +71,15 @@ void Model::calculateBoundingBoxForModel(bool addBboxMesh) {
     
     float padding = 0.01;
     
-    std::vector<Vertex> bboxVertices = {
-        Vertex(glm::vec3(min.x-padding, min.y-padding, min.z-padding)),            
-        Vertex(glm::vec3(min.x-padding, max.y+padding, min.z-padding)),
-        Vertex(glm::vec3(max.x+padding, max.y+padding, min.z-padding)),
-        Vertex(glm::vec3(max.x+padding, min.y-padding, min.z-padding)),
-        Vertex(glm::vec3(min.x-padding, min.y-padding, max.z+padding)),
-        Vertex(glm::vec3(min.x-padding, max.y+padding, max.z+padding)),
-        Vertex(glm::vec3(max.x+padding, max.y+padding, max.z+padding)),
-        Vertex(glm::vec3(max.x+padding, min.y-padding, max.z+padding))
+    std::vector<ModelVertex> bboxVertices = {
+        ModelVertex(glm::vec3(min.x-padding, min.y-padding, min.z-padding)),            
+        ModelVertex(glm::vec3(min.x-padding, max.y+padding, min.z-padding)),
+        ModelVertex(glm::vec3(max.x+padding, max.y+padding, min.z-padding)),
+        ModelVertex(glm::vec3(max.x+padding, min.y-padding, min.z-padding)),
+        ModelVertex(glm::vec3(min.x-padding, min.y-padding, max.z+padding)),
+        ModelVertex(glm::vec3(min.x-padding, max.y+padding, max.z+padding)),
+        ModelVertex(glm::vec3(max.x+padding, max.y+padding, max.z+padding)),
+        ModelVertex(glm::vec3(max.x+padding, min.y-padding, max.z+padding))
     };
     glm::vec3 edge1 = bboxVertices[3].getPosition() - bboxVertices[1].getPosition();
     glm::vec3 edge2 = bboxVertices[1].getPosition() - bboxVertices[0].getPosition();
@@ -266,7 +134,7 @@ std::string Model::getId() {
 }
 
 Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
-     std::vector<Vertex> vertices;
+     std::vector<ModelVertex> vertices;
      std::vector<unsigned int> indices;
      TextureInformation textures;
      MaterialInformation materials;
@@ -308,7 +176,7 @@ Mesh Model::processMesh(const aiMesh *mesh, const aiScene *scene) {
      
      if (mesh->mNumVertices > 0) vertices.reserve(mesh->mNumVertices);
      for(unsigned int i = 0; i < mesh->mNumVertices; i++) {
-         Vertex vertex(glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z));
+         ModelVertex vertex(glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z));
 
          if (mesh->HasNormals())
              vertex.setNormal(glm::normalize(glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z)));
@@ -428,41 +296,41 @@ Model * Models::createPlaneModel(std::string id, VkExtent2D extent) {
     const float w = extent.width / extent.height;
     const float h = 1;
 
-    std::vector<Vertex> vertices;
+    std::vector<ModelVertex> vertices;
     
-    Vertex one(glm::vec3(-w/2, -h/2, 0.0f));
+    ModelVertex one(glm::vec3(-w/2, -h/2, 0.0f));
     one.setUV(glm::vec2(-1.0f, 1.0f));
     one.setNormal(glm::vec3(-1, -1, zDirNormal));
     vertices.push_back(one);
 
-    Vertex two(glm::vec3(-w/2, h/2, 0.0f));
+    ModelVertex two(glm::vec3(-w/2, h/2, 0.0f));
     two.setUV(glm::vec2(-1.0f, 0.0f));
     two.setNormal(glm::vec3(-1, 1, zDirNormal));
     vertices.push_back(two);
 
-    Vertex three(glm::vec3(w/2, h/2, 0.0f));
+    ModelVertex three(glm::vec3(w/2, h/2, 0.0f));
     three.setUV(glm::vec2(0.0f, 0.0f));
     three.setNormal(glm::vec3(1, 1, zDirNormal));
     vertices.push_back(three);
 
-    Vertex four(glm::vec3(w/2, -h/2, 0.0f));
+    ModelVertex four(glm::vec3(w/2, -h/2, 0.0f));
     four.setUV(glm::vec2(0.0f, 1.0f));
     four.setNormal(glm::vec3(1, -1, zDirNormal));
     vertices.push_back(four);
 
-    Vertex backOne(glm::vec3(-w/2, -h/2, 0.0f));
+    ModelVertex backOne(glm::vec3(-w/2, -h/2, 0.0f));
     backOne.setNormal(glm::vec3(-1, -1, -zDirNormal));
     vertices.push_back(backOne);
 
-    Vertex backTwo(glm::vec3(-w/2, h/2, 0.0f));
+    ModelVertex backTwo(glm::vec3(-w/2, h/2, 0.0f));
     backTwo.setNormal(glm::vec3(-1, 1, -zDirNormal));
     vertices.push_back(backTwo);
 
-    Vertex backThree(glm::vec3(w/2, h/2, 0.0f));
+    ModelVertex backThree(glm::vec3(w/2, h/2, 0.0f));
     backThree.setNormal(glm::vec3(1, 1, -zDirNormal));
     vertices.push_back(backThree);
 
-    Vertex backFour(glm::vec3(w/2, -h/2, 0.0f));
+    ModelVertex backFour(glm::vec3(w/2, -h/2, 0.0f));
     backFour.setNormal(glm::vec3(1, -1, -zDirNormal));
     vertices.push_back(backFour);
 
@@ -490,7 +358,7 @@ Model * Models::createPlaneModel(std::string id, VkExtent2D extent) {
     BoundingBox bbox;
     
     for (uint16_t i=0;i<4;i++) {
-        Vertex v = vertices[i];
+        ModelVertex v = vertices[i];
         glm::vec3 pos(v.getPosition());
         
         bbox.min.x = std::min(pos.x, bbox.min.x);
@@ -694,186 +562,6 @@ void Models::cleanUpTextures(const VkDevice & device) {
 
 Models::~Models() {
     this->clear();
-}
-
-int Texture::getId() {
-    return this->id;
-}
-
-std::string Texture::getType() {
-    return this->type;
-}
-
-bool Texture::isValid() {
-    return this->valid;
-}
-
-VkFormat Texture::getImageFormat() {
-    return this->imageFormat;
-}
-
-VkImageView & Texture::getTextureImageView() {
-    return this->textureImageView;
-}
-
-void Texture::setId(const int & id) {
-    this->id = id;
-}
-
-void Texture::setType(const std::string & type) {
-    this->type = type;
-}
-
-void Texture::setPath(const std::filesystem::path & path) {
-    this->path = path;
-}
-
-void Texture::setTextureImage(VkImage & image) {
-    this->textureImage = image;
-}
-
-void Texture::setTextureImageMemory(VkDeviceMemory & imageMemory) {
-    this->textureImageMemory = imageMemory;
-}
-
-void Texture::setTextureImageView(VkImageView & imageView) {
-    this->textureImageView = imageView;
-}
-
-void Texture::load() {
-    if (!this->loaded) {
-        std::cout << "Loading texture: " << this->path << std::endl;
-        this->textureSurface = IMG_Load(this->path.c_str());
-        if (this->textureSurface != nullptr) {
-            if (!this->readImageFormat()) {
-                std::cout << "Unsupported Texture Format: " << this->path << std::endl;
-            } else if (this->getSize() != 0) {
-                this->valid = true;
-            }
-        } else std::cout << "Failed to load texture: " << this->path << std::endl;
-        this->loaded = true;
-    }
-}
-
-void Texture::cleanUpTexture(const VkDevice & device) {
-    if (device == nullptr) return;
-    
-    if (this->textureImage != nullptr) {
-        vkDestroyImage(device, this->textureImage, nullptr);        
-        this->textureImage = nullptr;
-    }
-
-    if (this->textureImageMemory != nullptr) {
-        vkFreeMemory(device, this->textureImageMemory, nullptr);
-        this->textureImageMemory = nullptr;
-    }
-
-    if (this->textureImageView != nullptr) {
-        vkDestroyImageView(device, this->textureImageView, nullptr);
-        this->textureImageView = nullptr;
-    }
-}
-
-uint32_t Texture::getWidth() {
-    return this->textureSurface == nullptr ? 0 : this->textureSurface->w; 
-}
-
-uint32_t Texture::getHeight() {
-    return this->textureSurface == nullptr ? 0 : this->textureSurface->h;     
-}
-
-VkDeviceSize Texture::getSize() {
-    int channels = this->textureSurface == nullptr ? 0 : textureSurface->format->BytesPerPixel;
-    return this->getWidth() * this->getHeight() * channels;
-}
-
-void * Texture::getPixels() {
- return this->textureSurface == nullptr ? nullptr : this->textureSurface->pixels;
-}
-
-void Texture::freeSurface() {
-    if (this->textureSurface != nullptr) {
-        SDL_FreeSurface(this->textureSurface);
-        this->textureSurface = nullptr;
-    }    
-}
-
-Texture::Texture(bool empty,  VkExtent2D extent) {
-    if (empty) {
-        this->textureSurface = SDL_CreateRGBSurface(0,extent.width, extent.height, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
-
-        this->imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
-        
-        this->loaded = true;
-        this->valid = this->textureSurface != nullptr;
-    }
-}
-
-Texture::Texture(SDL_Surface * surface) {
-    if (surface != nullptr) {
-        this->textureSurface = surface;
-        this->imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
-        
-        this->loaded = true;
-        this->valid = true;
-    }
-}
-
-Texture::~Texture() {
-    this->freeSurface();
-}
-
-bool Texture::readImageFormat() {
-    if (this->textureSurface == nullptr) return false;
-
-    const int nOfColors = this->textureSurface->format->BytesPerPixel;
-
-    if (nOfColors == 4) {
-        if (this->textureSurface->format->Rmask == 0x000000ff) this->imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
-        else this->imageFormat = VK_FORMAT_B8G8R8A8_SRGB;
-    } else if (nOfColors == 3) {
-        Uint32 aMask = 0x000000ff;
-        if (this->textureSurface->format->Rmask == 0x000000ff) this->imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
-        else {
-            this->imageFormat = VK_FORMAT_B8G8R8A8_SRGB;
-            aMask = 0xff000000;
-        }
-                
-        // convert to 32 bit
-        SDL_Surface * tmpSurface = SDL_CreateRGBSurface(
-            0, this->textureSurface->w, this->textureSurface->h, 32, 
-            this->textureSurface->format->Rmask, this->textureSurface->format->Gmask, this->textureSurface->format->Bmask, aMask);
-
-        // attempt twice with different pixel format
-        if (tmpSurface == nullptr) {
-            std::cerr << "Conversion Failed. Try something else for: " << this->path << std::endl;
-
-            tmpSurface = SDL_CreateRGBSurface(
-                0, this->textureSurface->w, this->textureSurface->h, 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);                
-
-            if (tmpSurface == nullptr) {
-                tmpSurface = SDL_CreateRGBSurface(
-                    0, this->textureSurface->w, this->textureSurface->h, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0x000000ff);                
-            }
-        }
-        
-        // either conversion has worked or not
-        if (tmpSurface != nullptr) {            
-            SDL_SetSurfaceAlphaMod(tmpSurface, 0);
-            if (SDL_BlitSurface(this->textureSurface, nullptr, tmpSurface , nullptr) == 0) {
-                SDL_FreeSurface(this->textureSurface);
-                this->textureSurface = tmpSurface;
-            } else {
-                std::cerr << "SDL_BlitSurface Failed (on conversion): " << SDL_GetError() << std::endl;
-                return false;
-            }
-        } else {
-            std::cerr << "SDL_CreateRGBSurface Failed (on conversion): " << SDL_GetError() << std::endl;
-            return false;
-        }
-    } else return false;
-
-    return true;
 }
 
 const std::string Models::AMBIENT_TEXTURE = "ambient";

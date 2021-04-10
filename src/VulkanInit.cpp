@@ -101,8 +101,8 @@ bool Graphics::createGraphicsPipeline() {
     VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {};
     vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-    const VkVertexInputBindingDescription bindingDescription = Vertex::getBindingDescription();
-    const std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions = Vertex::getAttributeDescriptions();
+    const VkVertexInputBindingDescription bindingDescription = ModelVertex::getBindingDescription();
+    const std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions = ModelVertex::getAttributeDescriptions();
 
     vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
     vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());

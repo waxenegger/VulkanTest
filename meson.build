@@ -57,7 +57,9 @@ src = [ join_paths('src','Main.cpp'),
         join_paths('src','VulkanHelper.cpp'),
         join_paths('src','Terrain.cpp'),
         join_paths('src','Skybox.cpp'),
-        join_paths('src','Camera.cpp'), 
+        join_paths('src','Camera.cpp'),
+        join_paths('src','Geometries.cpp'),
+        join_paths('src','Textures.cpp'),
         join_paths('src','Models.cpp') ]
 
 executable('VulkanTest',  join_paths('src','Main.cpp'), src, include_directories: includeDir, dependencies: dependencies) 

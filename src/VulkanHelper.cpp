@@ -284,7 +284,7 @@ void Graphics::copyModelsContentIntoBuffer(void* data, ModelsContentType modelsC
                     }
                     break;
                 case VERTEX:
-                    dataSize = mesh.getVertices().size() * sizeof(class Vertex);
+                    dataSize = mesh.getVertices().size() * sizeof(class ModelVertex);
                     if (overallSize + dataSize <= maxSize) {
                         memcpy(static_cast<char *>(data)+overallSize, mesh.getVertices().data(), dataSize);
                         overallSize += dataSize;

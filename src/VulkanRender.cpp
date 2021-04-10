@@ -319,7 +319,7 @@ ModelSummary Graphics::getModelsBufferSizes() {
             VkDeviceSize vertexSize = mesh.getVertices().size();
             VkDeviceSize indexSize = mesh.getIndices().size();
 
-            bufferSizes.vertexBufferSize += vertexSize * sizeof(class Vertex);
+            bufferSizes.vertexBufferSize += vertexSize * sizeof(class ModelVertex);
             bufferSizes.indexBufferSize += indexSize * sizeof(uint32_t);
             bufferSizes.ssboBufferSize += sizeof(struct MeshProperties);
         }
@@ -514,7 +514,7 @@ void Graphics::addModel(Model * model) {
      if (model->hasBeenLoaded()) this->models.addModel(modelPtr.release());
 }
 
-void Graphics::addModel(const std::vector<Vertex> & vertices, const std::vector<uint32_t> indices, std::string name) {
+void Graphics::addModel(const std::vector<ModelVertex> & vertices, const std::vector<uint32_t> indices, std::string name) {
      std::unique_ptr<Model> model = std::make_unique<Model>(vertices, indices, name);
      if (model->hasBeenLoaded()) this->models.addModel(model.release());
 }
@@ -678,6 +678,8 @@ std::filesystem::path Graphics::getAppPath(APP_PATHS appPath) {
             return this->dir / "res/models";
         case FONTS:
             return this->dir / "res/fonts";
+        case MAPS:
+            return this->dir / "res/maps";
         case ROOT:
         default:
             return this->dir;
