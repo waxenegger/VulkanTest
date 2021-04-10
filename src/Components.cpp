@@ -168,7 +168,8 @@ bool Components::checkCollision(BoundingBox & bbox) {
                     if (this->checkBboxIntersection(inverseModelBbox, compBbox)) {
                         if (m.getName().compare("opening") == 0 ||
                             m.getName().compare("inside") == 0) {
-                            return false;
+                            hitBBox = false;
+                            break;
                         }
                         hitBBox = true;
                     }

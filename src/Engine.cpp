@@ -103,7 +103,7 @@ bool Engine::addComponents() {
     Component * teapot = this->graphics.addComponentWithModel("teatpot1", "teapot");
     if (teapot == nullptr) ret = false;
     else {
-        teapot->setPosition(glm::vec3(0, 6, 0));
+        teapot->setPosition(glm::vec3(24, 1, 0));
         teapot->scale(1);
     }
 
@@ -112,21 +112,21 @@ bool Engine::addComponents() {
             Component * batman = this->graphics.addComponentWithModel(
                 std::string("batman" + std::to_string(x) + "_" + std::to_string(z)), "batman");
             if (batman == nullptr) ret = false;
-            else batman->setPosition(glm::vec3(x,1,z));
+            else batman->setPosition(glm::vec3(x,2,z));
         }        
     }
     
     Component * nanosuit = this->graphics.addComponentWithModel("nanosuit1", "nanosuit");
     if (nanosuit == nullptr) ret = false;
     else {
-        nanosuit->setPosition(glm::vec3(0, 10, 0));
+        nanosuit->setPosition(glm::vec3(0, 12, 0));
         nanosuit->scale(0.5);
     }
 
     Component * mammoth = this->graphics.addComponentWithModel("mammoth1", "mammoth");
     if (mammoth == nullptr) ret = false;
     else {
-        mammoth->setPosition(glm::vec3(-7, 4, 0));
+        mammoth->setPosition(glm::vec3(15, 5, 0));
         mammoth->scale(2);
     }
 
@@ -141,15 +141,15 @@ bool Engine::addComponents() {
     Component * cyborg = this->graphics.addComponentWithModel("cyborg1", "cyborg");
     if (cyborg == nullptr) ret = false;
     else {
-        cyborg->setPosition(glm::vec3(15, -7, 10));
+        cyborg->setPosition(glm::vec3(15, 2, 10));
         cyborg->scale(1.5);
     }
 
     Component * house = this->graphics.addComponentWithModel("house1", "house");
     if (house == nullptr) ret = false;
     else {
-        house->setPosition(glm::vec3(15, -4, 10));
-        house->scale(2);
+        house->setPosition(glm::vec3(15, 0, 10));
+        house->scale(3);
     }
 
     return ret;
@@ -192,7 +192,7 @@ void Engine::loop() {
         bool isFullScreen = false;
         bool needsRestoreAfterFullScreen = false;
 
-        float walkingSpeed = 0.25;
+        float walkingSpeed = 0.5;
         
         while(!quit) {
             while (SDL_PollEvent(&e) != 0) {

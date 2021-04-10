@@ -248,6 +248,33 @@ bool Graphics::createTerrainGraphicsPipeline() {
 
 bool Graphics::createTerrain() {
     // TODO: generate mesh
+    for (int z=-100;z<100;z++) {
+        for (int x=-100;x<100;x++) {
+            
+            Vertex v00 = Vertex(glm::vec3(x,0, z));
+            v00.setNormal(glm::vec3(1, 1, 1));
+            
+            Vertex v11 = Vertex(glm::vec3(x+1,0, z+1));
+            v11.setNormal(glm::vec3(1, 1, 1));
+            
+            Vertex v01 = Vertex(glm::vec3(x,0, z+1));
+            v01.setNormal(glm::vec3(1, 1, 1));
+
+            Vertex v10 = Vertex(glm::vec3(x+1,0, z));
+            v10.setNormal(glm::vec3(1, 1, 1));
+
+            // triangle 1
+
+            this->terrainVertices.push_back(v00);
+            this->terrainVertices.push_back(v01);
+            this->terrainVertices.push_back(v11);
+
+            // triangle 2        
+            this->terrainVertices.push_back(v10);        
+            this->terrainVertices.push_back(v00);
+            this->terrainVertices.push_back(v11);
+        };
+    };
     
     VkDeviceSize bufferSize = this->terrainVertices.size() * sizeof(class Vertex);
     
