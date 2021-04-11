@@ -17,10 +17,10 @@ void Engine::init() {
         return;
     }
     
-    this->graphics.listVkExtensions();
-    this->graphics.listPhysicalDeviceExtensions();
-    this->graphics.listVkLayerNames();
-    this->graphics.listVkPhysicalDevices();
+    //this->graphics.listVkExtensions();
+    //this->graphics.listPhysicalDeviceExtensions();
+    //this->graphics.listVkLayerNames();
+    //this->graphics.listVkPhysicalDevices();
 
     this->camera = Camera::instance(glm::vec3(0.0f, 4.0f, -10.0f));
 
@@ -194,6 +194,8 @@ void Engine::loop() {
 
         float walkingSpeed = 0.5;
         
+        std::function<bool(BoundingBox)> checkkCollisionFunc = std::bind(&Graphics::checkCollision, &this->graphics, std::placeholders::_1);
+        
         while(!quit) {
             while (SDL_PollEvent(&e) != 0) {
                 switch(e.type) {
@@ -208,28 +210,16 @@ void Engine::loop() {
                     case SDL_KEYDOWN:
                         switch (e.key.keysym.scancode) {
                             case SDL_SCANCODE_W:
-                                if (!this->graphics.checkCollision(
-                                        Camera::instance()->getBoundingBox(Camera::KeyPress::UP, walkingSpeed))) {
-                                            Camera::instance()->move(Camera::KeyPress::UP, true, walkingSpeed);
-                                }
+                                Camera::instance()->moveWithConstraints(checkkCollisionFunc, Camera::KeyPress::UP, walkingSpeed);
                                 break;
                             case SDL_SCANCODE_S:
-                                if (!this->graphics.checkCollision(
-                                        Camera::instance()->getBoundingBox(Camera::KeyPress::DOWN, walkingSpeed))) {
-                                            Camera::instance()->move(Camera::KeyPress::DOWN, true, walkingSpeed);
-                                }
+                                Camera::instance()->moveWithConstraints(checkkCollisionFunc, Camera::KeyPress::DOWN, walkingSpeed);
                                 break;
                             case SDL_SCANCODE_A:
-                                if (!this->graphics.checkCollision(
-                                        Camera::instance()->getBoundingBox(Camera::KeyPress::LEFT, walkingSpeed))) {
-                                            Camera::instance()->move(Camera::KeyPress::LEFT, true, walkingSpeed);
-                                }
+                                Camera::instance()->moveWithConstraints(checkkCollisionFunc, Camera::KeyPress::LEFT, walkingSpeed);
                                 break;
                             case SDL_SCANCODE_D:
-                                if (!this->graphics.checkCollision(
-                                        Camera::instance()->getBoundingBox(Camera::KeyPress::RIGHT, walkingSpeed))) {
-                                            Camera::instance()->move(Camera::KeyPress::RIGHT, true, walkingSpeed);
-                                }
+                                Camera::instance()->moveWithConstraints(checkkCollisionFunc, Camera::KeyPress::RIGHT, walkingSpeed);
                                 break;
                             case SDL_SCANCODE_F:
                                 this->graphics.toggleWireFrame();

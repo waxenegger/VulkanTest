@@ -8,7 +8,7 @@ void Camera::updateViewMatrix() {
     rotM = glm::rotate(rotM, this->rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
     rotM = glm::rotate(rotM, this->rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
 
-    glm::vec3 translation = position;
+    glm::vec3 translation = this->position;
 
     if (this->flipY) {
         translation.y *= -1.0f;
@@ -54,6 +54,12 @@ void Camera::move(KeyPress key, bool isPressed, float deltaTime)
     }
     
     this->update(deltaTime);
+}
+
+void Camera::moveWithConstraints(std::function<bool(BoundingBox)> collisionCheck, KeyPress key, float deltaTime) {
+    if (collisionCheck(Camera::instance()->getBoundingBox(key, deltaTime))) return;
+    
+    this->move(key, true, deltaTime);
 }
 
 void Camera::setAspectRatio(float aspect) {
@@ -123,10 +129,12 @@ void Camera::update(float deltaTime) {
             glm::vec3 camFront = this->getCameraFront();
             float moveSpeed = deltaTime;
 
-            if (this->keys.up) position += camFront * moveSpeed;
-            if (this->keys.down) position -= camFront * moveSpeed;
-            if (this->keys.left) position -= glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
-            if (this->keys.right) position += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
+            if (this->keys.up) this->position += camFront * moveSpeed;
+            if (this->keys.down) this->position -= camFront * moveSpeed;
+            if (this->keys.left) this->position -= glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
+            if (this->keys.right) this->position += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
+            
+            if (this->position.y < 0) this->position.y = 0.1;
             
             this->updateViewMatrix();
         }

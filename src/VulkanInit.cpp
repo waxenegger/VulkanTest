@@ -96,8 +96,6 @@ bool Graphics::createImageViews() {
 bool Graphics::createGraphicsPipeline() {
     if (this->vertexBuffer == nullptr) return true;
     
-    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-    
     VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {};
     vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
@@ -220,9 +218,6 @@ bool Graphics::createGraphicsPipeline() {
         std::cerr << "Failed to Create Graphics Pipeline!" << std::endl;
         return false;
     }
-
-    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
-    std::cout << "createGraphicsPipeline: " << time_span.count() <<  std::endl;
 
     return true;
 }

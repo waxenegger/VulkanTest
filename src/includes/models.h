@@ -3,7 +3,7 @@
 
 #include "camera.h"
 
-struct ModelSummary {
+struct BufferSummary {
     VkDeviceSize vertexBufferSize = 0;
     VkDeviceSize indexBufferSize = 0;
     VkDeviceSize ssboBufferSize = 0;
@@ -53,6 +53,7 @@ class ColorVertex final {
         void setNormal(const glm::vec3 & normal);
         void setColor(const glm::vec3 & color);
         glm::vec3 getPosition();
+        glm::vec4 getInfo();
 
         static VkVertexInputBindingDescription getBindingDescription();
         static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions();
@@ -236,14 +237,31 @@ class Models final {
 
 };
 
-class TerrainMap final {
-    private:
-        SDL_Surface * map = nullptr;
+class Terrain {
+    protected:
+        std::vector<ColorVertex> terrainVertices;
+        std::vector<uint32_t> terrainIndices;
+        virtual void generateTerrain(const uint8_t magnificationFactor = 1) = 0;
         
     public:
-        TerrainMap(const std::string & file);
+        virtual bool hasBeenLoaded() = 0;
+        virtual VkExtent2D getExtent() = 0;
+        glm::vec4 getPointInfo(const int x, const int y);
+        std::vector<ColorVertex> & getVertices();
+        std::vector<uint32_t> & getIndices();
+        virtual ~Terrain() {};
+};
+
+
+class TerrainMap final : public Terrain {
+    private:
+        SDL_Surface * map = nullptr;
+        void generateTerrain(const uint8_t magnificationFactor = 1);
+        
+    public:
+        TerrainMap(const std::string & file, const uint8_t magnificationFactor = 1);
         bool hasBeenLoaded();
-        glm::vec4 getPointInfo(int x, int z, int xRange, int yRange);
+        VkExtent2D getExtent();
         ~TerrainMap();
 };
 

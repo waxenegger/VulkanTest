@@ -478,6 +478,9 @@ void Graphics::cleanupVulkan() {
     if (this->terrainVertexBuffer != nullptr) vkDestroyBuffer(this->device, this->terrainVertexBuffer, nullptr);
     if (this->terrainVertexBufferMemory != nullptr) vkFreeMemory(this->device, this->terrainVertexBufferMemory, nullptr);
 
+    if (this->terrainIndexBuffer != nullptr) vkDestroyBuffer(this->device, this->terrainIndexBuffer, nullptr);
+    if (this->terrainIndexBufferMemory != nullptr) vkFreeMemory(this->device, this->terrainIndexBufferMemory, nullptr);
+
     if (this->skyBoxVertexBuffer != nullptr) vkDestroyBuffer(this->device, this->skyBoxVertexBuffer, nullptr);
     if (this->skyBoxVertexBufferMemory != nullptr) vkFreeMemory(this->device, this->skyBoxVertexBufferMemory, nullptr);
 
@@ -532,5 +535,33 @@ void Graphics::cleanupVulkan() {
 }
 
 bool Graphics::checkCollision(BoundingBox bbox) {
+    if (bbox.min.y < 0 || bbox.max.y < 0) return false;
+    
     return this->components.checkCollision(bbox);
+}
+
+BufferSummary Graphics::getModelsBufferSizes(bool printInfo) {
+    BufferSummary bufferSizes;
+    
+    auto & allModels = this->models.getModels();
+    
+    for (auto & model : allModels) {
+        auto meshes = model->getMeshes();
+        for (Mesh & mesh : meshes) {
+            VkDeviceSize vertexSize = mesh.getVertices().size();
+            VkDeviceSize indexSize = mesh.getIndices().size();
+
+            bufferSizes.vertexBufferSize += vertexSize * sizeof(class ModelVertex);
+            bufferSizes.indexBufferSize += indexSize * sizeof(uint32_t);
+            bufferSizes.ssboBufferSize += sizeof(struct MeshProperties);
+        }
+    }
+    
+    if (printInfo) {
+        std::cout << "Models Vertex Buffer Size: " << bufferSizes.vertexBufferSize / MEGA_BYTE << " MB" << std::endl;
+        std::cout << "Models Index Buffer Size: " << bufferSizes.indexBufferSize / MEGA_BYTE << " MB" << std::endl;
+        std::cout << "Models SSBO Buffer Size: " << bufferSizes.ssboBufferSize / MEGA_BYTE << " MB" << std::endl;
+    }
+    
+    return bufferSizes;
 }

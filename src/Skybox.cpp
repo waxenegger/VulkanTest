@@ -146,8 +146,6 @@ bool Graphics::createSkyboxShaderStageInfo() {
 }
 
 bool Graphics::createSkyboxGraphicsPipeline() {
-    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-    
     VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {};
     vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
@@ -261,9 +259,6 @@ bool Graphics::createSkyboxGraphicsPipeline() {
         std::cerr << "Failed to Create Skybox Graphics Pipeline!" << std::endl;
         return false;
     }
-
-    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
-    std::cout << "createSkyboxGraphicsPipeline: " << time_span.count() <<  std::endl;
 
     return true;
 }

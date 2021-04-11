@@ -46,7 +46,6 @@ void Texture::setTextureImageView(VkImageView & imageView) {
 
 void Texture::load() {
     if (!this->loaded) {
-        std::cout << "Loading texture: " << this->path << std::endl;
         this->textureSurface = IMG_Load(this->path.c_str());
         if (this->textureSurface != nullptr) {
             if (!this->readImageFormat()) {

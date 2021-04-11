@@ -11,7 +11,7 @@ enum APP_PATHS {
     ROOT, SHADERS, MODELS, FONTS, MAPS
 };
 
-class Graphics final {
+class Graphics {
     private:
         SDL_Window * sdlWindow = nullptr;
         VkInstance vkInstance = nullptr;
@@ -40,8 +40,7 @@ class Graphics final {
         bool hasSkybox = false;
         bool hasTerrain = false;
         
-        std::unique_ptr<TerrainMap> terrainMap = nullptr;         
-        std::vector<ColorVertex> terrainVertices;
+        std::unique_ptr<Terrain> terrain = nullptr;         
         
         uint32_t graphicsQueueIndex = -1;
         VkQueue graphicsQueue = nullptr;
@@ -104,7 +103,9 @@ class Graphics final {
         VkDeviceMemory skyBoxVertexBufferMemory = nullptr;        
 
         VkBuffer terrainVertexBuffer = nullptr;
-        VkDeviceMemory terrainVertexBufferMemory = nullptr;        
+        VkBuffer terrainIndexBuffer = nullptr;
+        VkDeviceMemory terrainVertexBufferMemory = nullptr;
+        VkDeviceMemory terrainIndexBufferMemory = nullptr;        
         VkShaderModule terrainVertShaderModule = nullptr;
         VkShaderModule terrainFragShaderModule = nullptr;
         
@@ -261,7 +262,8 @@ class Graphics final {
         Components & getComponents();
         
         Models & getModels();
-        ModelSummary getModelsBufferSizes();
+        BufferSummary getModelsBufferSizes(bool printInfo = false);
+        BufferSummary getTerrainBufferSizes();
         
         double getDeltaTime();
         void setDeltaTime(double deltaTime);

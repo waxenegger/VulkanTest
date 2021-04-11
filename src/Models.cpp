@@ -11,13 +11,8 @@ Model::Model(const std::string id, const  std::filesystem::path file) : Model(id
     this->file = file;
     Assimp::Importer importer;
 
-    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-
     const aiScene *scene = importer.ReadFile(this->file.c_str(),
             aiProcess_Triangulate | aiProcess_GenBoundingBoxes | aiProcess_CalcTangentSpace | aiProcess_FlipUVs | aiProcess_GenSmoothNormals);
-
-    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
-    std::cout << "Read " << this->file << " in: " << time_span.count() <<  std::endl;
 
     if (scene == nullptr) {
         std::cerr << importer.GetErrorString() << std::endl;
@@ -25,16 +20,11 @@ Model::Model(const std::string id, const  std::filesystem::path file) : Model(id
     }
 
     if (scene->HasMeshes()) {
-        start = std::chrono::high_resolution_clock::now();
-
         this->processNode(scene->mRootNode, scene);
         
         this->calculateBoundingBoxForModel(DEBUG_BBOX);
                 
         this->loaded = true;
-
-        std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
-        std::cout << "assimp mesh process: " << time_span.count() <<  std::endl;
     } else std::cerr << "Model does not contain meshes" << std::endl;
 }
 

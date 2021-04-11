@@ -81,6 +81,7 @@ class Camera
             static Camera * instance();
             void setType(CameraType type);
             void move(KeyPress key, bool isPressed = false, float deltaTime = 1.0f);
+            void moveWithConstraints(std::function<bool(BoundingBox)> collisionCheck, KeyPress key, float deltaTime = 1.0f);
             void updateDirection(const float deltaX, const float  deltaY, float deltaTime = 1.0f);
             void destroy();
             

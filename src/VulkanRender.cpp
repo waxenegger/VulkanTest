@@ -33,15 +33,10 @@ void Graphics::init(const std::string & appName, uint32_t version, const std::fi
 }
 
 bool Graphics::prepareModels() {
-    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-
     if (!this->createBuffersFromModel()) return false;
     
     this->prepareModelTextures();
     if (!this->createUniformBuffers()) return false;
-    
-    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
-    std::cout << "prepareModels: " << time_span.count() <<  std::endl;
 
     return true;
 }
@@ -140,7 +135,10 @@ VkCommandBuffer Graphics::createCommandBuffer(uint16_t commandBufferIndex) {
         VkBuffer vertexBuffers[] = {this->terrainVertexBuffer};
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
         
-        vkCmdDraw(commandBuffer, this->terrainVertices.size(), 1, 0, 0);
+        if (this->terrainIndexBuffer != nullptr) {
+            vkCmdBindIndexBuffer(commandBuffer, this->terrainIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdDrawIndexed(commandBuffer, this->terrain->getIndices().size(), 1, 0, 0, 0);
+        } else vkCmdDraw(commandBuffer, this->terrain->getVertices().size(), 1, 0, 0);
     }
 
     if (this->graphicsPipeline != nullptr && !this->requiresUpdateSwapChain) {
@@ -307,33 +305,8 @@ void Graphics::drawFrame() {
     }
 }
 
-
-ModelSummary Graphics::getModelsBufferSizes() {
-    ModelSummary bufferSizes;
-    
-    auto & allModels = this->models.getModels();
-    
-    for (auto & model : allModels) {
-        auto meshes = model->getMeshes();
-        for (Mesh & mesh : meshes) {
-            VkDeviceSize vertexSize = mesh.getVertices().size();
-            VkDeviceSize indexSize = mesh.getIndices().size();
-
-            bufferSizes.vertexBufferSize += vertexSize * sizeof(class ModelVertex);
-            bufferSizes.indexBufferSize += indexSize * sizeof(uint32_t);
-            bufferSizes.ssboBufferSize += sizeof(struct MeshProperties);
-        }
-    }
-    
-    std::cout << "Vertex Buffer Size: " << bufferSizes.vertexBufferSize << std::endl;
-    std::cout << "Index Buffer Size: " << bufferSizes.indexBufferSize << std::endl;
-    std::cout << "SSBO Buffer Size: " << bufferSizes.ssboBufferSize << std::endl;
-    
-    return bufferSizes;
-}
-
 bool Graphics::createBuffersFromModel() {
-    ModelSummary bufferSizes = this->getModelsBufferSizes();
+    BufferSummary bufferSizes = this->getModelsBufferSizes(true);
      
     if (bufferSizes.vertexBufferSize == 0) return true;
 

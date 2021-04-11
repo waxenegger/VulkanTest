@@ -1,41 +1,142 @@
 #include "includes/graphics.h"
 
-TerrainMap::TerrainMap(const std::string & file) {
+TerrainMap::~TerrainMap() {
+    if (this->map != nullptr) SDL_FreeSurface(this->map);
+}
+
+glm::vec4 Terrain::getPointInfo(const int x, const int y) {
+    const VkExtent2D extent = this->getExtent();
+    const int adjustedX = x + extent.width;
+    const int adjustedY = y + extent.height;
+    
+    if (!this->hasBeenLoaded() ||
+        adjustedX < 0 || adjustedY < 0 || 
+        static_cast<uint32_t>(adjustedX) > extent.width || static_cast<uint32_t>(adjustedY) > extent.width) {
+            return glm::vec4(1,1,1,0);
+    }
+    
+    uint64_t index = adjustedY * extent.width + adjustedX;
+    if (index > this->terrainVertices.size()) {
+        std::cerr << "Accessing Point beyond Terrain Size!" << std::endl;
+    }
+        
+    return this->terrainVertices[index].getInfo();
+}
+
+std::vector<ColorVertex> & Terrain::getVertices() {
+    return this->terrainVertices;
+}
+
+std::vector<uint32_t> & Terrain::getIndices() {
+    return this->terrainIndices;
+}
+
+VkExtent2D TerrainMap::getExtent() {
+    if (!this->hasBeenLoaded()) return { 0, 0};
+    
+    return { static_cast<uint32_t>(this->map->w), static_cast<uint32_t>(this->map->h) };
+}
+
+TerrainMap::TerrainMap(const std::string & file, const uint8_t magnificationFactor) {
     this->map = IMG_Load(file.c_str());
+    this->generateTerrain(magnificationFactor);
 }
 
 bool TerrainMap::hasBeenLoaded() {
     return this->map != nullptr;
 }
 
-glm::vec4 TerrainMap::getPointInfo(int x, int y, int xRange, int yRange) {
-    if (!this->hasBeenLoaded()) return glm::vec4(1,1,1,0);
-    
+void TerrainMap::generateTerrain(const uint8_t magnificationFactor) {
+    if (!this->hasBeenLoaded()) return;
+
     uint16_t w = this->map->w;
     uint16_t h = this->map->h;
+
+    uint8_t xFactor = magnificationFactor;
+    uint8_t yFactor = magnificationFactor;
     
-    uint16_t xShifted = x + xRange / 2;
-    uint16_t yShifted = y + yRange / 2;
+    uint16_t xRange = w * xFactor;
+    uint16_t yRange = h * yFactor;
     
-    float xFactor = w / xRange;
-    float yFactor = h / yRange;
-    
-    uint32_t xPixelIndex =  xShifted * xFactor;
-    uint32_t yPixelIndex =  yShifted * yFactor;
-    
-    uint64_t index = yPixelIndex * this->map->pitch + xPixelIndex * 4;
+    uint64_t index = 0;
+    uint64_t maxIndex = h * w * 4; 
     Uint8 * data = static_cast<Uint8 *>(this->map->pixels);
     
-    return {
-        static_cast<float>(data[index]) / 255.0f,
-        static_cast<float>(data[index+1]) / 255.0f,
-        static_cast<float>(data[index+2]) / 255.0f,
-        static_cast<float>(data[index+3]) / 255.0f
-    };
+    uint16_t x = 0;
+    uint16_t y = 0;
+
+    std::vector<std::vector<ColorVertex>> additionalYfactorVertices;
+
+    while(index < maxIndex) {
+        const glm::vec4 pointData = {
+            static_cast<float>(data[index]) / 255.0f,
+            static_cast<float>(data[index+1]) / 255.0f,
+            static_cast<float>(data[index+2]) / 255.0f,
+            static_cast<float>(data[index+3]) / 255.0f
+        }; 
+        
+        for (uint8_t offsetY=0;offsetY<yFactor;offsetY++) {
+            for (uint8_t offsetX=0;offsetX<xFactor;offsetX++) {
+                ColorVertex v = ColorVertex(glm::vec3((x-xRange/2)+offsetX, 0, (y-yRange/2)+offsetY));            
+                v.setNormal(glm::vec3(0, 1, 0));
+                v.setColor(glm::vec3(pointData.r, pointData.g, pointData.b));
+                
+                if (yFactor > 1 && offsetY > 0) {
+                    if (additionalYfactorVertices.size() < offsetY) {
+                        additionalYfactorVertices.push_back(std::vector<ColorVertex>());
+                    }
+                    additionalYfactorVertices[offsetY-1].push_back(v);
+                } else this->terrainVertices.push_back(v);
+            }
+        }
+        
+        index += 4;
+        x+=xFactor;
+        
+        if (x >= xRange) {
+            if (!additionalYfactorVertices.empty()) {
+                for(auto & vec : additionalYfactorVertices) {
+                    for(auto & add : vec) this->terrainVertices.push_back(add);   
+                }
+                additionalYfactorVertices.clear();
+            };
+            
+            x = 0;
+            y+=yFactor;
+        }
+    }
+    
+    for (y=0;y<yRange;y++) {
+        uint32_t yOff = y * xRange;
+        for (x=0;x<xRange;x++) {
+            if (y+1 >= yRange) break;
+            
+            if (x>0) {
+                this->terrainIndices.push_back(yOff + x);
+                this->terrainIndices.push_back(yOff + x-1);
+                this->terrainIndices.push_back(yOff + xRange + x);                
+            }
+
+            if (x+1 <= xRange) {
+                this->terrainIndices.push_back(yOff + x);
+                this->terrainIndices.push_back(yOff + xRange + x);
+                this->terrainIndices.push_back(yOff + xRange + x+1);                
+            }
+        }
+    }
 }
 
-TerrainMap::~TerrainMap() {
-    if (this->map != nullptr) SDL_FreeSurface(this->map);
+BufferSummary Graphics::getTerrainBufferSizes() {
+    BufferSummary bufferSizes;
+    
+    bufferSizes.vertexBufferSize = this->terrain->getVertices().size() * sizeof(class ColorVertex);
+    bufferSizes.indexBufferSize = this->terrain->getIndices().size() * sizeof(uint32_t);
+
+    std::cout << "Terrain Vertex Buffer Size: " << bufferSizes.vertexBufferSize / MEGA_BYTE << " MB" << std::endl;
+    std::cout << "Terrain Index Buffer Size: " << bufferSizes.indexBufferSize / MEGA_BYTE << " MB" << std::endl;
+    std::cout << "Terrain SSBO Buffer Size: " << bufferSizes.ssboBufferSize / MEGA_BYTE << " MB" << std::endl;
+    
+    return bufferSizes;
 }
 
 bool Graphics::createTerrainDescriptorPool() {
@@ -162,8 +263,6 @@ bool Graphics::createTerrainShaderStageInfo() {
 }
 
 bool Graphics::createTerrainGraphicsPipeline() {
-    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-    
     VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {};
     vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
@@ -278,59 +377,20 @@ bool Graphics::createTerrainGraphicsPipeline() {
         return false;
     }
 
-    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
-    std::cout << "createTerrainGraphicsPipeline: " << time_span.count() <<  std::endl;
-
     return true;
 }
 
 bool Graphics::createTerrain() {
-    this->terrainMap = std::make_unique<TerrainMap>(this->getAppPath(MAPS) / "terrain.png");
-    if (!this->terrainMap->hasBeenLoaded()) return false;
+    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+
+    this->terrain = std::make_unique<TerrainMap>(this->getAppPath(MAPS) / "terrain.png");
+    if (!this->terrain->hasBeenLoaded()) return false;
     
-    const uint16_t rangeX = 2047;
-    const uint16_t rangeZ = 2047;
-    
-    for (int z=-rangeZ/2;z<rangeZ/2;z++) {
-        for (int x=-rangeX/2;x<rangeX/2;x++) {
-
-            glm::vec4 pointData = this->terrainMap->getPointInfo(x, z, rangeX, rangeZ);            
-            ColorVertex v00 = ColorVertex(glm::vec3(x, 0, z));            
-            v00.setNormal(glm::vec3(0, 1, 0));
-            v00.setColor(glm::vec3(pointData.r, pointData.g, pointData.b));
-
-            pointData = this->terrainMap->getPointInfo(x+1, z+1, rangeX, rangeZ);
-            ColorVertex v11 = ColorVertex(glm::vec3(x+1, 0, z+1));
-            v11.setNormal(glm::vec3(0, 1, 0));
-            v11.setColor(glm::vec3(pointData.r, pointData.g, pointData.b));
-
-            pointData = this->terrainMap->getPointInfo(x, z+1, rangeX, rangeZ);            
-            ColorVertex v01 = ColorVertex(glm::vec3(x, 0, z+1));
-            v01.setNormal(glm::vec3(0, 1, 0));
-            v01.setColor(glm::vec3(pointData.r, pointData.g, pointData.b));
-            
-            pointData = this->terrainMap->getPointInfo(x+1, z, rangeX, rangeZ);
-            ColorVertex v10 = ColorVertex(glm::vec3(x+1, 0, z));
-            v10.setNormal(glm::vec3(0, 1, 0));
-            v10.setColor(glm::vec3(pointData.r, pointData.g, pointData.b));
-
-            // triangle 1
-            this->terrainVertices.push_back(v00);
-            this->terrainVertices.push_back(v01);
-            this->terrainVertices.push_back(v11);
-
-            // triangle 2        
-            this->terrainVertices.push_back(v10);        
-            this->terrainVertices.push_back(v00);
-            this->terrainVertices.push_back(v11);
-        };
-    };
-    
-    VkDeviceSize bufferSize = this->terrainVertices.size() * sizeof(class ColorVertex);
+    const BufferSummary bufferSizes = this->getTerrainBufferSizes();
     
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
-    if (!this->createBuffer(bufferSize,
+    if (!this->createBuffer(bufferSizes.vertexBufferSize,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             stagingBuffer, stagingBufferMemory)) {
         std::cerr << "Failed to get Create Terrain Staging Buffer" << std::endl;
@@ -338,22 +398,51 @@ bool Graphics::createTerrain() {
     }
 
     void* data = nullptr;
-    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, this->terrainVertices.data(), bufferSize);
+    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSizes.vertexBufferSize, 0, &data);
+    memcpy(data, this->terrain->getVertices().data(), bufferSizes.vertexBufferSize);
     vkUnmapMemory(this->device, stagingBufferMemory);
 
     if (!this->createBuffer(
-            bufferSize,
+            bufferSizes.vertexBufferSize,
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             this->terrainVertexBuffer, this->terrainVertexBufferMemory)) {
         std::cerr << "Failed to get Create Terrain Vertex Buffer" << std::endl;
         return false;
     }
 
-    this->copyBuffer(stagingBuffer,this->terrainVertexBuffer, bufferSize);
+    this->copyBuffer(stagingBuffer,this->terrainVertexBuffer, bufferSizes.vertexBufferSize);
 
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+
+    if (bufferSizes.indexBufferSize > 0) {        
+        if (!this->createBuffer(bufferSizes.indexBufferSize,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                stagingBuffer, stagingBufferMemory)) {
+            std::cerr << "Failed to get Create Staging Buffer" << std::endl;
+            return false;
+        }
+
+        data = nullptr;
+        vkMapMemory(this->device, stagingBufferMemory, 0, bufferSizes.indexBufferSize, 0, &data);
+        memcpy(data, this->terrain->getIndices().data(), bufferSizes.indexBufferSize);
+        vkUnmapMemory(this->device, stagingBufferMemory);
+
+        if (!this->createBuffer(bufferSizes.indexBufferSize,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                this->terrainIndexBuffer, this->terrainIndexBufferMemory)) {
+            std::cerr << "Failed to get Create Terrain Index Buffer" << std::endl;
+            return false;
+        }
+        
+        this->copyBuffer(stagingBuffer,this->terrainIndexBuffer, bufferSizes.indexBufferSize);
+        
+        vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+        vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+    }
+    
+    std::chrono::duration<double, std::milli> time_span = std::chrono::high_resolution_clock::now() - start;
+    std::cout << "createTerrain: " << time_span.count() <<  std::endl;
 
     return true;
 }
