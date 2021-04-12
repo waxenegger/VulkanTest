@@ -4,15 +4,13 @@ TerrainMap::~TerrainMap() {
     if (this->map != nullptr) SDL_FreeSurface(this->map);
 }
 
-glm::vec4 Terrain::getPointInfo(const int x, const int y) {
+float Terrain::getHeightForPoint(const int x, const int y) {
     const VkExtent2D extent = this->getExtent();
-    const int adjustedX = x + extent.width;
-    const int adjustedY = y + extent.height;
+    const uint32_t adjustedX = x + extent.width / 2;
+    const uint32_t adjustedY = y + extent.height / 2;
     
-    if (!this->hasBeenLoaded() ||
-        adjustedX < 0 || adjustedY < 0 || 
-        static_cast<uint32_t>(adjustedX) > extent.width || static_cast<uint32_t>(adjustedY) > extent.width) {
-            return glm::vec4(1,1,1,0);
+    if (!this->hasBeenLoaded() || adjustedX > extent.width || adjustedY > extent.width) {
+        return 0.0f;
     }
     
     uint64_t index = adjustedY * extent.width + adjustedX;
@@ -20,7 +18,7 @@ glm::vec4 Terrain::getPointInfo(const int x, const int y) {
         std::cerr << "Accessing Point beyond Terrain Size!" << std::endl;
     }
         
-    return this->terrainVertices[index].getInfo();
+    return this->terrainVertices[index].getPosition().y;
 }
 
 std::vector<ColorVertex> & Terrain::getVertices() {
@@ -34,7 +32,7 @@ std::vector<uint32_t> & Terrain::getIndices() {
 VkExtent2D TerrainMap::getExtent() {
     if (!this->hasBeenLoaded()) return { 0, 0};
     
-    return { static_cast<uint32_t>(this->map->w), static_cast<uint32_t>(this->map->h) };
+    return { static_cast<uint32_t>(this->map->w * this->xFactor), static_cast<uint32_t>(this->map->h * this->yFactor) };
 }
 
 TerrainMap::TerrainMap(const std::string & file, const uint8_t magnificationFactor) {
@@ -52,11 +50,11 @@ void TerrainMap::generateTerrain(const uint8_t magnificationFactor) {
     uint16_t w = this->map->w;
     uint16_t h = this->map->h;
 
-    uint8_t xFactor = magnificationFactor;
-    uint8_t yFactor = magnificationFactor;
+    this->xFactor = magnificationFactor;
+    this->yFactor = magnificationFactor;
     
-    uint16_t xRange = w * xFactor;
-    uint16_t yRange = h * yFactor;
+    uint16_t xRange = w * this->xFactor;
+    uint16_t yRange = h * this->yFactor;
     
     uint64_t index = 0;
     uint64_t maxIndex = h * w * 4; 
@@ -72,13 +70,15 @@ void TerrainMap::generateTerrain(const uint8_t magnificationFactor) {
             static_cast<float>(data[index]) / 255.0f,
             static_cast<float>(data[index+1]) / 255.0f,
             static_cast<float>(data[index+2]) / 255.0f,
-            static_cast<float>(data[index+3]) / 255.0f
-        }; 
+            0
+        };
+        float height = 1+(1-pointData.b) * 10;
+        //if (height < 1) std::cout << height << std::endl;
+
         
         for (uint8_t offsetY=0;offsetY<yFactor;offsetY++) {
             for (uint8_t offsetX=0;offsetX<xFactor;offsetX++) {
-                ColorVertex v = ColorVertex(glm::vec3((x-xRange/2)+offsetX, 0, (y-yRange/2)+offsetY));            
-                v.setNormal(glm::vec3(0, 1, 0));
+                ColorVertex v = ColorVertex(glm::vec3((x-xRange/2)+offsetX, height, (y-yRange/2)+offsetY));            
                 v.setColor(glm::vec3(pointData.r, pointData.g, pointData.b));
                 
                 if (yFactor > 1 && offsetY > 0) {
@@ -111,17 +111,45 @@ void TerrainMap::generateTerrain(const uint8_t magnificationFactor) {
         for (x=0;x<xRange;x++) {
             if (y+1 >= yRange) break;
             
+            uint32_t vIndex = yOff + x; 
+                        
+            // upper right triangles
             if (x>0) {
-                this->terrainIndices.push_back(yOff + x);
-                this->terrainIndices.push_back(yOff + x-1);
-                this->terrainIndices.push_back(yOff + xRange + x);                
+                this->terrainIndices.push_back(vIndex - 1);
+                this->terrainIndices.push_back(vIndex + xRange);                
+                this->terrainIndices.push_back(vIndex);
             }
 
-            if (x+1 <= xRange) {
-                this->terrainIndices.push_back(yOff + x);
-                this->terrainIndices.push_back(yOff + xRange + x);
-                this->terrainIndices.push_back(yOff + xRange + x+1);                
+            // lower left triangles            
+            if (x+1 < xRange) {
+                this->terrainIndices.push_back(vIndex);
+                this->terrainIndices.push_back(vIndex + xRange);
+                this->terrainIndices.push_back(vIndex + xRange + 1);                
             }
+            
+            // normals
+            float heightLeftNeighbor = 
+                (x <= 0) ? this->getVertices()[vIndex].getPosition().y:
+                    this->getVertices()[vIndex-1].getPosition().y;
+                    
+            float heightRightNeighbor = 
+                (x+1 >= xRange) ? this->getVertices()[vIndex].getPosition().y :
+                    this->getVertices()[vIndex+1].getPosition().y;
+            
+            float heightUpperNeighbor = 
+                (y <= 0) ? this->getVertices()[vIndex].getPosition().y :
+                    this->getVertices()[vIndex-xRange].getPosition().y;
+                    
+            float heightLowerNeighbor = 
+                (y+1 >= yRange) ? this->getVertices()[vIndex].getPosition().y :
+                    this->getVertices()[vIndex+xRange].getPosition().y;
+
+            this->getVertices()[vIndex].setNormal(
+                glm::normalize(glm::vec3(
+                    heightLeftNeighbor - heightRightNeighbor,
+                    2.0f,
+                    heightUpperNeighbor - heightLowerNeighbor
+                )));
         }
     }
 }
@@ -445,4 +473,8 @@ bool Graphics::createTerrain() {
     std::cout << "createTerrain: " << time_span.count() <<  std::endl;
 
     return true;
+}
+
+float Graphics::getTerrainHeightAtPosition(const glm::vec3 position) {
+    return this->terrain->getHeightForPoint(-position.x, -position.z);
 }

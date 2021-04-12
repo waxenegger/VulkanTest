@@ -12,8 +12,8 @@ void ColorVertex::setColor(const glm::vec3 & color) {
     this->color = color;
 }
 
-glm::vec4 ColorVertex::getInfo() {
-    return glm::vec4(this->color.r, this->color.g, this->color.b, this->position.y);
+glm::vec3 ColorVertex::getColor() {
+    return this->color;
 }
 
 ModelVertex::ModelVertex(const glm::vec3 & position) {

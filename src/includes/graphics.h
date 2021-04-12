@@ -275,6 +275,7 @@ class Graphics {
 
         std::filesystem::path getAppPath(APP_PATHS appPath);
         bool checkCollision(BoundingBox bbox);
+        float getTerrainHeightAtPosition(const glm::vec3 position);
 };
 
 #endif

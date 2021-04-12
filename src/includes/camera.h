@@ -31,7 +31,7 @@ class Camera
 {
     public:
         enum CameraType { lookat, firstperson };
-        enum KeyPress { LEFT = 0, RIGHT = 1, UP = 2, DOWN = 3 };
+        enum KeyPress { LEFT = 0, RIGHT = 1, UP = 2, DOWN = 3, NONE = 4 };
         
     private:
         Camera(glm::vec3 position);
@@ -74,19 +74,20 @@ class Camera
             void rotate(glm::vec3 delta);
             void setTranslation(glm::vec3 translation);
             void translate(glm::vec3 delta);
-            void update(float deltaTime);
+            void update(float deltaTime, float terrainHeight = 0.0f);
             glm::mat4 getViewMatrix();
             glm::mat4 getProjectionMatrix();
             static Camera * instance(glm::vec3 pos);
             static Camera * instance();
             void setType(CameraType type);
-            void move(KeyPress key, bool isPressed = false, float deltaTime = 1.0f);
-            void moveWithConstraints(std::function<bool(BoundingBox)> collisionCheck, KeyPress key, float deltaTime = 1.0f);
+            void move(KeyPress key, bool isPressed = false, float deltaTime = 1.0f, float terrainHeight = 0.0f);
+            void moveWithConstraints(
+                std::function<bool(BoundingBox)> collisionCheck, KeyPress key, float deltaTime = 1.0f, float terrainHeight = 0.0f);
             void updateDirection(const float deltaX, const float  deltaY, float deltaTime = 1.0f);
             void destroy();
             
             bool isInFrustum(glm::vec3 pos);
-            BoundingBox getBoundingBox(KeyPress key, float distance);
+            BoundingBox getBoundingBox(KeyPress key = NONE, float distance = 0.0f);
             glm::vec3 getCameraFront();
 };
 

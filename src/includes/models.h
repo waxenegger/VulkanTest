@@ -53,7 +53,7 @@ class ColorVertex final {
         void setNormal(const glm::vec3 & normal);
         void setColor(const glm::vec3 & color);
         glm::vec3 getPosition();
-        glm::vec4 getInfo();
+        glm::vec3 getColor();
 
         static VkVertexInputBindingDescription getBindingDescription();
         static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions();
@@ -246,7 +246,7 @@ class Terrain {
     public:
         virtual bool hasBeenLoaded() = 0;
         virtual VkExtent2D getExtent() = 0;
-        glm::vec4 getPointInfo(const int x, const int y);
+        float getHeightForPoint(const int x, const int y);
         std::vector<ColorVertex> & getVertices();
         std::vector<uint32_t> & getIndices();
         virtual ~Terrain() {};
@@ -255,6 +255,8 @@ class Terrain {
 
 class TerrainMap final : public Terrain {
     private:
+        uint8_t xFactor = 1;
+        uint8_t yFactor = 1;
         SDL_Surface * map = nullptr;
         void generateTerrain(const uint8_t magnificationFactor = 1);
         

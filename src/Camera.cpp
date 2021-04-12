@@ -33,8 +33,7 @@ bool Camera::moving()
     return this->keys.left || this->keys.right || this->keys.up || this->keys.down;
 }
 
-void Camera::move(KeyPress key, bool isPressed, float deltaTime)
-{
+void Camera::move(KeyPress key, bool isPressed, float deltaTime, float terrainHeight) {
     
     switch(key) {
         case LEFT:
@@ -53,13 +52,13 @@ void Camera::move(KeyPress key, bool isPressed, float deltaTime)
             break;
     }
     
-    this->update(deltaTime);
+    this->update(deltaTime, terrainHeight);
 }
 
-void Camera::moveWithConstraints(std::function<bool(BoundingBox)> collisionCheck, KeyPress key, float deltaTime) {
+void Camera::moveWithConstraints(std::function<bool(BoundingBox)> collisionCheck, KeyPress key, float deltaTime, float terrainHeight) {
     if (collisionCheck(Camera::instance()->getBoundingBox(key, deltaTime))) return;
     
-    this->move(key, true, deltaTime);
+    this->move(key, true, deltaTime, terrainHeight);
 }
 
 void Camera::setAspectRatio(float aspect) {
@@ -123,7 +122,7 @@ glm::vec3 Camera::getCameraFront() {
     return camFront;
 }
 
-void Camera::update(float deltaTime) {
+void Camera::update(float deltaTime, float terrainHeight) {
     if (type == CameraType::firstperson) {
         if (moving()) {
             glm::vec3 camFront = this->getCameraFront();
@@ -134,8 +133,8 @@ void Camera::update(float deltaTime) {
             if (this->keys.left) this->position -= glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
             if (this->keys.right) this->position += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
             
-            if (this->position.y < 0) this->position.y = 0.1;
-            
+            this->position.y = terrainHeight + 0.1;
+
             this->updateViewMatrix();
         }
     }
@@ -208,6 +207,8 @@ BoundingBox Camera::getBoundingBox(KeyPress key, float distance) {
             break;
         case DOWN:
             pos -= camFront * distance;
+            break;
+        case NONE:
             break;
     }
     

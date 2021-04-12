@@ -21,8 +21,10 @@ void Engine::init() {
     //this->graphics.listPhysicalDeviceExtensions();
     //this->graphics.listVkLayerNames();
     //this->graphics.listVkPhysicalDevices();
-
-    this->camera = Camera::instance(glm::vec3(0.0f, 4.0f, -10.0f));
+    
+    glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0, -10.0f);
+    cameraPosition.y = this->graphics.getTerrainHeightAtPosition(cameraPosition) + 1;
+    this->camera = Camera::instance(cameraPosition);
 
     VkExtent2D windowSize = this->graphics.getWindowExtent();
     Camera::instance()->setAspectRatio(static_cast<float>(windowSize.width) / windowSize.height);
@@ -133,8 +135,8 @@ bool Engine::addComponents() {
     Component * contraption = this->graphics.addComponentWithModel("blender1", "contraption");
     if (contraption == nullptr) ret = false;
     else {
-        contraption->setPosition(glm::vec3(0, 100, 0));
-        contraption->rotate(45, 0, 45);
+        contraption->setPosition(glm::vec3(0, 100, 100));
+        contraption->rotate(0, 0, 0);
         contraption->scale(2);
     }
 
@@ -210,16 +212,24 @@ void Engine::loop() {
                     case SDL_KEYDOWN:
                         switch (e.key.keysym.scancode) {
                             case SDL_SCANCODE_W:
-                                Camera::instance()->moveWithConstraints(checkkCollisionFunc, Camera::KeyPress::UP, walkingSpeed);
+                                Camera::instance()->moveWithConstraints(
+                                    checkkCollisionFunc, Camera::KeyPress::UP, walkingSpeed, 
+                                        this->graphics.getTerrainHeightAtPosition(Camera::instance()->getPosition()));
                                 break;
                             case SDL_SCANCODE_S:
-                                Camera::instance()->moveWithConstraints(checkkCollisionFunc, Camera::KeyPress::DOWN, walkingSpeed);
+                                Camera::instance()->moveWithConstraints(
+                                    checkkCollisionFunc, Camera::KeyPress::DOWN, walkingSpeed,
+                                        this->graphics.getTerrainHeightAtPosition(Camera::instance()->getPosition()));
                                 break;
                             case SDL_SCANCODE_A:
-                                Camera::instance()->moveWithConstraints(checkkCollisionFunc, Camera::KeyPress::LEFT, walkingSpeed);
+                                Camera::instance()->moveWithConstraints(
+                                    checkkCollisionFunc, Camera::KeyPress::LEFT, walkingSpeed,
+                                        this->graphics.getTerrainHeightAtPosition(Camera::instance()->getPosition()));
                                 break;
                             case SDL_SCANCODE_D:
-                                Camera::instance()->moveWithConstraints(checkkCollisionFunc, Camera::KeyPress::RIGHT, walkingSpeed);
+                                Camera::instance()->moveWithConstraints(
+                                    checkkCollisionFunc, Camera::KeyPress::RIGHT, walkingSpeed,
+                                        this->graphics.getTerrainHeightAtPosition(Camera::instance()->getPosition()));
                                 break;
                             case SDL_SCANCODE_F:
                                 this->graphics.toggleWireFrame();
