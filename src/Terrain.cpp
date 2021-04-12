@@ -30,9 +30,7 @@ std::vector<uint32_t> & Terrain::getIndices() {
 }
 
 VkExtent2D TerrainMap::getExtent() {
-    if (!this->hasBeenLoaded()) return { 0, 0};
-    
-    return { static_cast<uint32_t>(this->map->w * this->xFactor), static_cast<uint32_t>(this->map->h * this->yFactor) };
+    return { this->width * this->xFactor, this->height * this->yFactor };
 }
 
 TerrainMap::TerrainMap(const std::string & file, const uint8_t magnificationFactor) {
@@ -41,23 +39,23 @@ TerrainMap::TerrainMap(const std::string & file, const uint8_t magnificationFact
 }
 
 bool TerrainMap::hasBeenLoaded() {
-    return this->map != nullptr;
+    return this->loaded;
 }
 
 void TerrainMap::generateTerrain(const uint8_t magnificationFactor) {
-    if (!this->hasBeenLoaded()) return;
+    if (this->map == nullptr) return;
 
-    uint16_t w = this->map->w;
-    uint16_t h = this->map->h;
+    this->width = this->map->w;
+    this->height = this->map->h;
 
     this->xFactor = magnificationFactor;
     this->yFactor = magnificationFactor;
     
-    uint16_t xRange = w * this->xFactor;
-    uint16_t yRange = h * this->yFactor;
+    uint16_t xRange = this->width * this->xFactor;
+    uint16_t yRange = this->height * this->yFactor;
     
     uint64_t index = 0;
-    uint64_t maxIndex = h * w * 4; 
+    uint64_t maxIndex = this->height * this->width * 4; 
     Uint8 * data = static_cast<Uint8 *>(this->map->pixels);
     
     uint16_t x = 0;
@@ -73,8 +71,6 @@ void TerrainMap::generateTerrain(const uint8_t magnificationFactor) {
             0
         };
         float height = 1+(1-pointData.b) * 10;
-        //if (height < 1) std::cout << height << std::endl;
-
         
         for (uint8_t offsetY=0;offsetY<yFactor;offsetY++) {
             for (uint8_t offsetX=0;offsetX<xFactor;offsetX++) {
@@ -152,6 +148,13 @@ void TerrainMap::generateTerrain(const uint8_t magnificationFactor) {
                 )));
         }
     }
+    
+    if (this->map != nullptr) {
+        SDL_FreeSurface(this->map);
+        this->map = nullptr;
+    }
+    
+    this->loaded = true;
 }
 
 BufferSummary Graphics::getTerrainBufferSizes() {
@@ -411,7 +414,7 @@ bool Graphics::createTerrainGraphicsPipeline() {
 bool Graphics::createTerrain() {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
 
-    this->terrain = std::make_unique<TerrainMap>(this->getAppPath(MAPS) / "terrain.png");
+    this->terrain = std::make_unique<TerrainMap>(this->getAppPath(MAPS) / "terrain.png", 2);
     if (!this->terrain->hasBeenLoaded()) return false;
     
     const BufferSummary bufferSizes = this->getTerrainBufferSizes();

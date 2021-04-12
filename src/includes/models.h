@@ -257,7 +257,12 @@ class TerrainMap final : public Terrain {
     private:
         uint8_t xFactor = 1;
         uint8_t yFactor = 1;
+        uint32_t width =0;
+        uint32_t height =0;
+        
         SDL_Surface * map = nullptr;
+        bool loaded = false;
+        
         void generateTerrain(const uint8_t magnificationFactor = 1);
         
     public:

@@ -45,6 +45,6 @@
 
     
 static constexpr bool DEBUG_BBOX = false;
-static constexpr uint32_t MEGA_BYTE = 1000 * 100;
+static constexpr uint32_t MEGA_BYTE = 1000 * 1000;
 
 #endif
