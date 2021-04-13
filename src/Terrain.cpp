@@ -120,7 +120,7 @@ void TerrainMap::generateTerrain(const uint8_t magnificationFactor) {
             if (x+1 < xRange) {
                 this->terrainIndices.push_back(vIndex);
                 this->terrainIndices.push_back(vIndex + xRange);
-                this->terrainIndices.push_back(vIndex + xRange + 1);                
+                this->terrainIndices.push_back(vIndex + xRange + 1);
             }
             
             // normals
@@ -144,8 +144,8 @@ void TerrainMap::generateTerrain(const uint8_t magnificationFactor) {
                 glm::normalize(glm::vec3(
                     heightLeftNeighbor - heightRightNeighbor,
                     2.0f,
-                    heightUpperNeighbor - heightLowerNeighbor
-                )));
+                    heightUpperNeighbor - heightLowerNeighbor)
+            ));
         }
     }
     

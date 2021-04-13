@@ -17,12 +17,12 @@ void main() {
     vec3 normals = fragNormals;
     
     // diffuse multiplier based on normals
-    float diffuse = max(dot(normals, lightDirection), 0);
+    float diffuse = max(dot(normals, lightDirection), 0.1);
 
     // specular multiplier based on normals and eye direction
     vec3 eyeDirection = normalize(vec3(eye) - fragPosition);
     vec3 halfDirection = normalize(lightDirection + vec3(eye));
-    float specular = pow(max(dot(normals, halfDirection), 0), 1);
+    float specular = pow(max(dot(normals, halfDirection), 0.1), 1);
         
-    outColor = vec4(mix(vec3(diffuse) * fragColor, vec3(specular) * fragColor, 0.5), 1);
+    outColor = vec4(mix(vec3(diffuse) * fragColor, vec3(specular) * fragColor, 0.4), 1);
 }

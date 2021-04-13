@@ -535,7 +535,7 @@ void Graphics::cleanupVulkan() {
 }
 
 bool Graphics::checkCollision(BoundingBox bbox) {
-    float minToGo = this->getTerrainHeightAtPosition(bbox.min) + Camera::CameraHeight;
+    float minToGo = this->getTerrainHeightAtPosition(bbox.min);
     
     if (bbox.min.y < minToGo) return false;
     

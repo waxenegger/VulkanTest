@@ -52,7 +52,7 @@ void Camera::move(KeyPress key, bool isPressed, float deltaTime, float terrainHe
             break;
     }
     
-    this->update(deltaTime, terrainHeight);
+    if (isPressed) this->update(deltaTime, terrainHeight);
 }
 
 void Camera::moveWithConstraints(std::function<bool(BoundingBox)> collisionCheck, KeyPress key, float deltaTime, float terrainHeight) {
@@ -128,12 +128,20 @@ void Camera::update(float deltaTime, float terrainHeight) {
             glm::vec3 camFront = this->getCameraFront();
             float moveSpeed = deltaTime;
 
-            if (this->keys.up) this->position += camFront * moveSpeed;
-            if (this->keys.down) this->position -= camFront * moveSpeed;
-            if (this->keys.left) this->position -= glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
-            if (this->keys.right) this->position += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
+            if (this->keys.up) {
+                this->position += camFront * moveSpeed;
+            }
+            if (this->keys.down) {
+                this->position -= camFront * moveSpeed;
+            }
+            if (this->keys.left) {
+                this->position -= glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
+            }
+            if (this->keys.right) {
+                this->position += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
+            }
             
-            this->position.y = terrainHeight + CameraHeight;
+            if (this->position.x < terrainHeight) this->position.y = terrainHeight + CameraHeight;
 
             this->updateViewMatrix();
         }

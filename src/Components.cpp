@@ -175,7 +175,7 @@ bool Components::checkCollision(BoundingBox & bbox) {
             
             if (compBbox.min == INFINITY_VECTOR3 || compBbox.max == NEGATIVE_INFINITY_VECTOR3) continue;
             
-            const glm::mat4 inverseModelMatrix = glm::inverse(c->getModelMatrix(true));
+            const glm::mat4 inverseModelMatrix = glm::inverse(c->getModelMatrix());
             BoundingBox inverseModelBbox = {
                 inverseModelMatrix * glm::vec4(bbox.min,1),
                 inverseModelMatrix * glm::vec4(bbox.max,1)
@@ -196,6 +196,11 @@ bool Components::checkCollision(BoundingBox & bbox) {
                     compBbox = m.getBoundingBox();
                     
                     if (this->checkBboxIntersection(inverseModelBbox, compBbox)) {
+                        glm::mat2x4 transformedMesh;
+                        transformedMesh[0] = glm::vec4(m.getBoundingBox().min, 1);
+                        transformedMesh[1] = glm::vec4(m.getBoundingBox().max, 1);
+                        transformedMesh = c->getModelMatrix() * transformedMesh;
+
                         if (m.getName().compare("opening") == 0 ||
                             m.getName().compare("inside") == 0) {
                             hitBBox = false;
