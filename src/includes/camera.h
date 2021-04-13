@@ -32,6 +32,7 @@ class Camera
     public:
         enum CameraType { lookat, firstperson };
         enum KeyPress { LEFT = 0, RIGHT = 1, UP = 2, DOWN = 3, NONE = 4 };
+        static const float CameraHeight;
         
     private:
         Camera(glm::vec3 position);

@@ -22,8 +22,8 @@ void Engine::init() {
     //this->graphics.listVkLayerNames();
     //this->graphics.listVkPhysicalDevices();
     
-    glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0, -10.0f);
-    cameraPosition.y = this->graphics.getTerrainHeightAtPosition(cameraPosition) + 1;
+    glm::vec3 cameraPosition = glm::vec3(-10.0f, 0.0, 10.0f);
+    cameraPosition.y = this->graphics.getTerrainHeightAtPosition(cameraPosition) + Camera::CameraHeight;
     this->camera = Camera::instance(cameraPosition);
 
     VkExtent2D windowSize = this->graphics.getWindowExtent();
@@ -95,17 +95,28 @@ bool Engine::addComponents() {
     
     bool ret = true;
 
+    glm::vec3 housePosition = glm::vec3(15, 0, 10);
+    housePosition.y = this->graphics.getTerrainHeightAtPosition(housePosition);
+
     Component * text = this->graphics.addComponentWithModel("text1", "text");
     if (text == nullptr) ret = false;
     else {
-        text->setPosition(glm::vec3(0, 20, -15));
+        text->setPosition(glm::vec3(0, this->graphics.getTerrainHeightAtPosition(housePosition)+20, -15));
         text->scale(5);
+    }
+
+    Component * house = this->graphics.addComponentWithModel("house1", "house");
+    if (house == nullptr) ret = false;
+    else {
+        
+        house->setPosition(housePosition);
+        house->scale(3);
     }
 
     Component * teapot = this->graphics.addComponentWithModel("teatpot1", "teapot");
     if (teapot == nullptr) ret = false;
     else {
-        teapot->setPosition(glm::vec3(24, 1, 0));
+        teapot->setPosition(glm::vec3(24, housePosition.y + 2, 0));
         teapot->scale(1);
     }
 
@@ -114,7 +125,7 @@ bool Engine::addComponents() {
             Component * batman = this->graphics.addComponentWithModel(
                 std::string("batman" + std::to_string(x) + "_" + std::to_string(z)), "batman");
             if (batman == nullptr) ret = false;
-            else batman->setPosition(glm::vec3(x,2,z));
+            else batman->setPosition(glm::vec3(x, housePosition.y + 2,z));
         }        
     }
     
@@ -128,14 +139,14 @@ bool Engine::addComponents() {
     Component * mammoth = this->graphics.addComponentWithModel("mammoth1", "mammoth");
     if (mammoth == nullptr) ret = false;
     else {
-        mammoth->setPosition(glm::vec3(15, 5, 0));
+        mammoth->setPosition(glm::vec3(15, housePosition.y + 5, 0));
         mammoth->scale(2);
     }
 
     Component * contraption = this->graphics.addComponentWithModel("blender1", "contraption");
     if (contraption == nullptr) ret = false;
     else {
-        contraption->setPosition(glm::vec3(0, 100, 100));
+        contraption->setPosition(glm::vec3(0, this->graphics.getTerrainHeightAtPosition(housePosition) + 100, 100));
         contraption->rotate(0, 0, 0);
         contraption->scale(2);
     }
@@ -143,16 +154,10 @@ bool Engine::addComponents() {
     Component * cyborg = this->graphics.addComponentWithModel("cyborg1", "cyborg");
     if (cyborg == nullptr) ret = false;
     else {
-        cyborg->setPosition(glm::vec3(15, 2, 10));
+        cyborg->setPosition(glm::vec3(15, housePosition.y + 2, 10));
         cyborg->scale(1.5);
     }
 
-    Component * house = this->graphics.addComponentWithModel("house1", "house");
-    if (house == nullptr) ret = false;
-    else {
-        house->setPosition(glm::vec3(15, 0, 10));
-        house->scale(3);
-    }
 
     return ret;
 }

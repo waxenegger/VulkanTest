@@ -74,6 +74,36 @@ std::string Component::getId() {
     return this->id;
 }
 
+BoundingBox Component::getTransformedBoundingBox() {
+    BoundingBox bbox = { INFINITY_VECTOR3, NEGATIVE_INFINITY_VECTOR3 };
+    
+    if (!this->hasModel()) return bbox;
+    
+    bbox = this->model->getBoundingBox();
+    
+    glm::mat2x4 bboxTransformation;
+    bboxTransformation[0] = glm::vec4(bbox.min, 1);
+    bboxTransformation[1] = glm::vec4(bbox.max, 1);
+    bboxTransformation = this->getModelMatrix() * bboxTransformation;
+    
+
+    bbox.min.x = std::min(bboxTransformation[0].x, bboxTransformation[1].x);
+    bbox.min.y = std::min(bboxTransformation[0].y, bboxTransformation[1].y);
+    bbox.min.z = std::min(bboxTransformation[0].z, bboxTransformation[1].z);
+    bbox.max.x = std::min(bboxTransformation[0].x, bboxTransformation[1].x);
+    bbox.max.y = std::min(bboxTransformation[0].y, bboxTransformation[1].y);
+    bbox.max.z = std::min(bboxTransformation[0].z, bboxTransformation[1].z);
+
+    return bbox;
+}
+
+glm::vec3 Component::getComponentBBoxCenter() {
+    if (!this->hasModel()) return glm::vec3(0);
+
+    BoundingBox bbox = this->getTransformedBoundingBox();
+    
+    return glm::vec3(bbox.max.x-bbox.min.x, bbox.max.y-bbox.min.y, bbox.max.z-bbox.min.z);
+}
 
 Component * Components::addComponent(Component * component) {
     if (component == nullptr) return nullptr;

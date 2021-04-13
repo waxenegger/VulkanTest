@@ -70,7 +70,7 @@ void TerrainMap::generateTerrain(const uint8_t magnificationFactor) {
             static_cast<float>(data[index+2]) / 255.0f,
             0
         };
-        float height = 1+(1-pointData.b) * 10;
+        float height = 1+(1-pointData.b) * 25;
         
         for (uint8_t offsetY=0;offsetY<yFactor;offsetY++) {
             for (uint8_t offsetX=0;offsetX<xFactor;offsetX++) {

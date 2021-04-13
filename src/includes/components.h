@@ -35,6 +35,8 @@ class Component final {
         bool isVisible();
         void setVisible(bool visible);
         std::string getId();
+        BoundingBox getTransformedBoundingBox();
+        glm::vec3 getComponentBBoxCenter();
 };
 
 class Components final {

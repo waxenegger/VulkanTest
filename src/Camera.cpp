@@ -133,7 +133,7 @@ void Camera::update(float deltaTime, float terrainHeight) {
             if (this->keys.left) this->position -= glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
             if (this->keys.right) this->position += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
             
-            this->position.y = terrainHeight + 0.1;
+            this->position.y = terrainHeight + CameraHeight;
 
             this->updateViewMatrix();
         }
@@ -224,5 +224,5 @@ BoundingBox Camera::getBoundingBox(KeyPress key, float distance) {
 }
 
 Camera * Camera::singleton = nullptr;
-
+const float Camera::CameraHeight = 5.0f;
 
