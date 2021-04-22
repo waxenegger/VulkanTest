@@ -1,7 +1,6 @@
 #ifndef SRC_INCLUDES_GRAPHICS_H_
 #define SRC_INCLUDES_GRAPHICS_H_
 
-#include "components.h"
 #include "utils.h"
 
 static constexpr int MAX_TEXTURES = 50;

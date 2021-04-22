@@ -7,7 +7,8 @@ class Engine final {
     private:
         bool initialized = false;
         std::filesystem::path root = "./";
-        Camera * camera = nullptr;
+        std::unique_ptr<SpatialTree> rTree = std::unique_ptr<SpatialTree>(SpatialTree::instance());
+        std::unique_ptr<Camera> camera = std::unique_ptr<Camera>(Camera::instance());
         const std::string APP_NAME = "Vulkan Test";
         Graphics & graphics = Graphics::instance();
     public:
@@ -16,7 +17,6 @@ class Engine final {
         void loop();
         bool loadModels();
         bool addComponents();
-        ~Engine();
 };
 
 #endif

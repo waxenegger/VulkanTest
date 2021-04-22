@@ -24,10 +24,10 @@ void Engine::init() {
     
     glm::vec3 cameraPosition = glm::vec3(-10.0f, 0.0, 10.0f);
     cameraPosition.y = this->graphics.getTerrainHeightAtPosition(cameraPosition) + Camera::CameraHeight;
-    this->camera = Camera::instance(cameraPosition);
+    this->camera->setPosition(cameraPosition);
 
     VkExtent2D windowSize = this->graphics.getWindowExtent();
-    Camera::instance()->setAspectRatio(static_cast<float>(windowSize.width) / windowSize.height);
+    this->camera->setAspectRatio(static_cast<float>(windowSize.width) / windowSize.height);
     
     if (!this->loadModels()) {
          std::cerr << "Failed to Create All Models" << std::endl;
@@ -217,24 +217,24 @@ void Engine::loop() {
                     case SDL_KEYDOWN:
                         switch (e.key.keysym.scancode) {
                             case SDL_SCANCODE_W:
-                                Camera::instance()->moveWithConstraints(
+                                this->camera->moveWithConstraints(
                                     checkkCollisionFunc, Camera::KeyPress::UP, walkingSpeed, 
-                                        this->graphics.getTerrainHeightAtPosition(Camera::instance()->getPosition()));
+                                        this->graphics.getTerrainHeightAtPosition(this->camera->getPosition()));
                                 break;
                             case SDL_SCANCODE_S:
-                                Camera::instance()->moveWithConstraints(
+                                this->camera->moveWithConstraints(
                                     checkkCollisionFunc, Camera::KeyPress::DOWN, walkingSpeed,
-                                        this->graphics.getTerrainHeightAtPosition(Camera::instance()->getPosition()));
+                                        this->graphics.getTerrainHeightAtPosition(this->camera->getPosition()));
                                 break;
                             case SDL_SCANCODE_A:
-                                Camera::instance()->moveWithConstraints(
+                               this->camera->moveWithConstraints(
                                     checkkCollisionFunc, Camera::KeyPress::LEFT, walkingSpeed,
-                                        this->graphics.getTerrainHeightAtPosition(Camera::instance()->getPosition()));
+                                        this->graphics.getTerrainHeightAtPosition(this->camera->getPosition()));
                                 break;
                             case SDL_SCANCODE_D:
-                                Camera::instance()->moveWithConstraints(
+                                this->camera->moveWithConstraints(
                                     checkkCollisionFunc, Camera::KeyPress::RIGHT, walkingSpeed,
-                                        this->graphics.getTerrainHeightAtPosition(Camera::instance()->getPosition()));
+                                        this->graphics.getTerrainHeightAtPosition(this->camera->getPosition()));
                                 break;
                             case SDL_SCANCODE_F:
                                 this->graphics.toggleWireFrame();
@@ -266,16 +266,16 @@ void Engine::loop() {
                     case SDL_KEYUP:
                         switch (e.key.keysym.scancode) {
                             case SDL_SCANCODE_W:
-                                Camera::instance()->move(Camera::KeyPress::UP);
+                                this->camera->move(Camera::KeyPress::UP);
                                 break;
                             case SDL_SCANCODE_S:
-                                Camera::instance()->move(Camera::KeyPress::DOWN);
+                                this->camera->move(Camera::KeyPress::DOWN);
                                 break;
                             case SDL_SCANCODE_A:
-                                Camera::instance()->move(Camera::KeyPress::LEFT);
+                                this->camera->move(Camera::KeyPress::LEFT);
                                 break;
                             case SDL_SCANCODE_D:
-                                Camera::instance()->move(Camera::KeyPress::RIGHT);
+                                this->camera->move(Camera::KeyPress::RIGHT);
                                 break;
                             default:
                                 break;
@@ -283,7 +283,7 @@ void Engine::loop() {
                         break;
                     case SDL_MOUSEMOTION:
                         if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
-                            Camera::instance()->updateDirection(
+                            this->camera->updateDirection(
                                 static_cast<float>(e.motion.xrel),
                                 static_cast<float>(e.motion.yrel), 0.005f);
                         }
@@ -291,10 +291,10 @@ void Engine::loop() {
                     case SDL_MOUSEWHEEL:
                     {
                         const Sint32 delta = e.wheel.y * (e.wheel.direction == SDL_MOUSEWHEEL_NORMAL ? 1 : -1);
-                        float newFovy = Camera::instance()->getFovY() - delta * 2;
+                        float newFovy = this->camera->getFovY() - delta * 2;
                         if (newFovy < 1) newFovy = 1;
                         else if (newFovy > 45) newFovy = 45;
-                        Camera::instance()->setFovY(newFovy);
+                        this->camera->setFovY(newFovy);
                         break;
                     }                            
                     case SDL_MOUSEBUTTONUP:
@@ -315,8 +315,3 @@ void Engine::loop() {
     
     SDL_StopTextInput();
 }
-
-Engine::~Engine() {
-    if (this->camera != nullptr) this->camera->destroy();
-}
-

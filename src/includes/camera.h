@@ -7,18 +7,6 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
-static constexpr float INF = std::numeric_limits<float>::infinity();
-static constexpr float NEG_INF = -1 * std::numeric_limits<float>::infinity();
-static constexpr glm::vec3 INFINITY_VECTOR3 = glm::vec3(INF);
-static constexpr glm::vec3 NEGATIVE_INFINITY_VECTOR3 = glm::vec3(NEG_INF);
-static constexpr glm::mat4 IDENTITY_MATRIX4 = glm::mat4(1.0f);
-
-struct BoundingBox final {
-    public:
-        glm::vec3 min = glm::vec3(INF);
-        glm::vec3 max = glm::vec3(NEG_INF);
-};
-
 struct ModelUniforms final {
     public:
         glm::mat4 viewMatrix;
@@ -64,32 +52,32 @@ class Camera
         void updateViewMatrix();
         bool moving();
 
-        public:
-            glm::vec3 getPosition();
-            void setAspectRatio(float aspect);
-            void setFovY(float degrees);
-            float getFovY();
-            void setPerspective();
-            void setPosition(glm::vec3 position);
-            void setRotation(glm::vec3 rotation);
-            void rotate(glm::vec3 delta);
-            void setTranslation(glm::vec3 translation);
-            void translate(glm::vec3 delta);
-            void update(float deltaTime, float terrainHeight = 0.0f);
-            glm::mat4 getViewMatrix();
-            glm::mat4 getProjectionMatrix();
-            static Camera * instance(glm::vec3 pos);
-            static Camera * instance();
-            void setType(CameraType type);
-            void move(KeyPress key, bool isPressed = false, float deltaTime = 1.0f, float terrainHeight = 0.0f);
-            void moveWithConstraints(
-                std::function<bool(BoundingBox)> collisionCheck, KeyPress key, float deltaTime = 1.0f, float terrainHeight = 0.0f);
-            void updateDirection(const float deltaX, const float  deltaY, float deltaTime = 1.0f);
-            void destroy();
-            
-            bool isInFrustum(glm::vec3 pos);
-            BoundingBox getBoundingBox(KeyPress key = NONE, float distance = 0.0f);
-            glm::vec3 getCameraFront();
+    public:
+        glm::vec3 getPosition();
+        void setAspectRatio(float aspect);
+        void setFovY(float degrees);
+        float getFovY();
+        void setPerspective();
+        void setPosition(glm::vec3 position);
+        void setRotation(glm::vec3 rotation);
+        void rotate(glm::vec3 delta);
+        void setTranslation(glm::vec3 translation);
+        void translate(glm::vec3 delta);
+        void update(float deltaTime, float terrainHeight = 0.0f);
+        glm::mat4 getViewMatrix();
+        glm::mat4 getProjectionMatrix();
+        static Camera * instance(glm::vec3 pos);
+        static Camera * instance();
+        void setType(CameraType type);
+        void move(KeyPress key, bool isPressed = false, float deltaTime = 1.0f, float terrainHeight = 0.0f);
+        void moveWithConstraints(
+            std::function<bool(BoundingBox)> collisionCheck, KeyPress key, float deltaTime = 1.0f, float terrainHeight = 0.0f);
+        void updateDirection(const float deltaX, const float  deltaY, float deltaTime = 1.0f);
+        void destroy();
+        
+        bool isInFrustum(glm::vec3 pos);
+        BoundingBox getBoundingBox(KeyPress key = NONE, float distance = 0.0f);
+        glm::vec3 getCameraFront();
 };
 
 #endif

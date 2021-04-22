@@ -2,6 +2,7 @@
 #define SRC_INCLUDES_UTILS_H_
 
 #include "shared.h"
+#include "components.h"
 
 class Utils final {
     public:
@@ -34,6 +35,14 @@ class Utils final {
          }
 };
 
-
+class SpatialTree final {
+    private:
+        static SpatialTree * singleton;
+    public:
+        static SpatialTree * instance();
+        void loadComponents(std::vector<Component *> & components);
+        std::vector<Component *> findBBoxIntersect(BoundingBox bbox);
+        void destroy();
+};
 
 #endif

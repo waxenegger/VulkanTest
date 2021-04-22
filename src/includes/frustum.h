@@ -1,11 +1,24 @@
 #ifndef SRC_INCLUDES_FRUSTUM_H_
 #define SRC_INCLUDES_FRUSTUM_H_
 
+static constexpr float INF = std::numeric_limits<float>::infinity();
+static constexpr float NEG_INF = -1 * std::numeric_limits<float>::infinity();
+static constexpr glm::vec3 INFINITY_VECTOR3 = glm::vec3(INF);
+static constexpr glm::vec3 NEGATIVE_INFINITY_VECTOR3 = glm::vec3(NEG_INF);
+static constexpr glm::mat4 IDENTITY_MATRIX4 = glm::mat4(1.0f);
+
+struct BoundingBox final {
+    public:
+        glm::vec3 min = glm::vec3(INF);
+        glm::vec3 max = glm::vec3(NEG_INF);
+};
+
 class Frustum final
 {
     private:
         enum side { LEFT = 0, RIGHT = 1, TOP = 2, BOTTOM = 3, BACK = 4, FRONT = 5 };
         std::array<glm::vec4, 6> planes;
+        BoundingBox bbox;
         
     public:
 
@@ -41,11 +54,21 @@ class Frustum final
             planes[FRONT].z = matrix[2].w - matrix[2].z;
             planes[FRONT].w = matrix[3].w - matrix[3].z;
 
+            BoundingBox bboxTmp;
+            
             for (uint32_t  i = 0; i < planes.size(); i++)
             {
                 float length = sqrtf(planes[i].x * planes[i].x + planes[i].y * planes[i].y + planes[i].z * planes[i].z);
                 planes[i] /= length;
+                if (planes[i].x < bbox.min.x) bbox.min.x = planes[i].x;
+                if (planes[i].x > bbox.max.x) bbox.max.x = planes[i].x;
+                if (planes[i].y < bbox.min.y) bbox.min.y = planes[i].y;
+                if (planes[i].y > bbox.max.y) bbox.max.y = planes[i].y;
+                if (planes[i].z < bbox.min.z) bbox.min.z = planes[i].z;
+                if (planes[i].z > bbox.max.z) bbox.max.z = planes[i].z;                
             }
+            
+            this->bbox = bboxTmp;
         }
 
         bool checkSphere(glm::vec3 pos, float radius)
@@ -58,6 +81,10 @@ class Frustum final
                 }
             }
             return true;
+        }
+        
+        BoundingBox getBoundingBox() {
+            return this->bbox;
         }
 };
 
