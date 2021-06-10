@@ -141,7 +141,7 @@ void Camera::update(float deltaTime, float terrainHeight) {
                 this->position += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
             }
             
-            if (this->position.x < terrainHeight) this->position.y = terrainHeight + CameraHeight;
+            this->position.y = terrainHeight + CameraHeight;
 
             this->updateViewMatrix();
         }
